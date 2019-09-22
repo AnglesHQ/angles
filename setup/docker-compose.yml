@@ -1,0 +1,24 @@
+version: "2.0"
+
+services:
+  mongodb:
+    container_name: mongodb
+    hostname: mongodb
+    image: mongo:4.2.0
+    volumes:
+        - qac_mongo_db:/data/db
+        - qac_mongo_config:/data/configdb
+    ports:
+        - 27017:27017
+    environment:
+        - MONGO_INITDB_ROOT_USERNAME=admin
+        - MONGO_INITDB_ROOT_PASSWORD=Q@cPassword
+    command:
+        - --auth
+        - --bind_ip_all
+
+volumes:
+ qac_mongo_db:
+   external: true
+ qac_mongo_config:
+   external: true

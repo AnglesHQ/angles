@@ -1,0 +1,42 @@
+{
+  "name": "qac-dashboard",
+  "version": "1.0.0",
+  "description": "qa-central test dashboard",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qa-central/qac-dashboard.git"
+  },
+  "keywords": [
+    "qa",
+    "test",
+    "dashboard"
+  ],
+  "author": "Sergio Neves Barros",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/qa-central/qac-dashboard/issues"
+  },
+  "homepage": "https://github.com/qa-central/qac-dashboard#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "express-validator": "^6.2.0",
+    "mongoose": "^5.7.1",
+    "saslprep": "^1.0.3",
+    "uuid": "^3.3.3"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.0.3",
+    "eslint": "^6.4.0",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-react": "^7.14.3",
+    "eslint-plugin-react-hooks": "^1.7.0"
+  }
+}
