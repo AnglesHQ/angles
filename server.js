@@ -21,7 +21,8 @@ mongoose.Promise = global.Promise;
 mongoose.connect(dbConfig.url, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    useCreateIndex: true
+    useCreateIndex: true,
+    useFindAndModify: false
 }).then(() => {
     console.log("Successfully connected to the database");
 }).catch(err => {
@@ -29,10 +30,13 @@ mongoose.connect(dbConfig.url, {
 process.exit();
 });
 
+// Add swagger routes
+require('./swagger/routes/routes.js')(app);
+
 // Add routes to server
-require('./app/routes/environment.routes.js')(app);
-require('./app/routes/team.routes.js')(app);
-require('./app/routes/build.routes.js')(app);
+require('./app/routes/environment.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/team.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/build.routes.js')(app, '/rest/api/v1.0');
 
 // listen for requests
 app.listen(3000, () => {

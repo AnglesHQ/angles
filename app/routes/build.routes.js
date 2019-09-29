@@ -1,9 +1,9 @@
-module.exports = (app) => {
+module.exports = (app, path) => {
   const buildController = require('../controllers/build.controller.js');
   const { check, validationResult } = require('express-validator');
 
   // Create a new build
-  app.post('/build', [
+  app.post(path + '/build', [
       // username must be an email
       check('environment').exists(),
       check('environment').isString(),
@@ -12,14 +12,20 @@ module.exports = (app) => {
     ], buildController.create);
 
   // Retrieve all builds
-  app.get('/build', buildController.findAll);
+  app.get(path + '/build', buildController.findAll);
 
   // Retrieve a single build with buildId
-  app.get('/build/:buildId', buildController.findOne);
+  app.get(path + '/build/:buildId', buildController.findOne);
 
   // Update a build with buildId
-  // app.put('/build/:buildId', buildController.update);
+  app.put(path + '/build/:buildId', [
+      // username must be an email
+      check('environment').exists(),
+      check('environment').isString(),
+      check('team').exists(),
+      check('team').isString()
+    ], buildController.update);
 
   // Delete a build with buildId
-  app.delete('/build/:buildId', buildController.delete);
+  app.delete(path + '/build/:buildId', buildController.delete);
 }

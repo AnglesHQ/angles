@@ -1,22 +1,25 @@
-module.exports = (app) => {
+module.exports = (app, path) => {
   const environmentController = require('../controllers/environment.controller.js');
   const { check, validationResult } = require('express-validator');
 
   // Create a new environment
-  app.post('/environment', [
+  app.post(path + '/environment', [
       check('name').exists(),
       check('name').isString()
     ], environmentController.create);
 
   // Retrieve all environments
-  app.get('/environment', environmentController.findAll);
+  app.get(path + '/environment', environmentController.findAll);
 
   // Retrieve a single environment with environmentId
-  app.get('/environment/:environmentId', environmentController.findOne);
+  app.get(path + '/environment/:environmentId', environmentController.findOne);
 
   //Update a environment with environmentId
-  // app.put('/environment/:environmentId', environmentController.update);
+  app.put(path + '/environment/:environmentId', [
+      check('name').exists(),
+      check('name').isString()
+    ], environmentController.update);
 
   // Delete a environment with environmentId
-  app.delete('/environment/:environmentId', environmentController.delete);
+  app.delete(path + '/environment/:environmentId', environmentController.delete);
 }

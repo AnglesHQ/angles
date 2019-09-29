@@ -1,0 +1,411 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "QAC Dashboard API",
+    "description": "The API allows allows the dashboard to create, update and remove environments, teams and executions stored in the dashboard.",
+    "license": {
+      "name": "Apache License 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0"
+    }
+  },
+  "host": "localhost:3000",
+  "basePath": "/rest/api/v1.0",
+  "tags": [
+    {
+      "name": "Team",
+      "description": "API for managing the teams"
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/environment": {
+      "post": {
+        "tags": [
+          "Environment"
+        ],
+        "description": "Create new environment for the dashboard",
+        "parameters": [
+          {
+            "name": "environment",
+            "in": "body",
+            "description": "Environment that we want to create",
+            "schema": {
+              "$ref": "#/definitions/Environment"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "New environment is created",
+            "schema": {
+              "$ref": "#/definitions/Environment"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Environment"
+        ],
+        "summary": "Get all environments for the dashboard in system",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Environments"
+            }
+          }
+        }
+      }
+    },
+    "/environment/{environmentId}": {
+      "parameters": [
+        {
+          "name": "environmentId",
+          "in": "path",
+          "required": true,
+          "description": "ID of environment that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Environment"
+        ],
+        "summary": "Get environment with given ID",
+        "responses": {
+          "200": {
+            "description": "Environment is found",
+            "schema": {
+              "$ref": "#/definitions/Environment"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete environment with given ID",
+        "tags": [
+          "Environment"
+        ],
+        "responses": {
+          "200": {
+            "description": "Environment is deleted",
+            "schema": {
+              "$ref": "#/definitions/Environment"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update environment with give ID",
+        "tags": [
+          "Environment"
+        ],
+        "parameters": [
+          {
+            "name": "environment",
+            "in": "body",
+            "description": "Environment with new values of properties",
+            "schema": {
+              "$ref": "#/definitions/Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Environment is updated",
+            "schema": {
+              "$ref": "#/definitions/Environment"
+            }
+          }
+        }
+      }
+    },
+    "/team": {
+      "post": {
+        "tags": [
+          "Team"
+        ],
+        "description": "Create new team for the dashboard",
+        "parameters": [
+          {
+            "name": "user",
+            "in": "body",
+            "description": "User that we want to create",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "New user is created",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Get all teams for the dashboard in system",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teams"
+            }
+          }
+        }
+      }
+    },
+    "/team/{teamId}": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "description": "ID of team that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Get team with given ID",
+        "responses": {
+          "200": {
+            "description": "Team is found",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete team with given ID",
+        "tags": [
+          "Team"
+        ],
+        "responses": {
+          "200": {
+            "description": "Team is deleted",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update team with give ID",
+        "tags": [
+          "Team"
+        ],
+        "parameters": [
+          {
+            "name": "team",
+            "in": "body",
+            "description": "Team with new values of properties",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team is updated",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        }
+      }
+    },
+    "/build": {
+      "post": {
+        "tags": [
+          "Build"
+        ],
+        "description": "Create new build for the dashboard",
+        "parameters": [
+          {
+            "name": "build",
+            "in": "body",
+            "description": "Build that we want to create",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "New build is created",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Build"
+        ],
+        "summary": "Get all builds for the dashboard",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Builds"
+            }
+          }
+        }
+      }
+    },
+    "/build/{buildId}": {
+      "parameters": [
+        {
+          "name": "buildId",
+          "in": "path",
+          "required": true,
+          "description": "ID of build that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Build"
+        ],
+        "summary": "Get build with given ID",
+        "responses": {
+          "200": {
+            "description": "Build is found",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete build with given ID",
+        "tags": [
+          "Build"
+        ],
+        "responses": {
+          "200": {
+            "description": "Build is deleted",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update build with give ID",
+        "tags": [
+          "Build"
+        ],
+        "parameters": [
+          {
+            "name": "build",
+            "in": "body",
+            "description": "Build with new values of properties",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Build is updated",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Environment": {
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "_id": {
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "type": "string",
+          "uniqueItems": true
+        }
+      }
+    },
+    "Environments": {
+      "type": "array",
+      "$ref": "#/definitions/Environment"
+    },
+    "Team": {
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "_id": {
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "type": "string",
+          "uniqueItems": true
+        }
+      }
+    },
+    "Teams": {
+      "type": "array",
+      "$ref": "#/definitions/Team"
+    },
+    "Build": {
+      "required": [
+        "environment",
+        "team"
+      ],
+      "properties": {
+        "_id": {
+          "type": "string",
+          "uniqueItems": true
+        },
+        "environment": {
+          "type": "string"
+        },
+        "team": {
+          "type": "string"
+        }
+      }
+    },
+    "Builds": {
+      "type": "array",
+      "$ref": "#/definitions/Build"
+    }
+  }
+}

@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const BuildSchema = mongoose.Schema({
-    id: String,
-    environment: String
+    environment: String,
+    team: String
 }, {
     timestamps: true
 });

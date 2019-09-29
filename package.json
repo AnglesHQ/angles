@@ -27,6 +27,7 @@
     "express-validator": "^6.2.0",
     "mongoose": "^5.7.1",
     "saslprep": "^1.0.3",
+    "swagger-ui-express": "^4.1.1",
     "uuid": "^3.3.3"
   },
   "devDependencies": {

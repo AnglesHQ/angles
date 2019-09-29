@@ -1,6 +1,5 @@
 const Environment = require('../models/environment.js');
 const { check, validationResult } = require('express-validator');
-const mongoose = require('mongoose');
 
 exports.create = (req, res) => {
   // validate request
@@ -55,6 +54,36 @@ exports.findOne = (req, res) => {
             message: "Error retrieving environment with id " + req.params.environmentId
         });
     });
+};
+
+exports.update = (req, res) => {
+  // validate request
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  // Find environment and update it with the request body
+  Environment.findByIdAndUpdate(req.params.environmentId, {
+      name: req.body.name
+  }, {new: true})
+  .then(environment => {
+      if(!environment) {
+          return res.status(404).send({
+              message: "Environment not found with id " + req.params.environmentId
+          });
+      }
+      res.send(environment);
+  }).catch(err => {
+      if(err.kind === 'ObjectId') {
+          return res.status(404).send({
+              message: "Environment not found with id " + req.params.environmentId
+          });
+      }
+      return res.status(500).send({
+          message: "Error updating environment with id " + req.params.environmentId
+      });
+  });
 };
 
 exports.delete = (req, res) => {

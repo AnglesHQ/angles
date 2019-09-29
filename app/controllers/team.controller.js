@@ -8,9 +8,19 @@ exports.create = (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.array() });
     }
-    var team = new Team();
-    team.id = mongoose.Types.ObjectId();
-    res.json({"id": team.id});
+    var team = new Team({
+          name: req.body.name
+    });
+
+    //save the environment
+    team.save()
+    .then(data => {
+        res.send(data);
+    }).catch(err => {
+        res.status(500).send({
+            message: err.message || "Some error occurred while creating the team."
+        });
+    });
 };
 
 exports.findAll = (req, res) => {
@@ -43,6 +53,36 @@ exports.findOne = (req, res) => {
             message: "Error retrieving team with id " + req.params.teamId
         });
     });
+};
+
+exports.update = (req, res) => {
+  // validate request
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  // Find team and update it with the request body
+  Team.findByIdAndUpdate(req.params.teamId, {
+      name: req.body.name
+  }, {new: true})
+  .then(team => {
+      if(!team) {
+          return res.status(404).send({
+              message: "Team not found with id " + req.params.teamId
+          });
+      }
+      res.send(team);
+  }).catch(err => {
+      if(err.kind === 'ObjectId') {
+          return res.status(404).send({
+              message: "Team not found with id " + req.params.teamId
+          });
+      }
+      return res.status(500).send({
+          message: "Error updating team with id " + req.params.teamId
+      });
+  });
 };
 
 exports.delete = (req, res) => {
