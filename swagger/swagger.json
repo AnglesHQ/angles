@@ -47,10 +47,16 @@
           "application/json"
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "New environment is created",
             "schema": {
               "$ref": "#/definitions/Environment"
+            }
+          },
+          "409": {
+            "description": "Duplicate environment found",
+            "schema": {
+              "$ref": "#/definitions/ErrorMessage"
             }
           }
         }
@@ -141,9 +147,9 @@
         "description": "Create new team for the dashboard",
         "parameters": [
           {
-            "name": "user",
+            "name": "team",
             "in": "body",
-            "description": "User that we want to create",
+            "description": "Team that we want to create",
             "schema": {
               "$ref": "#/definitions/Team"
             }
@@ -153,10 +159,16 @@
           "application/json"
         ],
         "responses": {
-          "200": {
-            "description": "New user is created",
+          "201": {
+            "description": "New team is created",
             "schema": {
-              "$ref": "#/definitions/User"
+              "$ref": "#/definitions/Team"
+            }
+          },
+          "409": {
+            "description": "Duplicate team found",
+            "schema": {
+              "$ref": "#/definitions/ErrorMessage"
             }
           }
         }
@@ -259,7 +271,7 @@
           "application/json"
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "New build is created",
             "schema": {
               "$ref": "#/definitions/Build"
@@ -347,6 +359,17 @@
     }
   },
   "definitions": {
+    "ErrorMessage": {
+      "required": [
+        "message"
+      ],
+      "properties": {
+        "message": {
+          "type": "string",
+          "uniqueItems": true
+        }
+      }
+    },
     "Environment": {
       "required": [
         "name"
