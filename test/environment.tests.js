@@ -7,7 +7,7 @@ describe('Environment API Tests', function () {
 
   before(function() {
     //clear lingering test environments
-    Environment.deleteMany({name: "unit-testing-environment"}, function(err) {
+    Environment.deleteMany({name: /^unit-testing/}, function(err) {
         if (err) {
           console.log(err);
         } else {
@@ -29,6 +29,17 @@ describe('Environment API Tests', function () {
               .expect('Content-Type', /json/)
               .expect(200, done);
       });
+  });
+
+  describe('POST /environment', function () {
+    it('respond with 201 when creating a valid environment', function (done) {
+        request(app)
+            .post(baseUrl + 'environment')
+            .send({name: "unit-testing-environment-new"})
+            .set('Accept', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(201, done);
+    });
   });
 
   describe('POST /environment - negative tests', function () {

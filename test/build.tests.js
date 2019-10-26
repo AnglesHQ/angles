@@ -32,8 +32,8 @@ describe('Build API Tests', function () {
   describe('POST /build', function () {
       it('succesfully create build with valid details', function (done) {
           var build = new Build({
-            environment: 'development',
-            team: 'qa2'
+            environment: 'unit-testing-environment',
+            team: 'unit-testing-team'
           });
           request(app)
               .post(baseUrl + 'build')
@@ -76,7 +76,7 @@ describe('Build API Tests', function () {
       it('respond with 404 when trying to create a build with non-existent environment', function (done) {
           var build = new Build({
             environment: 'non-existent',
-            team: 'qa2'
+            team: 'unit-testing-team'
           });
           request(app)
               .post(baseUrl + 'build')

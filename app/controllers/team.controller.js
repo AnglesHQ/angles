@@ -8,18 +8,27 @@ exports.create = (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.array() });
     }
-    var team = new Team({
-          name: req.body.name
-    });
 
-    //save the environment
-    team.save()
-    .then(data => {
-        res.send(data);
-    }).catch(err => {
-        res.status(500).send({
-            message: err.message || "Some error occurred while creating the team."
-        });
+    Team.where({name: req.body.name}).findOne(function(err, team) {
+        if (team) {
+          res.status(409).send({
+              message: "Team with name " + req.body.name + " already exists."
+          });
+        } else {
+          var team = new Team({
+                name: req.body.name
+          });
+
+          //save the team
+          team.save()
+          .then(data => {
+              res.status(201).send(data);
+          }).catch(err => {
+              res.status(500).send({
+                  message: err.message || "Some error occurred while creating the team."
+              });
+          });
+        }
     });
 };
 
