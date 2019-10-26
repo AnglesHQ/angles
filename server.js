@@ -39,6 +39,6 @@ require('./app/routes/team.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/build.routes.js')(app, '/rest/api/v1.0');
 
 // listen for requests
-app.listen(3000, () => {
+module.exports = app.listen(3000, () => {
     console.log("Server is listening on port 3000");
 });
