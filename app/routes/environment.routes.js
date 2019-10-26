@@ -5,7 +5,9 @@ module.exports = (app, path) => {
   // Create a new environment
   app.post(path + '/environment', [
       check('name').exists(),
-      check('name').isString()
+      check('name').isString(),
+      check('name').isLength({ max: 50 })
+      .withMessage('Max length for environment name is 50 characters')
     ], environmentController.create);
 
   // Retrieve all environments

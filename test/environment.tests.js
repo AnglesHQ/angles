@@ -43,6 +43,7 @@ describe('Environment API Tests', function () {
   });
 
   describe('POST /environment - negative tests', function () {
+
       it('respond with 422 when trying to create an environment with empty body', function (done) {
           request(app)
               .post(baseUrl + 'environment')
@@ -52,6 +53,14 @@ describe('Environment API Tests', function () {
               .expect(422, done);
       });
 
+      it('respond with 422 when trying to create an environment with a very long name', function (done) {
+          request(app)
+              .post(baseUrl + 'environment')
+              .send({name: "unit-testing-environment-with-way-too-long-of-a-name"})
+              .set('Accept', 'application/json')
+              .expect('Content-Type', /json/)
+              .expect(422, done);
+      });
 
       it('respond with 409 when trying to create an environment that already exists', function (done) {
           request(app)

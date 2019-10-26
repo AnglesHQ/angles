@@ -43,10 +43,20 @@ describe('Team API Tests', function () {
   });
 
   describe('POST /team - negative tests', function () {
+
       it('respond with 422 when trying to create a team with empty body', function (done) {
           request(app)
               .post(baseUrl + 'team')
               .send({})
+              .set('Accept', 'application/json')
+              .expect('Content-Type', /json/)
+              .expect(422, done);
+      });
+
+      it('respond with 422 when trying to create a team with a very long name', function (done) {
+          request(app)
+              .post(baseUrl + 'team')
+              .send({name: "unit-testing-team-with-a-very-long-testing-name-123"})
               .set('Accept', 'application/json')
               .expect('Content-Type', /json/)
               .expect(422, done);
