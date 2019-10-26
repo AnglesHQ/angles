@@ -1,4 +1,6 @@
 const Build = require('../models/build.js');
+const Team = require('../models/team.js');
+const Environment = require('../models/environment.js');
 const uuidv4 = require('uuid/v4')
 const { check, validationResult } = require('express-validator');
 
@@ -9,19 +11,44 @@ exports.create = (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.array() });
     }
-    var build = new Build({
-      environment: req.body.environment,
-      team: req.body.team
-    });
 
-    //save the build
-    build.save()
-    .then(data => {
-        res.send(data);
-    }).catch(err => {
-        res.status(500).send({
-            message: err.message || "Some error occurred while creating the build."
-        });
+    //check the variables provided are real
+    var promises = [
+      Team.findOne({ 'name': req.body.team }).exec(),
+      Environment.findOne({ 'name': req.body.environment }).exec()
+    ];
+
+    Promise.all(promises).then(function(results) {
+        //check team
+        if (results[0] == null) {
+          res.status(404).send({
+              message: "No team found with name " + req.body.team
+          });
+        //check environment
+        } else if (results[1] == null) {
+          res.status(404).send({
+            message: "No environment found with name " + req.body.environment
+          });
+        } else {
+          //valid details, save build
+          var build = new Build({
+            environment: req.body.environment,
+            team: req.body.team
+          });
+          //save the build
+          build.save()
+          .then(data => {
+              res.send(data);
+          }).catch(err => {
+              res.status(500).send({
+                  message: err.message || "Some error occurred while creating the build."
+              });
+          });
+        }
+    }).catch(function(err){
+      res.status(500).send({
+          message: err.message || "Some error occurred while creating the build."
+      });
     });
 };
 

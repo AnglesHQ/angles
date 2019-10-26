@@ -42,7 +42,7 @@ describe('Build API Tests', function () {
       it('respond with 404 when trying to create a build with non-existent environment', function (done) {
           request(app)
               .post(baseUrl + 'build')
-              .send({team: 'qa', environment: 'non-exists'})
+              .send({team: 'qa2', environment: 'non-exists'})
               .set('Accept', 'application/json')
               .expect('Content-Type', /json/)
               .expect(404, done);
