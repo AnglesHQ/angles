@@ -8,19 +8,27 @@ exports.create = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
 
-  //create new environment
-  const environment = new Environment({
-    name: req.body.name
-  });
+  Environment.where({name: req.body.name}).findOne(function(err, environment) {
+      if (environment) {
+        res.status(409).send({
+            message: "Environment with name " + req.body.name + " already exists."
+        });
+      } else {
+        //create new environment
+        const environment = new Environment({
+          name: req.body.name
+        });
 
-  //save the environment
-  environment.save()
-  .then(data => {
-      res.send(data);
-  }).catch(err => {
-      res.status(500).send({
-          message: err.message || "Some error occurred while creating the environment."
-      });
+        //save the environment
+        environment.save()
+        .then(data => {
+            res.send(data);
+        }).catch(err => {
+            res.status(500).send({
+                message: err.message || "Some error occurred while creating the environment."
+            });
+        });
+      }
   });
 };
 

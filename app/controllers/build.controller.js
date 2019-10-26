@@ -38,7 +38,7 @@ exports.create = (req, res) => {
           //save the build
           build.save()
           .then(data => {
-              res.send(data);
+              res.status(201).send(data);
           }).catch(err => {
               res.status(500).send({
                   message: err.message || "Some error occurred while creating the build."

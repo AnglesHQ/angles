@@ -1,12 +1,24 @@
 const request = require('supertest')
 const app = require('../server.js');
 const baseUrl = '/rest/api/v1.0/';
+const Environment = require('../app/models/environment.js');
 
 describe('Environment API Tests', function () {
 
   before(function() {
-    // do the setup required for all tests
-    //create test data
+    //clear lingering test environments
+    Environment.deleteMany({name: "unit-testing-environment"}, function(err) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log('Cleared any lingering test environments');
+        }
+    });
+    //setup the test enviroment
+    const environment = new Environment({
+      name: "unit-testing-environment"
+    });
+    environment.save();
   });
 
   describe('GET /environment', function () {
@@ -27,6 +39,16 @@ describe('Environment API Tests', function () {
               .set('Accept', 'application/json')
               .expect('Content-Type', /json/)
               .expect(422, done);
+      });
+
+
+      it('respond with 409 when trying to create an environment that already exists', function (done) {
+          request(app)
+              .post(baseUrl + 'environment')
+              .send({name: "unit-testing-environment"})
+              .set('Accept', 'application/json')
+              .expect('Content-Type', /json/)
+              .expect(409, done);
       });
   });
 
