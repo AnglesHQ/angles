@@ -6,54 +6,59 @@ const { check, validationResult } = require('express-validator');
 
 // Create and Save a new Note
 exports.create = (req, res) => {
-    // Finds the validation errors in this request and wraps them in an object with handy functions
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
-    }
+  // Finds the validation errors in this request and wraps them in an object with handy functions
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
 
-    //check the variables provided are real
-    var promises = [
-      Team.findOne({ 'name': req.body.team }).exec(),
-      Environment.findOne({ 'name': req.body.environment }).exec()
-    ];
+  //check the variables provided are real
+  var promises = [
+    Team.findOne({ 'name': req.body.team }).exec(),
+    Environment.findOne({ 'name': req.body.environment }).exec()
+  ];
 
-    Promise.all(promises).then(function(results) {
-        //check team
-        if (results[0] == null) {
-          res.status(404).send({
-              message: "No team found with name " + req.body.team
-          });
-        //check environment
-        } else if (results[1] == null) {
-          res.status(404).send({
-            message: "No environment found with name " + req.body.environment
-          });
-        } else {
-          //valid details, save build
-          var build = new Build({
-            environment: req.body.environment,
-            team: req.body.team
-          });
-          //save the build
-          build.save()
-          .then(data => {
-              res.status(201).send(data);
-          }).catch(err => {
-              res.status(500).send({
-                  message: err.message || "Some error occurred while creating the build."
-              });
-          });
-        }
-    }).catch(function(err){
-      res.status(500).send({
-          message: err.message || "Some error occurred while creating the build."
+  Promise.all(promises).then(function(results) {
+    var teamFound = results[0];
+    var environmentFound = results[1];
+    //check team
+    if (teamFound == null || teamFound == undefined) {
+      res.status(404).send({
+          message: "No team found with name " + req.body.team
       });
+    //check environment
+  } else if (environmentFound == null || environmentFound == undefined) {
+      res.status(404).send({
+        message: "No environment found with name " + req.body.environment
+      });
+    } else {
+      //valid details, save build
+      var build = new Build({
+        environment: environmentFound,
+        team: teamFound,
+        name: req.body.name
+      });
+      //save the build
+      build.save()
+      .then(data => {
+          res.status(201).send(data);
+      }).catch(err => {
+          res.status(500).send({
+              message: err.message || "Some error occurred while creating the build."
+          });
+      });
+    }
+  }).catch(function(err){
+    res.status(500).send({
+        message: err.message || "Some error occurred while creating the build."
     });
+  });
 };
 
 exports.findAll = (req, res) => {
   Build.find()
+  .populate('team')
+  .populate('environment')
   .then(builds => {
      res.send(builds);
   }).catch(err => {
@@ -65,6 +70,8 @@ exports.findAll = (req, res) => {
 
 exports.findOne = (req, res) => {
     Build.findById(req.params.buildId)
+    .populate('team')
+    .populate('environment')
     .then(build => {
         if(!build) {
             return res.status(404).send({

@@ -8,7 +8,11 @@ module.exports = (app, path) => {
       check('environment').exists(),
       check('environment').isString(),
       check('team').exists(),
-      check('team').isString()
+      check('team').isString(),
+      check('name').exists(),
+      check('name').isString(),
+      check('name').isLength({ max: 50 })
+      .withMessage('Max length for build name is 50 characters')
     ], buildController.create);
 
   // Retrieve all builds

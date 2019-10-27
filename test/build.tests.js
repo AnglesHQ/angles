@@ -2,19 +2,20 @@ const request = require('supertest')
 const app = require('../server.js');
 const baseUrl = '/rest/api/v1.0/';
 const Build = require('../app/models/build.js');
+const Environment = require('../app/models/environment.js');
 var should = require('should');
 
 describe('Build API Tests', function () {
 
   before(function() {
     // do the setup required for all tests
-    Build.deleteMany({environment: "unit-testing-environment"}, function(err) {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log('Cleared any lingering test builds');
-        }
-    });
+      Build.deleteMany({name: /^unit-testing/}, function(err) {
+          if (err) {
+            console.log(err);
+          } else {
+            console.log('Cleared any lingering test builds');
+          }
+      });
   });
 
   describe('GET /build', function () {
@@ -31,13 +32,14 @@ describe('Build API Tests', function () {
 
   describe('POST /build', function () {
       it('succesfully create build with valid details', function (done) {
-          var build = new Build({
+          var createBuildRequest = {
             environment: 'unit-testing-environment',
-            team: 'unit-testing-team'
-          });
+            team: 'unit-testing-team',
+            name: 'unit-testing-build'
+          };
           request(app)
               .post(baseUrl + 'build')
-              .send(build)
+              .send(createBuildRequest)
               .set('Accept', 'application/json')
               .expect('Content-Type', /json/)
               .expect(201)
@@ -61,26 +63,28 @@ describe('Build API Tests', function () {
       });
 
       it('respond with 404 when trying to create a build with non-existent team', function (done) {
-          var build = new Build({
+          var createBuildRequest = {
             environment: 'unit-testing-environment',
-            team: 'non-existent'
-          });
+            team: 'non-existent',
+            name: 'unit-testing-build'
+          };
           request(app)
               .post(baseUrl + 'build')
-              .send(build)
+              .send(createBuildRequest)
               .set('Accept', 'application/json')
               .expect('Content-Type', /json/)
               .expect(404, done);
       });
 
       it('respond with 404 when trying to create a build with non-existent environment', function (done) {
-          var build = new Build({
+          var createBuildRequest = {
             environment: 'non-existent',
-            team: 'unit-testing-team'
-          });
+            team: 'unit-testing-team',
+            name: 'unit-testing-build'
+          };
           request(app)
               .post(baseUrl + 'build')
-              .send(build)
+              .send(createBuildRequest)
               .set('Accept', 'application/json')
               .expect('Content-Type', /json/)
               .expect(404, done);

@@ -1,8 +1,12 @@
 const mongoose = require('mongoose');
 
 const TeamSchema = mongoose.Schema({
-    id: String,
-    name: String
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true
+  }
 }, {
     timestamps: true
 });
