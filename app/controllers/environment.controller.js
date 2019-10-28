@@ -8,7 +8,7 @@ exports.create = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
 
-  Environment.where({ name: req.body.name }).findOne((searchErr, existingEnvironment) => {
+  return Environment.where({ name: req.body.name }).findOne((searchErr, existingEnvironment) => {
     if (existingEnvironment) {
       res.status(409).send({
         message: `Environment with name ${req.body.name} already exists.`,
@@ -51,7 +51,7 @@ exports.findOne = (req, res) => {
           message: `Environment not found with id ${req.params.environmentId}`,
         });
       }
-      res.send(environment);
+      return res.send(environment);
     }).catch((err) => {
       if (err.kind === 'ObjectId') {
         return res.status(404).send({
@@ -72,7 +72,7 @@ exports.update = (req, res) => {
   }
 
   // Find environment and update it with the request body
-  Environment.findByIdAndUpdate(req.params.environmentId, {
+  return Environment.findByIdAndUpdate(req.params.environmentId, {
     name: req.body.name,
   }, { new: true })
     .then((environment) => {
@@ -81,7 +81,7 @@ exports.update = (req, res) => {
           message: `Environment not found with id ${req.params.environmentId}`,
         });
       }
-      res.send(environment);
+      return res.send(environment);
     }).catch((err) => {
       if (err.kind === 'ObjectId') {
         return res.status(404).send({
@@ -102,7 +102,7 @@ exports.delete = (req, res) => {
           message: `Environment not found with id ${req.params.environmentId}`,
         });
       }
-      res.send({ message: 'Environment deleted successfully!' });
+      return res.send({ message: 'Environment deleted successfully!' });
     }).catch((err) => {
       if (err.kind === 'ObjectId' || err.name === 'NotFound') {
         return res.status(404).send({

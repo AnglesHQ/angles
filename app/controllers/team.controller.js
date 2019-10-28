@@ -9,7 +9,7 @@ exports.create = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
 
-  Team.where({ name: req.body.name }).findOne((mongoErr, foundTeam) => {
+  return Team.where({ name: req.body.name }).findOne((mongoErr, foundTeam) => {
     if (foundTeam) {
       res.status(409).send({
         message: 'Team with name ${req.body.name already exists.',

@@ -14,7 +14,7 @@ exports.create = (req, res) => {
     Environment.findOne({ name: req.body.environment }).exec(),
   ];
 
-  Promise.all(promises).then((results) => {
+  return Promise.all(promises).then((results) => {
     const teamFound = results[0];
     const environmentFound = results[1];
     if (teamFound == null || teamFound === undefined) {
