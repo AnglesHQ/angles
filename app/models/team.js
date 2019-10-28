@@ -5,10 +5,10 @@ const TeamSchema = mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    unique: true
-  }
+    unique: true,
+  },
 }, {
-    timestamps: true
+  timestamps: true,
 });
 
 module.exports = mongoose.model('Team', TeamSchema);
