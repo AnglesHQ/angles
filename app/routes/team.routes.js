@@ -8,6 +8,8 @@ module.exports = (app, path) => {
     check('name').isString(),
     check('name').isLength({ max: 50 })
       .withMessage('Max length for team name is 50 characters'),
+    check('components').exists(),
+    check('components.*.name').exists().isAlphanumeric(),
   ], teamController.create);
 
   // Retrieve all teams

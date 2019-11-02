@@ -12,13 +12,15 @@ exports.create = (req, res) => {
   return Team.where({ name: req.body.name }).findOne((mongoErr, foundTeam) => {
     if (foundTeam) {
       res.status(409).send({
-        message: 'Team with name ${req.body.name already exists.',
+        message: `Team with name ${req.body.name} already exists.`,
       });
     } else {
       const team = new Team({
         name: req.body.name,
       });
-
+      if (req.body.components) {
+        team.components = req.body.components;
+      }
       team.save()
         .then((data) => {
           res.status(201).send(data);

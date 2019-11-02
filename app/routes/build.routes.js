@@ -13,6 +13,10 @@ module.exports = (app, path) => {
     check('name').isString(),
     check('name').isLength({ max: 50 })
       .withMessage('Max length for build name is 50 characters'),
+    check('component').exists(),
+    check('component').isString(),
+    check('component').isLength({ max: 50 })
+      .withMessage('Max length for component name is 50 characters'),
   ], buildController.create);
 
   // Retrieve all builds
