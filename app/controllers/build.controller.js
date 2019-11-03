@@ -116,6 +116,36 @@ exports.update = (req, res) => {
     });
 };
 
+exports.updateKeep = (req, res) => {
+  // validate request
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  // Find build and update it with the request body
+  return Build.findByIdAndUpdate(req.params.buildId, {
+    keep: req.body.keep,
+  }, { new: true })
+    .then((build) => {
+      if (!build) {
+        return res.status(404).send({
+          message: `Build not found with id ${req.params.buildId}`,
+        });
+      }
+      return res.send(build);
+    }).catch((err) => {
+      if (err.kind === 'ObjectId') {
+        return res.status(404).send({
+          message: `Build not found with id ${req.params.buildId}`,
+        });
+      }
+      return res.status(500).send({
+        message: `Error updating build with id ${req.params.buildId}`,
+      });
+    });
+};
+
 // Delete a build with the specified build in the request
 exports.delete = (req, res) => {
   Build.findByIdAndRemove(req.params.buildId)

@@ -356,6 +356,41 @@
           }
         }
       }
+    },
+    "/build/{buildId}/updateKeep": {
+      "parameters": [
+        {
+          "name": "buildId",
+          "in": "path",
+          "required": true,
+          "description": "ID of build that we want to update the keep value for. This value is used to determine if a build should be cleaned up (or not))",
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Update keep value for build with give ID",
+        "tags": [
+          "Build"
+        ],
+        "parameters": [
+          {
+            "name": "build",
+            "in": "body",
+            "description": "Keep request with boolean set.",
+            "schema": {
+              "$ref": "#/definitions/UpdateKeep"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Build is updated with new keep value.",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -429,6 +464,16 @@
     "Builds": {
       "type": "array",
       "$ref": "#/definitions/Build"
+    },
+    "UpdateKeep": {
+      "required": [
+        "keep"
+      ],
+      "properties": {
+        "keep": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

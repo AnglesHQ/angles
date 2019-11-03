@@ -34,6 +34,13 @@ module.exports = (app, path) => {
     check('team').isString(),
   ], buildController.update);
 
+  // Update a build with buildId
+  app.put(`${path}/build/:buildId/updateKeep`, [
+    // username must be an email
+    check('keep').exists(),
+    check('keep').isBoolean(),
+  ], buildController.updateKeep);
+
   // Delete a build with buildId
   app.delete(`${path}/build/:buildId`, buildController.delete);
 };
