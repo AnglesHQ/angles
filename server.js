@@ -37,6 +37,7 @@ require('./swagger/routes/routes.js')(app);
 require('./app/routes/environment.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/team.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/build.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/execution.routes.js')(app, '/rest/api/v1.0');
 
 // listen for requests
 module.exports = app.listen(3000, () => {

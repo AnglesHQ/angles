@@ -23,7 +23,7 @@ const BuildSchema = Schema({
   keep: { type: Boolean, required: false },
   environment: { type: Schema.Types.ObjectId, ref: 'Environment' },
   team: { type: Schema.Types.ObjectId, ref: 'Team' },
-  tests: [{ type: Schema.Types.ObjectId, ref: 'TestExecution' }],
+  executions: [{ type: Schema.Types.ObjectId, ref: 'TestExecution' }],
 }, {
   timestamps: true,
 });

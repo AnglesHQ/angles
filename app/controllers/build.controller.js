@@ -30,6 +30,7 @@ exports.create = (req, res) => {
         environment: environmentFound,
         team: teamFound,
         name: req.body.name,
+        executions: [],
       });
       build.save()
         .then((data) => {
@@ -65,6 +66,7 @@ exports.findOne = (req, res) => {
   Build.findById(req.params.buildId)
     .populate('team')
     .populate('environment')
+    .populate('executions')
     .then((build) => {
       if (!build) {
         return res.status(404).send({
