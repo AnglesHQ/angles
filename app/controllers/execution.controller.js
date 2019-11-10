@@ -6,7 +6,7 @@ const Build = require('../models/build.js');
 exports.create = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
 
   return Build.findById(req.body.build)
@@ -16,6 +16,17 @@ exports.create = (req, res) => {
           message: `No build found with id ${req.params.build}`,
         });
       }
+      let addExecutionToBuild = function (buildToUpdate, execution, error, done) {
+        // add the execution to the build
+        console.info(buildToUpdate);
+        buildToUpdate.executions.push(execution);
+        buildToUpdate.save()
+          .then((savedBuild) => {
+            done(savedBuild);
+          }).catch((err) => {
+            error(err);
+          });
+      };
       const testExecution = new TestExecution({
         title: req.body.title,
         build: buildFound,
@@ -24,13 +35,10 @@ exports.create = (req, res) => {
       });
       return testExecution.save()
         .then((data) => {
-          // add the execution to the build
-          buildFound.executions.push(data);
-          buildFound.save();
-          return res.status(201).send(data);
+          res.status(201).send(data);
         }).catch((err) => {
           res.status(500).send({
-            message: err.message || 'Some error occurred while creating the test execution.',
+            message: err.message || 'Some error occurred while creating the build.',
           });
         });
     }).catch((err) => {

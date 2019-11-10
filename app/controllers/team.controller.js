@@ -17,10 +17,8 @@ exports.create = (req, res) => {
     } else {
       const team = new Team({
         name: req.body.name,
+        components: req.body.components,
       });
-      if (req.body.components) {
-        team.components = req.body.components;
-      }
       team.save()
         .then((data) => {
           res.status(201).send(data);

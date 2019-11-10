@@ -25,6 +25,7 @@ const Platform = mongoose.Schema({
 const TestExecutionSchema = mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: false },
+  // suite: { type: String, required: true },
   build: { type: Schema.Types.ObjectId, ref: 'Build' },
   platforms: [{ type: Platform, required: false }],
   steps: [{ type: Step, required: false }],
