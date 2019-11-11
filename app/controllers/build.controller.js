@@ -26,11 +26,20 @@ exports.create = (req, res) => {
         message: `No environment found with name ${req.body.environment}`,
       });
     } else {
+      let matchComponent;
+      // check if component is correct
+      teamFound.components.forEach((component) => {
+        if (component.name === req.body.component) {
+          matchComponent = component;
+        }
+      });
+
       const build = new Build({
         environment: environmentFound,
         team: teamFound,
         name: req.body.name,
-        executions: [],
+        component: matchComponent,
+        executions: [],      
       });
       build.save()
         .then((data) => {
