@@ -4,12 +4,21 @@ const teamController = require('../controllers/team.controller.js');
 module.exports = (app, path) => {
   // Create a new team
   app.post(`${path}/team`, [
-    check('name').exists(),
-    check('name').isString(),
-    check('name').isLength({ max: 50 })
+    check('name')
+      .exists()
+      .isString()
+      .isLength({ max: 50 })
       .withMessage('Max length for team name is 50 characters'),
-    check('components').exists(),
-    check('components.*.name').exists().isAlphanumeric(),
+    check('components')
+      .exists()
+      .isArray()
+      .withMessage('Components field has to be an Array'),
+    check('components.*.name')
+      .exists()
+      .isAlphanumeric(),
+    check('components.*.features')
+      .isArray()
+      .withMessage('Features field has to be an Array'),
   ], teamController.create);
 
   // Retrieve all teams
