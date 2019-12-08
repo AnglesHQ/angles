@@ -39,7 +39,7 @@ exports.create = (req, res) => {
         team: teamFound,
         name: req.body.name,
         component: matchComponent,
-        executions: [],      
+        executions: [],
       });
       build.save()
         .then((data) => {
