@@ -25,7 +25,7 @@ const BuildSchema = Schema({
   environment: { type: Schema.Types.ObjectId, ref: 'Environment' },
   team: { type: Schema.Types.ObjectId, ref: 'Team' },
   component: { type: Schema.Types.ObjectId, ref: 'Component' },
-  suite: [{ type: Suite, required: true }],
+  suites: [{ type: Suite, required: true }],
 }, {
   timestamps: true,
 });

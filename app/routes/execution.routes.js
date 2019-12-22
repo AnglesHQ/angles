@@ -15,6 +15,7 @@ module.exports = (app, path) => {
     check('build').exists(),
     check('build').isString(),
     check('start').exists(),
+    check('start').isISO8601(),
   ], executionController.create);
 
   // Retrieve all teams
