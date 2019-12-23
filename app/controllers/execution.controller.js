@@ -13,6 +13,7 @@ exports.create = (req, res) => {
   }
   let testExecution;
   Build.findById(req.body.build)
+    .populate('suites.executions')
     .then((buildFound) => {
       if (!buildFound) {
         res.status(404).send({

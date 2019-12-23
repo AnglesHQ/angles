@@ -27,6 +27,8 @@ const Action = mongoose.Schema({
   name: { type: String, required: true },
   steps: [{ type: Step, required: true }],
   status: { type: String, enum: executionStates, required: false },
+  start: { type: Date, required: true },
+  end: { type: Date, required: true },
 });
 
 

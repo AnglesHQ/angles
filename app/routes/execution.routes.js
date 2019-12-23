@@ -22,7 +22,7 @@ module.exports = (app, path) => {
   app.get(`${path}/execution`, executionController.findAll);
 
   // Retrieve a single execution with executionId
-  app.get(`${path}/exection/:executionId`, executionController.findOne);
+  app.get(`${path}/execution/:executionId`, executionController.findOne);
 
   // Update a team with teamId
   app.put(`${path}/execution/:executionId`, executionController.update);

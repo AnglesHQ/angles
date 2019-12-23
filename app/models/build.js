@@ -13,6 +13,8 @@ const Suite = mongoose.Schema({
   name: { type: String, required: true },
   result: { type: Map, of: Number, required: false },
   status: { type: String, enum: executionStates, required: false },
+  start: { type: Date, required: true },
+  end: { type: Date, required: true },
   executions: [{ type: Schema.Types.ObjectId, ref: 'TestExecution' }],
 });
 
