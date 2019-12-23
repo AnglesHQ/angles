@@ -1,4 +1,5 @@
 const { check } = require('express-validator');
+const validator = require('validator');
 const executionController = require('../controllers/execution.controller.js');
 
 module.exports = (app, path) => {
@@ -13,9 +14,7 @@ module.exports = (app, path) => {
     check('suite').isLength({ max: 150 })
       .withMessage('Max length for suite name is 150 characters'),
     check('build').exists(),
-    check('build').isString(),
-    check('start').exists(),
-    check('start').isISO8601(),
+    check('build').isMongoId(),
   ], executionController.create);
 
   // Retrieve all teams

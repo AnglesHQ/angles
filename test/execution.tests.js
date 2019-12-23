@@ -69,6 +69,7 @@ describe('Execution API Tests', () => {
       const createTestExecutionRequest = {
         title: 'unit-testing-execution-test',
         description: 'unit-testing-description',
+        suite: 'unit-testing-suite',
         build: testbuild._id,
       };
       request(app)
@@ -86,17 +87,18 @@ describe('Execution API Tests', () => {
   });
 
   describe('POST /execution - negative tests', () => {
-    it('respond with 404 when trying to create a test execution with a non-existent buildId', (done) => {
+    it('respond with 422 when trying to create a test execution with a invalid buildId', (done) => {
       const negativeRequest = {
         title: 'unit-testing-execution-test',
-        build: 'non-existent',
+        suite: 'unit-testing-suite',
+        build: '123',
       };
       request(app)
         .post(`${baseUrl}execution`)
         .send(negativeRequest)
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
-        .expect(404, done);
+        .expect(422, done);
     });
   });
 });

@@ -36,7 +36,7 @@ const TestExecutionSchema = mongoose.Schema({
   title: { type: String, required: true },
   suite: { type: String, required: true },
   build: { type: Schema.Types.ObjectId, ref: 'Build', required: true },
-  start: { type: Date, required: true },
+  start: { type: Date, required: false },
   end: { type: Date, required: false },
   actions: [{ type: Action, required: false }],
   platforms: [{ type: Platform, required: false }],
