@@ -102,7 +102,7 @@ exports.setPlatform = (req, res) => {
 
   // Find execution and update it with the request body
   return TestExecution.findByIdAndUpdate(req.params.executionId, {
-    platform: req.body.platform,
+    platforms: req.body.platforms,
   }, { new: true })
     .then((build) => {
       if (!build) {

@@ -13,6 +13,15 @@ module.exports = (app, path) => {
       .withMessage('Max length for suite name is 150 characters'),
     check('build').exists(),
     check('build').isMongoId(),
+    check('platforms').optional().isArray(),
+    check('platforms.*.platformName').optional().isString(),
+    check('platforms.*.platformVersion').optional().isString(),
+    check('platforms.*.browserName').optional().isString(),
+    check('platforms.*.browserVersion').optional().isString(),
+    check('platforms.*.deviceName').optional().isString(),
+    check('platforms.*.deviceBrand').optional().isString(),
+    check('platforms.*.deviceModel').optional().isString(),
+    check('platforms.*.userAgent').optional().isString(),
   ], executionController.create);
 
   app.get(`${path}/execution`, executionController.findAll);
