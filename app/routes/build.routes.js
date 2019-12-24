@@ -1,8 +1,7 @@
-const { check } = require('express-validator');
+const { check, param } = require('express-validator');
 const buildController = require('../controllers/build.controller.js');
 
 module.exports = (app, path) => {
-  // Create a new build
   app.post(`${path}/build`, [
     // username must be an email
     check('environment').exists(),
@@ -19,28 +18,27 @@ module.exports = (app, path) => {
       .withMessage('Max length for component name is 50 characters'),
   ], buildController.create);
 
-  // Retrieve all builds
   app.get(`${path}/build`, buildController.findAll);
 
-  // Retrieve a single build with buildId
-  app.get(`${path}/build/:buildId`, buildController.findOne);
+  app.get(`${path}/build/:buildId`, [
+    param('buildId').isMongoId(),
+  ], buildController.findOne);
 
-  // Update a build with buildId
   app.put(`${path}/build/:buildId`, [
-    // username must be an email
+    param('buildId').isMongoId(),
     check('environment').exists(),
     check('environment').isString(),
     check('team').exists(),
     check('team').isString(),
   ], buildController.update);
 
-  // Update a build with buildId
-  app.put(`${path}/build/:buildId/updateKeep`, [
-    // username must be an email
+  app.put(`${path}/build/:buildId/keep`, [
+    param('buildId').isMongoId(),
     check('keep').exists(),
     check('keep').isBoolean(),
-  ], buildController.updateKeep);
+  ], buildController.setKeep);
 
-  // Delete a build with buildId
-  app.delete(`${path}/build/:buildId`, buildController.delete);
+  app.delete(`${path}/build/:buildId`, [
+    param('buildId').isMongoId(),
+  ], buildController.delete);
 };

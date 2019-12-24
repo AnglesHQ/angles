@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const TestExecution = require('../models/execution.js');
 const Build = require('../models/build.js');
-const buildUtils = require('../utils/process-builds.js');
+const buildMetricsUtils = require('../utils/build-metrics.js');
 
 
 // Create and save a new test execution
@@ -20,8 +20,8 @@ exports.create = (req, res) => {
         error.status = 404;
         return Promise.reject(error);
       }
-      testExecution = buildUtils.createExecution(req, buildFound);
-      return buildUtils.addExecutionToBuild(buildFound, testExecution);
+      testExecution = buildMetricsUtils.createExecution(req, buildFound);
+      return buildMetricsUtils.addExecutionToBuild(buildFound, testExecution);
     })
     .then((savedBuild) => {
       testExecution.build = savedBuild;
@@ -46,7 +46,7 @@ exports.create = (req, res) => {
 exports.findAll = (req, res) => {
   TestExecution.find()
     .then((testExecutions) => {
-      res.send(testExecutions);
+      res.status(200).send(testExecutions);
     }).catch((err) => {
       res.status(500).send({
         message: err.message || 'Some error occurred while retrieving test executions.',
@@ -55,24 +55,21 @@ exports.findAll = (req, res) => {
 };
 
 exports.findOne = (req, res) => {
-  TestExecution.findById(req.params.executionId)
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return TestExecution.findById(req.params.executionId)
     .then((testExecution) => {
       if (!testExecution) {
         return res.status(404).send({
           message: `Execution not found with id ${req.params.executionId}`,
         });
       }
-      return res.send(testExecution);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Team not found with id ${req.params.executionId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error retrieving team with id ${req.params.executionId}`,
-      });
-    });
+      return res.status(200).send(testExecution);
+    }).catch((err) => res.status(500).send({
+      message: `Error retrieving team with id ${req.params.executionId} due to [${err}]`,
+    }));
 };
 
 exports.update = (req, res) => {
@@ -90,36 +87,50 @@ exports.update = (req, res) => {
           message: `Test execution not found with id ${req.params.executionId}`,
         });
       }
-      return res.send(testExecution);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
+      return res.status(200).send(testExecution);
+    }).catch((err) => res.status(500).send({
+      message: `Error updating test execution with id ${req.params.executionId} due to [${err}]`,
+    }));
+};
+
+exports.setPlatform = (req, res) => {
+  // validate request
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  // Find execution and update it with the request body
+  return TestExecution.findByIdAndUpdate(req.params.executionId, {
+    platform: req.body.platform,
+  }, { new: true })
+    .then((build) => {
+      if (!build) {
         return res.status(404).send({
-          message: `Test execution not found with id ${req.params.executionId}`,
+          message: `Execution not found with id ${req.params.executionId}`,
         });
       }
-      return res.status(500).send({
-        message: `Error updating test execution with id ${req.params.executionId}`,
-      });
-    });
+      return res.status(200).send(build);
+    }).catch((err) => res.status(500).send({
+      message: `Error updating execution with id ${req.params.executionId} due to [${err}]`,
+    }));
 };
 
 exports.delete = (req, res) => {
-  TestExecution.findByIdAndRemove(req.params.executionId)
+  // validate request
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return TestExecution.findByIdAndRemove(req.params.executionId)
     .then((testExecution) => {
       if (!testExecution) {
         return res.status(404).send({
           message: `Test execution not found with id ${req.params.executionId}`,
         });
       }
-      return res.send({ message: 'Test execution deleted successfully!' });
-    }).catch((err) => {
-      if (err.kind === 'ObjectId' || err.name === 'NotFound') {
-        return res.status(404).send({
-          message: `Test exection not found with id ${req.params.executionId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Could not delete test execution with id ${req.params.executionId}`,
-      });
-    });
+      return res.status(200).send({ message: 'Test execution deleted successfully!' });
+    }).catch((err) => res.status(500).send({
+      message: `Could not delete test execution with id ${req.params.executionId} due to [${err}]`,
+    }));
 };

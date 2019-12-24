@@ -2,12 +2,10 @@ const { validationResult } = require('express-validator');
 const Environment = require('../models/environment.js');
 
 exports.create = (req, res) => {
-  // validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
   return Environment.where({ name: req.body.name }).findOne((searchErr, existingEnvironment) => {
     if (existingEnvironment) {
       res.status(409).send({
@@ -44,7 +42,11 @@ exports.findAll = (req, res) => {
 };
 
 exports.findOne = (req, res) => {
-  Environment.findById(req.params.environmentId)
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Environment.findById(req.params.environmentId)
     .then((environment) => {
       if (!environment) {
         return res.status(404).send({
@@ -52,26 +54,16 @@ exports.findOne = (req, res) => {
         });
       }
       return res.send(environment);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Environment not found with id ${req.params.environmentId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error retrieving environment with id ${req.params.environmentId}`,
-      });
-    });
+    }).catch((err) => res.status(500).send({
+      message: `Error retrieving environment with id ${req.params.environmentId} due to [${err}]`,
+    }));
 };
 
 exports.update = (req, res) => {
-  // validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
-  // Find environment and update it with the request body
   return Environment.findByIdAndUpdate(req.params.environmentId, {
     name: req.body.name,
   }, { new: true })
@@ -81,36 +73,26 @@ exports.update = (req, res) => {
           message: `Environment not found with id ${req.params.environmentId}`,
         });
       }
-      return res.send(environment);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Environment not found with id ${req.params.environmentId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error updating environment with id ${req.params.environmentId}`,
-      });
-    });
+      return res.status(200).send(environment);
+    }).catch((err) => res.status(500).send({
+      message: `Error updating environment with id ${req.params.environmentId} due to [${err}]`,
+    }));
 };
 
 exports.delete = (req, res) => {
-  Environment.findByIdAndRemove(req.params.environmentId)
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Environment.findByIdAndRemove(req.params.environmentId)
     .then((environment) => {
       if (!environment) {
         return res.status(404).send({
           message: `Environment not found with id ${req.params.environmentId}`,
         });
       }
-      return res.send({ message: 'Environment deleted successfully!' });
-    }).catch((err) => {
-      if (err.kind === 'ObjectId' || err.name === 'NotFound') {
-        return res.status(404).send({
-          message: `Environment not found with id ${req.params.environmentId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Could not delete environment with id ${req.params.environmentId}`,
-      });
-    });
+      return res.status(200).send({ message: 'Environment deleted successfully!' });
+    }).catch((err) => res.status(500).send({
+      message: `Could not delete environment with id ${req.params.environmentId} due to [${err}]`,
+    }));
 };

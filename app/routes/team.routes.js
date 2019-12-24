@@ -1,8 +1,7 @@
-const { check } = require('express-validator');
+const { check, param } = require('express-validator');
 const teamController = require('../controllers/team.controller.js');
 
 module.exports = (app, path) => {
-  // Create a new team
   app.post(`${path}/team`, [
     check('name')
       .exists()
@@ -21,15 +20,17 @@ module.exports = (app, path) => {
       .withMessage('Features field has to be an Array'),
   ], teamController.create);
 
-  // Retrieve all teams
   app.get(`${path}/team`, teamController.findAll);
 
-  // Retrieve a single team with teamId
-  app.get(`${path}/team/:teamId`, teamController.findOne);
+  app.get(`${path}/team/:teamId`, [
+    param('teamId').isMongoId(),
+  ], teamController.findOne);
 
-  // Update a team with teamId
-  app.put(`${path}/team/:teamId`, teamController.update);
+  app.put(`${path}/team/:teamId`, [
+    param('teamId').isMongoId(),
+  ], teamController.update);
 
-  // Delete a team with teamId
-  app.delete(`${path}/team/:teamId`, teamController.delete);
+  app.delete(`${path}/team/:teamId`, [
+    param('teamId').isMongoId(),
+  ], teamController.delete);
 };

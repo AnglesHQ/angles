@@ -72,7 +72,11 @@ exports.findAll = (req, res) => {
 };
 
 exports.findOne = (req, res) => {
-  Build.findById(req.params.buildId)
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Build.findById(req.params.buildId)
     .populate('team')
     .populate('environment')
     .populate('executions')
@@ -84,26 +88,16 @@ exports.findOne = (req, res) => {
       }
       return res.send(build);
     })
-    .catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Build not found with id ${req.params.buildId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error retrieving build with id ${req.params.buildId}`,
-      });
-    });
+    .catch((err) => res.status(500).send({
+      message: `Error retrieving build with id ${req.params.buildId} due to [${err}]`,
+    }));
 };
 
 exports.update = (req, res) => {
-  // validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
-  // Find build and update it with the request body
   return Build.findByIdAndUpdate(req.params.buildId, {
     team: req.body.team,
     environment: req.body.environment,
@@ -114,27 +108,18 @@ exports.update = (req, res) => {
           message: `Build not found with id ${req.params.buildId}`,
         });
       }
-      return res.send(build);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Build not found with id ${req.params.buildId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error updating build with id ${req.params.buildId}`,
-      });
-    });
+      return res.status(200).send(build);
+    }).catch((err) => res.status(500).send({
+      message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
+    }));
 };
 
-exports.updateKeep = (req, res) => {
-  // validate request
+exports.setKeep = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
 
-  // Find build and update it with the request body
   return Build.findByIdAndUpdate(req.params.buildId, {
     keep: req.body.keep,
   }, { new: true })
@@ -144,37 +129,26 @@ exports.updateKeep = (req, res) => {
           message: `Build not found with id ${req.params.buildId}`,
         });
       }
-      return res.send(build);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Build not found with id ${req.params.buildId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error updating build with id ${req.params.buildId}`,
-      });
-    });
+      return res.status(200).send(build);
+    }).catch((err) => res.status(500).send({
+      message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
+    }));
 };
 
-// Delete a build with the specified build in the request
 exports.delete = (req, res) => {
-  Build.findByIdAndRemove(req.params.buildId)
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Build.findByIdAndRemove(req.params.buildId)
     .then((build) => {
       if (!build) {
         return res.status(404).send({
           message: `Build not found with id ${req.params.buildId}`,
         });
       }
-      return res.send({ message: 'Build deleted successfully!' });
-    }).catch((err) => {
-      if (err.kind === 'ObjectId' || err.name === 'NotFound') {
-        return res.status(404).send({
-          message: `Build not found with id ${req.params.buildId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Could not delete build with id ${req.params.buildId}`,
-      });
-    });
+      return res.status(200).send({ message: 'Build deleted successfully!' });
+    }).catch((err) => res.status(500).send({
+      message: `Could not delete build with id ${req.params.buildId} due to [${err}]`,
+    }));
 };

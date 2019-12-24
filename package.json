@@ -31,8 +31,7 @@
     "saslprep": "^1.0.3",
     "swagger-ui-express": "^4.1.1",
     "typescript": "^3.7.2",
-    "uuid": "^3.3.3",
-    "validator": "^12.1.0"
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^2.5.0",

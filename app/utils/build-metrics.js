@@ -2,16 +2,16 @@ const mongoose = require('mongoose');
 const Build = require('../models/build.js');
 const TestExecution = require('../models/execution.js');
 
-const buildUtils = {};
+const buildMetricsUtils = {};
 
-buildUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
+buildMetricsUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
 
-buildUtils.addExecutionToBuild = (build, execution) => {
+buildMetricsUtils.addExecutionToBuild = (build, execution) => {
   let buildSuite = build.suites.find((suite) => suite.name === execution.suite);
   if (buildSuite) {
     // if build suite exists update it.
     buildSuite.executions.push(execution);
-    buildUtils.calculateSuiteMetrics(buildSuite);
+    buildMetricsUtils.calculateSuiteMetrics(buildSuite);
     return Build.findOneAndUpdate(
       { _id: build.id },
       { $set: { 'suites.$[elem]': buildSuite } },
@@ -30,14 +30,14 @@ buildUtils.addExecutionToBuild = (build, execution) => {
     name: execution.suite,
     executions: [execution],
   };
-  buildUtils.calculateSuiteMetrics(buildSuite);
+  buildMetricsUtils.calculateSuiteMetrics(buildSuite);
   return Build.updateOne(
     { _id: build.id },
     { $push: { suites: buildSuite } },
   ).then(() => Build.findById(build.id));
 };
 
-buildUtils.calculateSuiteMetrics = (suite) => {
+buildMetricsUtils.calculateSuiteMetrics = (suite) => {
   // (re)set results map
   suite.result = new Map([['PASS', 0], ['FAIL', 0], ['ERROR', 0], ['SKIPPED', 0]]);
   suite.start = undefined;
@@ -54,13 +54,13 @@ buildUtils.calculateSuiteMetrics = (suite) => {
   }
 };
 
-buildUtils.calculateExecutionMetrics = (testExecution) => {
+buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
   /* eslint no-param-reassign: ["error", { "props": false }] */
   testExecution.start = undefined;
   testExecution.end = undefined;
   for (let i = 0, len = testExecution.actions.length; i < len; i += 1) {
     const currentAction = testExecution.actions[i];
-    const defaultState = buildUtils.executionStates[0];
+    const defaultState = buildMetricsUtils.executionStates[0];
     currentAction.status = defaultState;
     if (currentAction.steps) {
       // set timestamp of action based on first and last step.
@@ -68,8 +68,8 @@ buildUtils.calculateExecutionMetrics = (testExecution) => {
       currentAction.end = currentAction.steps[currentAction.steps.length - 1].timestamp;
       for (let j = 0, stepLen = currentAction.steps.length; j < stepLen; j += 1) {
         const currentStep = currentAction.steps[j];
-        if (buildUtils.executionStates.indexOf(currentStep.status)
-          > buildUtils.executionStates.indexOf(currentAction.status)) {
+        if (buildMetricsUtils.executionStates.indexOf(currentStep.status)
+          > buildMetricsUtils.executionStates.indexOf(currentAction.status)) {
           // change the state as it's a 'higher' state.
           currentAction.status = currentStep.status;
         }
@@ -82,8 +82,8 @@ buildUtils.calculateExecutionMetrics = (testExecution) => {
       }
     }
     // update the test status based on the action states
-    if (buildUtils.executionStates.indexOf(currentAction.status)
-      > buildUtils.executionStates.indexOf(testExecution.status)) {
+    if (buildMetricsUtils.executionStates.indexOf(currentAction.status)
+      > buildMetricsUtils.executionStates.indexOf(testExecution.status)) {
       // change the state as it's a 'higher' state.
       testExecution.status = currentAction.status;
     }
@@ -91,7 +91,7 @@ buildUtils.calculateExecutionMetrics = (testExecution) => {
 };
 
 
-buildUtils.createExecution = (req, build) => {
+buildMetricsUtils.createExecution = (req, build) => {
   const {
     title, suite, start, end, platforms, tags, meta, actions,
   } = req.body;
@@ -106,12 +106,12 @@ buildUtils.createExecution = (req, build) => {
     tags,
     meta,
     actions,
-    status: buildUtils.executionStates[0],
+    status: buildMetricsUtils.executionStates[0],
   });
   if (actions) {
-    buildUtils.calculateExecutionMetrics(testExecution);
+    buildMetricsUtils.calculateExecutionMetrics(testExecution);
   }
   return testExecution;
 };
 
-module.exports = buildUtils;
+module.exports = buildMetricsUtils;

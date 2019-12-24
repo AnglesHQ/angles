@@ -1,9 +1,7 @@
-const { check } = require('express-validator');
-const validator = require('validator');
+const { check, param } = require('express-validator');
 const executionController = require('../controllers/execution.controller.js');
 
 module.exports = (app, path) => {
-  // Create a new team
   app.post(`${path}/execution`, [
     check('title').exists(),
     check('title').isString(),
@@ -17,15 +15,33 @@ module.exports = (app, path) => {
     check('build').isMongoId(),
   ], executionController.create);
 
-  // Retrieve all teams
   app.get(`${path}/execution`, executionController.findAll);
 
-  // Retrieve a single execution with executionId
-  app.get(`${path}/execution/:executionId`, executionController.findOne);
+  app.get(`${path}/execution/:executionId`, [
+    param('executionId').isMongoId(),
+  ], executionController.findOne);
 
-  // Update a team with teamId
-  app.put(`${path}/execution/:executionId`, executionController.update);
+  app.put(`${path}/execution/:executionId`, [
+    param('executionId').isMongoId(),
+  ], executionController.update);
 
-  // Delete a team with teamId
-  app.delete(`${path}/execution/:executionId`, executionController.delete);
+  app.put(`${path}/execution/:executionId/platforms`, [
+    param('executionId').isMongoId(),
+    check('platforms').exists(),
+    check('platforms').custom((platformsArray) => Array.isArray(platformsArray) && platformsArray.length > 0)
+      .withMessage('At least one platform is required'),
+    check('platforms.*.platformName').exists(),
+    check('platforms.*.platformName').isString(),
+    check('platforms.*.platformVersion').optional().isString(),
+    check('platforms.*.browserName').optional().isString(),
+    check('platforms.*.browserVersion').optional().isString(),
+    check('platforms.*.deviceName').optional().isString(),
+    check('platforms.*.deviceBrand').optional().isString(),
+    check('platforms.*.deviceModel').optional().isString(),
+    check('platforms.*.userAgent').optional().isString(),
+  ], executionController.setPlatform);
+
+  app.delete(`${path}/execution/:executionId`, [
+    param('executionId').isMongoId(),
+  ], executionController.delete);
 };

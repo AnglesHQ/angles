@@ -1,8 +1,7 @@
-const { check } = require('express-validator');
+const { check, param } = require('express-validator');
 const environmentController = require('../controllers/environment.controller.js');
 
 module.exports = (app, path) => {
-  // Create a new environment
   app.post(`${path}/environment`, [
     check('name').exists(),
     check('name').isString(),
@@ -10,18 +9,19 @@ module.exports = (app, path) => {
       .withMessage('Max length for environment name is 50 characters'),
   ], environmentController.create);
 
-  // Retrieve all environments
   app.get(`${path}/environment`, environmentController.findAll);
 
-  // Retrieve a single environment with environmentId
-  app.get(`${path}/environment/:environmentId`, environmentController.findOne);
+  app.get(`${path}/environment/:environmentId`, [
+    param('environmentId').isMongoId(),
+  ], environmentController.findOne);
 
-  // Update a environment with environmentId
   app.put(`${path}/environment/:environmentId`, [
+    param('environmentId').isMongoId(),
     check('name').exists(),
     check('name').isString(),
   ], environmentController.update);
 
-  // Delete a environment with environmentId
-  app.delete(`${path}/environment/:environmentId`, environmentController.delete);
+  app.delete(`${path}/environment/:environmentId`, [
+    param('environmentId').isMongoId(),
+  ], environmentController.delete);
 };

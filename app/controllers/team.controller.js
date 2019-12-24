@@ -1,14 +1,11 @@
 const { validationResult } = require('express-validator');
 const Team = require('../models/team.js');
 
-
-// Create and Save a new team
 exports.create = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
   return Team.where({ name: req.body.name }).findOne((mongoErr, foundTeam) => {
     if (foundTeam) {
       res.status(409).send({
@@ -43,34 +40,28 @@ exports.findAll = (req, res) => {
 };
 
 exports.findOne = (req, res) => {
-  Team.findById(req.params.teamId)
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Team.findById(req.params.teamId)
     .then((team) => {
       if (!team) {
         return res.status(404).send({
           message: `Team not found with id ${req.params.teamId}`,
         });
       }
-      return res.send(team);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Team not found with id ${req.params.teamId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error retrieving team with id ${req.params.teamId}`,
-      });
-    });
+      return res.status(200).send(team);
+    }).catch((err) => res.status(500).send({
+      message: `Error retrieving team with id ${req.params.teamId} due to [${err}]`,
+    }));
 };
 
 exports.update = (req, res) => {
-  // validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
-  // Find team and update it with the request body
   return Team.findByIdAndUpdate(req.params.teamId, {
     name: req.body.name,
   }, { new: true })
@@ -81,35 +72,25 @@ exports.update = (req, res) => {
         });
       }
       return res.send(team);
-    }).catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(404).send({
-          message: `Team not found with id ${req.params.teamId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Error updating team with id ${req.params.teamId}`,
-      });
-    });
+    }).catch((err) => res.status(500).send({
+      message: `Error updating team with id ${req.params.teamId} due to [${err}]`,
+    }));
 };
 
 exports.delete = (req, res) => {
-  Team.findByIdAndRemove(req.params.teamId)
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Team.findByIdAndRemove(req.params.teamId)
     .then((team) => {
       if (!team) {
         return res.status(404).send({
           message: `Team not found with id ${req.params.teamId}`,
         });
       }
-      return res.send({ message: 'Team deleted successfully!' });
-    }).catch((err) => {
-      if (err.kind === 'ObjectId' || err.name === 'NotFound') {
-        return res.status(404).send({
-          message: `Team not found with id ${req.params.teamId}`,
-        });
-      }
-      return res.status(500).send({
-        message: `Could not delete team with id ${req.params.teamId}`,
-      });
-    });
+      return res.status(200).send({ message: 'Team deleted successfully!' });
+    }).catch((err) => res.status(500).send({
+      message: `Could not delete team with id ${req.params.teamId} due to [${err}]`,
+    }));
 };
