@@ -86,7 +86,7 @@ exports.update = (req, res) => {
     .catch((err) => {
       if (err.status === 409) {
         return res.status(409).send({
-          message: `Team with name ${req.body.name} already exists.`,
+          message: err.message,
         });
       }
       return res.status(500).send({
