@@ -38,6 +38,19 @@ module.exports = (app, path) => {
     check('keep').isBoolean(),
   ], buildController.setKeep);
 
+  app.put(`${path}/build/:buildId/artifacts`, [
+    param('buildId').isMongoId(),
+    check('artifacts').exists(),
+    check('artifacts').custom((artifactsArray) => Array.isArray(artifactsArray) && artifactsArray.length > 0)
+      .withMessage('At least one artifact is required'),
+    check('artifacts.*.groupId').exists(),
+    check('artifacts.*.groupId').isString(),
+    check('artifacts.*.artifactId').exists(),
+    check('artifacts.*.artifactId').isString(),
+    check('artifacts.*.version').exists(),
+    check('artifacts.*.version').isString(),
+  ], buildController.setArtifacts);
+
   app.delete(`${path}/build/:buildId`, [
     param('buildId').isMongoId(),
   ], buildController.delete);

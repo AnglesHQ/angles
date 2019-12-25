@@ -3,9 +3,9 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 const executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
 
-const Artefact = new Schema({
-  artifactId: { type: String, required: false },
+const Artifact = new Schema({
   groupId: { type: String, required: false },
+  artifactId: { type: String, required: false },
   version: { type: String, required: false },
 });
 
@@ -22,7 +22,7 @@ const Suite = mongoose.Schema({
 const BuildSchema = Schema({
   name: { type: String, required: false },
   result: { type: Map, of: Number, required: false },
-  artifacts: [{ type: Artefact, required: false }],
+  artifacts: [{ type: Artifact, required: false }],
   keep: { type: Boolean, required: false },
   environment: { type: Schema.Types.ObjectId, ref: 'Environment' },
   team: { type: Schema.Types.ObjectId, ref: 'Team' },

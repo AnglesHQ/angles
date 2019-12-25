@@ -135,6 +135,27 @@ exports.setKeep = (req, res) => {
     }));
 };
 
+exports.setArtifacts = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  return Build.findByIdAndUpdate(req.params.buildId, {
+    artifacts: req.body.artifacts,
+  }, { new: true })
+    .then((build) => {
+      if (!build) {
+        return res.status(404).send({
+          message: `Build not found with id ${req.params.buildId}`,
+        });
+      }
+      return res.status(200).send(build);
+    }).catch((err) => res.status(500).send({
+      message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
+    }));
+};
+
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
