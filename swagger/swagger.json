@@ -49,30 +49,9 @@
           {
             "name": "create",
             "in": "body",
-            "description": "The request to create a new team",
+            "description": "Team that we want to create",
             "schema": {
-              "type": "Object",
-              "required": [
-                "name"
-              ],
-              "properties": {
-                "name": {"type": "string"},
-                "components": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties":{
-                      "name": { "type": "string" },
-                      "features":  {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                      }
-                    }
-                  }
-                }
-              }
+              "$ref": "#/definitions/Team"
             }
           }
         ],
@@ -83,7 +62,7 @@
           "201": {
             "description": "New team is created",
             "schema": {
-              "$ref": "#/definitions/Team"
+              "$ref": "#/definitions/StoredTeam"
             }
           },
           "409": {
@@ -134,7 +113,7 @@
           "200": {
             "description": "Team is found",
             "schema": {
-              "$ref": "#/definitions/Team"
+              "$ref": "#/definitions/StoredTeam"
             }
           },
           "404": {
@@ -184,7 +163,7 @@
         ],
         "parameters": [
           {
-            "name": "team",
+            "name": "update",
             "in": "body",
             "description": "Team with new values of properties",
             "schema": {
@@ -202,7 +181,7 @@
           "200": {
             "description": "Team is updated",
             "schema": {
-              "$ref": "#/definitions/Team"
+              "$ref": "#/definitions/StoredTeam"
             }
           },
           "404": {
@@ -228,17 +207,11 @@
         "summary": "Create new environment for the dashboard",
         "parameters": [
           {
-            "name": "environment",
+            "name": "create",
             "in": "body",
             "description": "Environment that we want to create",
             "schema": {
-              "type": "Object",
-              "required": [
-                "name"
-              ],
-              "properties": {
-                "name": {"type": "string"}
-              }
+              "$ref": "#/definitions/Environment"
             }
           }
         ],
@@ -249,7 +222,7 @@
           "201": {
             "description": "New environment is created",
             "schema": {
-              "$ref": "#/definitions/Environment"
+              "$ref": "#/definitions/StoredEnvironment"
             }
           },
           "409": {
@@ -409,7 +382,19 @@
           "201": {
             "description": "New build is created",
             "schema": {
-              "$ref": "#/definitions/Build"
+              "$ref": "#/definitions/StoredBuild"
+            }
+          },
+          "404": {
+            "description": "Environment or Team not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -448,7 +433,13 @@
           "200": {
             "description": "Build is found",
             "schema": {
-              "$ref": "#/definitions/Build"
+              "$ref": "#/definitions/StoredBuild"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -596,10 +587,6 @@
         "name"
       ],
       "properties": {
-        "_id": {
-          "type": "string",
-          "uniqueItems": true
-        },
         "name": {
           "type": "string",
           "uniqueItems": true
@@ -608,17 +595,28 @@
     },
     "Environments": {
       "type": "array",
-      "$ref": "#/definitions/Environment"
+      "items": {
+        "$ref": "#/definitions/StoredEnvironment"
+      }
+    },
+    "StoredEnvironment": {
+        "allOf": [
+          {"$ref": "#/definitions/Environment"},
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              }
+            }
+          }
+        ]
     },
     "Team": {
       "required": [
         "name"
       ],
       "properties": {
-        "_id": {
-          "type": "string",
-          "uniqueItems": true
-        },
         "name": {
           "type": "string",
           "uniqueItems": true
@@ -642,7 +640,22 @@
     },
     "Teams": {
       "type": "array",
-      "$ref": "#/definitions/Team"
+      "items": {
+        "$ref": "#/definitions/StoredTeam"
+      }
+    },
+    "StoredTeam": {
+        "allOf": [
+          {"$ref": "#/definitions/Team"},
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              }
+            }
+          }
+        ]
     },
     "Build": {
       "required": [
@@ -659,7 +672,22 @@
     },
     "Builds": {
       "type": "array",
-      "$ref": "#/definitions/Build"
+      "items": {
+        "$ref": "#/definitions/StoredBuild"
+      }
+    },
+    "StoredBuild": {
+        "allOf": [
+          {"$ref": "#/definitions/Build"},
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              }
+            }
+          }
+        ]
     },
     "UpdateKeep": {
       "required": [
@@ -685,7 +713,9 @@
     },
     "Artifacts": {
       "type": "array",
-      "$ref": "#/definitions/Artifact"
+      "items": {
+        "$ref": "#/definitions/Artifact"
+      }
     }
   }
 }
