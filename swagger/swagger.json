@@ -44,7 +44,7 @@
         "tags": [
           "Team"
         ],
-        "description": "Create a new team",
+        "summary": "Create a new team",
         "parameters": [
           {
             "name": "create",
@@ -89,7 +89,7 @@
           "409": {
             "description": "Duplicate team found",
             "schema": {
-              "$ref": "#/definitions/ErrorMessage"
+              "$ref": "#/definitions/DefaultResponse"
             }
           },
           "422": {
@@ -136,12 +136,11 @@
             "schema": {
               "$ref": "#/definitions/Team"
             }
-          }
-          ,
+          },
           "404": {
             "description": "No team found",
             "schema": {
-              "$ref": "#/definitions/ErrorMessage"
+              "$ref": "#/definitions/DefaultResponse"
             }
           },
           "422": {
@@ -159,9 +158,21 @@
         ],
         "responses": {
           "200": {
-            "description": "Team is deleted",
+            "description": "Team has been deleted",
             "schema": {
-              "$ref": "#/definitions/Team"
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "404": {
+            "description": "Team not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -177,7 +188,13 @@
             "in": "body",
             "description": "Team with new values of properties",
             "schema": {
-              "$ref": "#/definitions/Team"
+              "type": "Object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {"type": "string"}
+              }
             }
           }
         ],
@@ -186,6 +203,18 @@
             "description": "Team is updated",
             "schema": {
               "$ref": "#/definitions/Team"
+            }
+          },
+          "404": {
+            "description": "No team found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -196,14 +225,20 @@
         "tags": [
           "Environment"
         ],
-        "description": "Create new environment for the dashboard",
+        "summary": "Create new environment for the dashboard",
         "parameters": [
           {
             "name": "environment",
             "in": "body",
             "description": "Environment that we want to create",
             "schema": {
-              "$ref": "#/definitions/Environment"
+              "type": "Object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {"type": "string"}
+              }
             }
           }
         ],
@@ -220,7 +255,13 @@
           "409": {
             "description": "Duplicate environment found",
             "schema": {
-              "$ref": "#/definitions/ErrorMessage"
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -261,6 +302,18 @@
             "schema": {
               "$ref": "#/definitions/Environment"
             }
+          },
+          "404": {
+            "description": "No team found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
           }
         }
       },
@@ -271,9 +324,21 @@
         ],
         "responses": {
           "200": {
-            "description": "Environment is deleted",
+            "description": "Environment has been deleted",
             "schema": {
               "$ref": "#/definitions/Environment"
+            }
+          },
+          "404": {
+            "description": "Team not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -287,9 +352,15 @@
           {
             "name": "environment",
             "in": "body",
-            "description": "Environment with new values of properties",
+            "description": "Request to update the environment",
             "schema": {
-              "$ref": "#/definitions/Environment"
+              "type": "Object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {"type": "string"}
+              }
             }
           }
         ],
@@ -298,6 +369,18 @@
             "description": "Environment is updated",
             "schema": {
               "$ref": "#/definitions/Environment"
+            }
+          },
+          "404": {
+            "description": "No team found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -308,7 +391,7 @@
         "tags": [
           "Build"
         ],
-        "description": "Create new build for the dashboard",
+        "summary": "Create new build for the dashboard",
         "parameters": [
           {
             "name": "build",
@@ -481,7 +564,7 @@
     }
   },
   "definitions": {
-    "ErrorMessage": {
+    "DefaultResponse": {
       "required": [
         "message"
       ],
@@ -513,6 +596,10 @@
         "name"
       ],
       "properties": {
+        "_id": {
+          "type": "string",
+          "uniqueItems": true
+        },
         "name": {
           "type": "string",
           "uniqueItems": true

@@ -64,9 +64,17 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Environment.findByIdAndUpdate(req.params.environmentId, {
-    name: req.body.name,
-  }, { new: true })
+  return Environment.where({ name: req.body.name }).findOne()
+    .then((existingEnvironment) => {
+      if (existingEnvironment) {
+        const error = new Error(`Environment with name ${req.body.name} already exists.`);
+        error.status = 409;
+        return Promise.reject(error);
+      }
+      return Environment.findByIdAndUpdate(req.params.environmentId, {
+        name: req.body.name,
+      }, { new: true });
+    })
     .then((environment) => {
       if (!environment) {
         return res.status(404).send({
@@ -74,9 +82,17 @@ exports.update = (req, res) => {
         });
       }
       return res.status(200).send(environment);
-    }).catch((err) => res.status(500).send({
-      message: `Error updating environment with id ${req.params.environmentId} due to [${err}]`,
-    }));
+    })
+    .catch((err) => {
+      if (err.status === 409) {
+        return res.status(409).send({
+          message: `Team with name ${req.body.name} already exists.`,
+        });
+      }
+      return res.status(500).send({
+        message: `Error updating environment with id ${req.params.environmentId} due to [${err}]`,
+      });
+    });
 };
 
 exports.delete = (req, res) => {

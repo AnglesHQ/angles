@@ -10,12 +10,13 @@ module.exports = (app, path) => {
       .withMessage('Max length for team name is 50 characters'),
     check('components')
       .exists()
-      .isArray()
-      .withMessage('Components field has to be an Array'),
+      .custom((componentArray) => Array.isArray(componentArray) && componentArray.length > 0)
+      .withMessage('At least one component is required'),
     check('components.*.name')
       .exists()
       .isAlphanumeric(),
     check('components.*.features')
+      .optional()
       .isArray()
       .withMessage('Features field has to be an Array'),
   ], teamController.create);
@@ -28,6 +29,11 @@ module.exports = (app, path) => {
 
   app.put(`${path}/team/:teamId`, [
     param('teamId').isMongoId(),
+    check('name')
+      .exists()
+      .isString()
+      .isLength({ max: 50 })
+      .withMessage('Max length for team name is 50 characters'),
   ], teamController.update);
 
   app.delete(`${path}/team/:teamId`, [
