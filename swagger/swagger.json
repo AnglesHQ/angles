@@ -2,19 +2,31 @@
   "swagger": "2.0",
   "info": {
     "version": "1.0.0",
-    "title": "QAC Dashboard API",
-    "description": "The API allows allows the dashboard to create, update and remove environments, teams and executions stored in the dashboard.",
+    "title": "Angles API",
+    "description": "The API allows the various clients to manage their test results for the Angles Dashboard.",
     "license": {
       "name": "Apache License 2.0",
       "url": "http://www.apache.org/licenses/LICENSE-2.0"
     }
   },
-  "host": "localhost:3000",
+  "host": "127.0.0.1:3000",
   "basePath": "/rest/api/v1.0",
   "tags": [
     {
       "name": "Team",
       "description": "API for managing the teams"
+    },
+    {
+      "name": "Environment",
+      "description": "API for managing the environments"
+    },
+    {
+      "name": "Build",
+      "description": "API for managing the builds"
+    },
+    {
+      "name": "Execution",
+      "description": "API for managing the executions"
     }
   ],
   "schemes": [
@@ -27,6 +39,158 @@
     "application/json"
   ],
   "paths": {
+    "/team": {
+      "post": {
+        "tags": [
+          "Team"
+        ],
+        "description": "Create a new team",
+        "parameters": [
+          {
+            "name": "create",
+            "in": "body",
+            "description": "The request to create a new team",
+            "schema": {
+              "type": "Object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {"type": "string"},
+                "components": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties":{
+                      "name": { "type": "string" },
+                      "features":  {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "New team is created",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          },
+          "409": {
+            "description": "Duplicate team found",
+            "schema": {
+              "$ref": "#/definitions/ErrorMessage"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Get all teams for the dashboard in system",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teams"
+            }
+          }
+        }
+      }
+    },
+    "/team/{teamId}": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "description": "ID of team that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Get team with given ID",
+        "responses": {
+          "200": {
+            "description": "Team is found",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+          ,
+          "404": {
+            "description": "No team found",
+            "schema": {
+              "$ref": "#/definitions/ErrorMessage"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete team with given ID",
+        "tags": [
+          "Team"
+        ],
+        "responses": {
+          "200": {
+            "description": "Team is deleted",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update team with give ID",
+        "tags": [
+          "Team"
+        ],
+        "parameters": [
+          {
+            "name": "team",
+            "in": "body",
+            "description": "Team with new values of properties",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team is updated",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          }
+        }
+      }
+    },
     "/environment": {
       "post": {
         "tags": [
@@ -139,118 +303,6 @@
         }
       }
     },
-    "/team": {
-      "post": {
-        "tags": [
-          "Team"
-        ],
-        "description": "Create new team for the dashboard",
-        "parameters": [
-          {
-            "name": "team",
-            "in": "body",
-            "description": "Team that we want to create",
-            "schema": {
-              "$ref": "#/definitions/Team"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New team is created",
-            "schema": {
-              "$ref": "#/definitions/Team"
-            }
-          },
-          "409": {
-            "description": "Duplicate team found",
-            "schema": {
-              "$ref": "#/definitions/ErrorMessage"
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Team"
-        ],
-        "summary": "Get all teams for the dashboard in system",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Teams"
-            }
-          }
-        }
-      }
-    },
-    "/team/{teamId}": {
-      "parameters": [
-        {
-          "name": "teamId",
-          "in": "path",
-          "required": true,
-          "description": "ID of team that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Team"
-        ],
-        "summary": "Get team with given ID",
-        "responses": {
-          "200": {
-            "description": "Team is found",
-            "schema": {
-              "$ref": "#/definitions/Team"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete team with given ID",
-        "tags": [
-          "Team"
-        ],
-        "responses": {
-          "200": {
-            "description": "Team is deleted",
-            "schema": {
-              "$ref": "#/definitions/Team"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update team with give ID",
-        "tags": [
-          "Team"
-        ],
-        "parameters": [
-          {
-            "name": "team",
-            "in": "body",
-            "description": "Team with new values of properties",
-            "schema": {
-              "$ref": "#/definitions/Team"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Team is updated",
-            "schema": {
-              "$ref": "#/definitions/Team"
-            }
-          }
-        }
-      }
-    },
     "/build": {
       "post": {
         "tags": [
@@ -357,7 +409,7 @@
         }
       }
     },
-    "/build/{buildId}/updateKeep": {
+    "/build/{buildId}/keep": {
       "parameters": [
         {
           "name": "buildId",
@@ -391,6 +443,41 @@
           }
         }
       }
+    },
+    "/build/{buildId}/artifacts": {
+      "parameters": [
+        {
+          "name": "buildId",
+          "in": "path",
+          "required": true,
+          "description": "ID of build that we want to store the artifacts for.",
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Updates the artifacts array for build with given ID",
+        "tags": [
+          "Build"
+        ],
+        "parameters": [
+          {
+            "name": "build",
+            "in": "body",
+            "description": "Keep request with boolean set.",
+            "schema": {
+              "$ref": "#/definitions/Artifacts"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Build is updated with new keep value.",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -405,15 +492,27 @@
         }
       }
     },
+    "ExpressValidatorError": {
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "msg": {"type": "string"},
+              "param": {"type": "string"},
+              "location": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
     "Environment": {
       "required": [
         "name"
       ],
       "properties": {
-        "_id": {
-          "type": "string",
-          "uniqueItems": true
-        },
         "name": {
           "type": "string",
           "uniqueItems": true
@@ -436,6 +535,21 @@
         "name": {
           "type": "string",
           "uniqueItems": true
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties":{
+              "name": { "type": "string" },
+              "features":  {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+              }
+            }
+          }
         }
       }
     },
@@ -449,15 +563,10 @@
         "team"
       ],
       "properties": {
-        "_id": {
-          "type": "string",
-          "uniqueItems": true
-        },
-        "environment": {
-          "type": "string"
-        },
-        "team": {
-          "type": "string"
+        "environment": { "type": "string" },
+        "team": { "type": "string" },
+        "artifacts": {
+          "$ref": "#/definitions/Artifacts"
         }
       }
     },
@@ -474,6 +583,22 @@
           "type": "boolean"
         }
       }
+    },
+    "Artifact": {
+      "required": [
+        "artifactId",
+        "groupId",
+        "version"
+      ],
+      "properties": {
+        "artifactId": { "type": "string" },
+        "groupId": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "Artifacts": {
+      "type": "array",
+      "$ref": "#/definitions/Artifact"
     }
   }
 }
