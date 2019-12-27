@@ -6,7 +6,7 @@ const executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
 const Platform = mongoose.Schema({
   platformName: { type: String, required: true },
   platformVersion: { type: String, required: false },
-  browserName: { type: String, required: true },
+  browserName: { type: String, required: false },
   browserVersion: { type: String, required: false },
   deviceName: { type: String, required: false },
   deviceBrand: { type: String, required: false },

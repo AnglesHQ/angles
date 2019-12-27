@@ -367,7 +367,7 @@
         "summary": "Create new build for the dashboard",
         "parameters": [
           {
-            "name": "build",
+            "name": "create",
             "in": "body",
             "description": "Build that we want to create",
             "schema": {
@@ -408,7 +408,10 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Builds"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/StoredBuild"
+              }
             }
           }
         }
@@ -436,6 +439,12 @@
               "$ref": "#/definitions/StoredBuild"
             }
           },
+          "404": {
+            "description": "Build not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
           "422": {
             "description": "Invalid request",
             "schema": {
@@ -453,7 +462,19 @@
           "200": {
             "description": "Build is deleted",
             "schema": {
-              "$ref": "#/definitions/Build"
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "404": {
+            "description": "Build not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -477,7 +498,19 @@
           "200": {
             "description": "Build is updated",
             "schema": {
-              "$ref": "#/definitions/Build"
+              "$ref": "#/definitions/StoredBuild"
+            }
+          },
+          "404": {
+            "description": "Build not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
             }
           }
         }
@@ -535,11 +568,14 @@
         ],
         "parameters": [
           {
-            "name": "build",
+            "name": "update",
             "in": "body",
-            "description": "Keep request with boolean set.",
+            "description": "Artifacts you want to store with build with the given ID.",
             "schema": {
-              "$ref": "#/definitions/Artifacts"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Artifact"
+              }
             }
           }
         ],
@@ -548,6 +584,201 @@
             "description": "Build is updated with new keep value.",
             "schema": {
               "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      }
+    },
+    "/execution": {
+      "post": {
+        "tags": [
+          "Execution"
+        ],
+        "summary": "Create new execution for a build",
+        "parameters": [
+          {
+            "name": "create",
+            "in": "body",
+            "description": "Execution you want to create",
+            "schema": {
+              "$ref": "#/definitions/Execution"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "New execution is created",
+            "schema": {
+              "$ref": "#/definitions/StoredExecution"
+            }
+          },
+          "404": {
+            "description": "Build not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Execution"
+        ],
+        "summary": "Get all executions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/StoredExecution"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execution/{executionId}": {
+      "parameters": [
+        {
+          "name": "executionId",
+          "in": "path",
+          "required": true,
+          "description": "ID of execution that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Execution"
+        ],
+        "summary": "Get execution with given ID",
+        "responses": {
+          "200": {
+            "description": "Execution is found",
+            "schema": {
+              "$ref": "#/definitions/StoredExecution"
+            }
+          },
+          "404": {
+            "description": "Execution not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete execution with given ID",
+        "tags": [
+          "Execution"
+        ],
+        "responses": {
+          "200": {
+            "description": "Execution has been deleted",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "404": {
+            "description": "Execution not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Execution with give ID",
+        "tags": [
+          "Execution"
+        ],
+        "parameters": [
+          {
+            "name": "update",
+            "in": "body",
+            "description": "Execution with new values of properties",
+            "schema": {
+              "$ref": "#/definitions/Execution"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Execution has been updated",
+            "schema": {
+              "$ref": "#/definitions/StoredExecution"
+            }
+          },
+          "404": {
+            "description": "Execution not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
+    "/execution/{executionId}/platforms": {
+      "parameters": [
+        {
+          "name": "executionId",
+          "in": "path",
+          "required": true,
+          "description": "ID of execution you want to store the platforms for.",
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Updates the platforms array for execution with given ID",
+        "tags": [
+          "Execution"
+        ],
+        "parameters": [
+          {
+            "name": "update",
+            "in": "body",
+            "description": "Store platforms for execution with ID",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Platform"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Execution has been updated with platforms",
+            "schema": {
+              "$ref": "#/definitions/StoredExecution"
             }
           }
         }
@@ -593,12 +824,6 @@
         }
       }
     },
-    "Environments": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/StoredEnvironment"
-      }
-    },
     "StoredEnvironment": {
         "allOf": [
           {"$ref": "#/definitions/Environment"},
@@ -638,12 +863,6 @@
         }
       }
     },
-    "Teams": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/StoredTeam"
-      }
-    },
     "StoredTeam": {
         "allOf": [
           {"$ref": "#/definitions/Team"},
@@ -666,14 +885,17 @@
         "environment": { "type": "string" },
         "team": { "type": "string" },
         "artifacts": {
-          "$ref": "#/definitions/Artifacts"
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Artifact"
+          }
+        },
+        "suites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Suite"
+          }
         }
-      }
-    },
-    "Builds": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/StoredBuild"
       }
     },
     "StoredBuild": {
@@ -711,10 +933,137 @@
         "version": { "type": "string" }
       }
     },
-    "Artifacts": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Artifact"
+    "Platform": {
+      "required": [
+        "platformName"
+      ],
+      "properties": {
+        "platformName": { "type": "string" },
+        "platformVersion": { "type": "string" },
+        "browserName": { "type": "string" },
+        "browserVersion": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "deviceBrand": { "type": "string" },
+        "deviceModel": { "type": "string" },
+        "userAgent": { "type": "string" }
+      }
+    },
+    "Step": {
+      "required": [
+        "name",
+        "status",
+        "timestamp"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "expected": { "type": "object" },
+        "actual": { "type": "object" },
+        "info": { "type": "string" },
+        "status": {"type": "string", "enum": ["INFO", "PASS", "ERROR", "FAIL"]},
+        "timestamp": { "type": "date" }
+      }
+    },
+    "Action": {
+      "required": [
+        "name",
+        "steps"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Step"
+          }
+        }
+      }
+    },
+    "StoredAction": {
+      "allOf": [
+        {"$ref": "#/definitions/Action"},
+        {
+          "properties": {
+            "_id": {
+              "type": "string",
+              "uniqueItems": true
+            },
+            "start": { "type": "date" },
+            "end": { "type": "date" },
+            "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]}
+          }
+        }
+      ]
+    },
+    "Execution": {
+      "required": [
+        "title",
+        "suite",
+        "build"
+      ],
+      "properties": {
+        "title": { "type": "string" },
+        "suite": { "type": "string" },
+        "build": { "type": "string", "uniqueItems": true },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Action"
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Platform"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type":"string" }
+        },
+        "meta": {
+          "type": "object"
+        }
+      }
+    },
+    "StoredExecution": {
+      "allOf": [
+        {"$ref": "#/definitions/Execution"},
+        {
+          "properties": {
+            "_id": {
+              "type": "string",
+              "uniqueItems": true
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                  "$ref": "#/definitions/StoredAction"
+              }
+            },
+            "start": { "type": "date" },
+            "end": { "type": "date" },
+            "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]}
+          }
+        }
+      ]
+    },
+    "Suite": {
+      "required": [
+        "name",
+        "executions"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "executions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StoredExecution"
+          }
+        },
+        "start": { "type": "date" },
+        "end": { "type": "date" },
+        "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]},
+        "result": {}
       }
     }
   }
