@@ -960,7 +960,7 @@
         "actual": { "type": "object" },
         "info": { "type": "string" },
         "status": {"type": "string", "enum": ["INFO", "PASS", "ERROR", "FAIL"]},
-        "timestamp": { "type": "date" }
+        "timestamp": { "type": "string", "format": "date-time" }
       }
     },
     "Action": {
@@ -987,8 +987,8 @@
               "type": "string",
               "uniqueItems": true
             },
-            "start": { "type": "date" },
-            "end": { "type": "date" },
+            "start": { "type": "string", "format": "date-time" },
+            "end": { "type": "string", "format": "date-time" },
             "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]}
           }
         }
@@ -1040,8 +1040,8 @@
                   "$ref": "#/definitions/StoredAction"
               }
             },
-            "start": { "type": "date" },
-            "end": { "type": "date" },
+            "start": { "type": "string", "format": "date-time" },
+            "end": { "type": "string", "format": "date-time" },
             "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]}
           }
         }
@@ -1060,8 +1060,8 @@
             "$ref": "#/definitions/StoredExecution"
           }
         },
-        "start": { "type": "date" },
-        "end": { "type": "date" },
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" },
         "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]},
         "result": {}
       }
