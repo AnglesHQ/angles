@@ -537,7 +537,14 @@
             "in": "body",
             "description": "Keep request with boolean set.",
             "schema": {
-              "$ref": "#/definitions/UpdateKeep"
+              "required": [
+                "keep"
+              ],
+              "properties": {
+                "keep": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         ],
@@ -910,16 +917,6 @@
             }
           }
         ]
-    },
-    "UpdateKeep": {
-      "required": [
-        "keep"
-      ],
-      "properties": {
-        "keep": {
-          "type": "boolean"
-        }
-      }
     },
     "Artifact": {
       "required": [

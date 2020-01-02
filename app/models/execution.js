@@ -12,6 +12,9 @@ const Platform = mongoose.Schema({
   deviceBrand: { type: String, required: false },
   deviceModel: { type: String, required: false },
   userAgent: { type: String, required: false },
+  screenHeight: { type: Number, required: false },
+  screenWidth: { type: Number, required: false },
+  pixelRatio: { type: Number, required: false },
 });
 
 const Step = mongoose.Schema({

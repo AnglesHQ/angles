@@ -1,18 +1,22 @@
 const { check, param } = require('express-validator');
+
 const executionController = require('../controllers/execution.controller.js');
 
 module.exports = (app, path) => {
   app.post(`${path}/execution`, [
     check('title').exists(),
-    check('title').isString(),
-    check('title').isLength({ max: 150 })
+    check('title')
+      .isString()
+      .isLength({ max: 150 })
       .withMessage('Max length for test title is 150 characters'),
-    check('suite').exists(),
-    check('suite').isString(),
-    check('suite').isLength({ max: 150 })
+    check('suite')
+      .exists()
+      .isString()
+      .isLength({ max: 150 })
       .withMessage('Max length for suite name is 150 characters'),
-    check('build').exists(),
-    check('build').isMongoId(),
+    check('build')
+      .exists()
+      .isMongoId(),
     check('platforms').optional().isArray(),
     check('platforms.*.platformName').optional().isString(),
     check('platforms.*.platformVersion').optional().isString(),
@@ -36,8 +40,9 @@ module.exports = (app, path) => {
 
   app.put(`${path}/execution/:executionId/platforms`, [
     param('executionId').isMongoId(),
-    check('platforms').exists(),
-    check('platforms').custom((platformsArray) => Array.isArray(platformsArray) && platformsArray.length > 0)
+    check('platforms')
+      .exists()
+      .custom((platformsArray) => Array.isArray(platformsArray) && platformsArray.length > 0)
       .withMessage('At least one platform is required'),
     check('platforms.*.platformName').exists(),
     check('platforms.*.platformName').isString(),

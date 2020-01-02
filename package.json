@@ -27,6 +27,7 @@
     "express": "^4.17.1",
     "express-validator": "^6.2.0",
     "mongoose": "^5.7.5",
+    "multer": "^1.4.2",
     "randomstring": "^1.1.5",
     "saslprep": "^1.0.3",
     "swagger-ui-express": "^4.1.1",

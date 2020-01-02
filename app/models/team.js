@@ -8,7 +8,9 @@ const Component = new Schema({
 });
 
 const TeamSchema = mongoose.Schema({
-  name: { type: String, required: true, unique: true },
+  name: {
+    type: String, required: true, unique: true, lowercase: true,
+  },
   components: [{ type: Component, required: true }],
 }, {
   timestamps: true,

@@ -6,6 +6,8 @@ module.exports = (app, path) => {
     check('name')
       .exists()
       .isString()
+      .matches(/^[A-Za-z0-9\-\s]+$/)
+      .withMessage('Name must only contain letters, numbers and hyphens.')
       .isLength({ max: 50 })
       .withMessage('Max length for environment name is 50 characters'),
   ], environmentController.create);

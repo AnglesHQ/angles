@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
 const EnvironmentSchema = mongoose.Schema({
-  name: { type: String, required: true, unique: true },
+  name: {
+    type: String, required: true, unique: true, lowercase: true,
+  },
 }, {
   timestamps: true,
 });
