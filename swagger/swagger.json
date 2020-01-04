@@ -865,6 +865,106 @@
           }
         }
       }
+    },
+    "/screenshot/{screenshotId}": {
+      "parameters": [
+        {
+          "name": "screenshotId",
+          "in": "path",
+          "required": true,
+          "description": "ID of screenshot that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get screenshot with given ID",
+        "responses": {
+          "200": {
+            "description": "Screenshot is found",
+            "schema": {
+              "$ref": "#/definitions/Screenshot"
+            }
+          },
+          "404": {
+            "description": "Screenshot not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete screenshot with given ID",
+        "tags": [
+          "Screenshot"
+        ],
+        "responses": {
+          "200": {
+            "description": "Screenshot has been deleted",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "404": {
+            "description": "Screenshot not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
+    "/screenshot/{screenshotId}/image": {
+      "parameters": [
+        {
+          "name": "screenshotId",
+          "in": "path",
+          "required": true,
+          "description": "ID of screenshot that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get screenshot with given ID as a image",
+        "responses": {
+          "200": {
+            "description": "Screenshot is found",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "404": {
+            "description": "Screenshot not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
