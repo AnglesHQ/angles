@@ -26,6 +26,7 @@
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
     "express-validator": "^6.2.0",
+    "image-thumbnail": "^1.0.6",
     "mongoose": "^5.7.5",
     "multer": "^1.4.2",
     "randomstring": "^1.1.5",

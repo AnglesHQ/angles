@@ -3,15 +3,30 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const Component = new Schema({
-  name: { type: String, required: true, unique: true },
-  features: [{ type: String, required: false }],
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+  },
+  features: [{
+    type: String,
+    required: false,
+    lowercase: true,
+  }],
 });
 
 const TeamSchema = mongoose.Schema({
   name: {
-    type: String, required: true, unique: true, lowercase: true,
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
   },
-  components: [{ type: Component, required: true }],
+  components: [{
+    type: Component,
+    required: true,
+  }],
 }, {
   timestamps: true,
 });

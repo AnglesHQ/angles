@@ -8,26 +8,22 @@ module.exports = (app, path) => {
     header('buildId')
       .exists()
       .isMongoId(),
+    header('timestamp')
+      .exists()
+      .isISO8601(),
   ],
   multerConfig.single('screenshot'),
   screenshotController.create,
   screenshotController.createFail);
-
-  app.post(`${path}/screenshot`, [
-    check('name')
-      .exists()
-      .isString()
-      .matches(/^[A-Za-z0-9\-\s]+$/)
-      .withMessage('Name must only contain letters, numbers and hyphens.')
-      .isLength({ max: 50 })
-      .withMessage('Max length for environment name is 50 characters'),
-  ], screenshotController.create);
 
   app.get(`${path}/screenshot`, screenshotController.findAll);
 
   app.get(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),
   ], screenshotController.findOne);
+
+  app.get(`${path}/screenshot/:screenshotId/image`, [
+  ], screenshotController.findOneImage);
 
   app.put(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),

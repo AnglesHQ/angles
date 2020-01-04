@@ -4,9 +4,23 @@ const { Schema } = mongoose;
 const executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
 
 const Artifact = new Schema({
-  groupId: { type: String, required: false },
-  artifactId: { type: String, required: false },
-  version: { type: String, required: false },
+  groupId: {
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+  },
+  artifactId: {
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+  },
+  version: {
+    type: String,
+    required: true,
+    trim: true,
+  },
 });
 
 const Suite = mongoose.Schema({

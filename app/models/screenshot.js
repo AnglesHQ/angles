@@ -4,9 +4,9 @@ const { Schema } = mongoose;
 
 const ScreenshotSchema = mongoose.Schema({
   build: { type: Schema.Types.ObjectId, ref: 'Build', required: true },
-  execution: { type: Schema.Types.ObjectId, ref: 'TestExecution', required: true },
-  thumbnail: { type: String, required: true },
-  timestamp: { type: Date, required: true },
+  thumbnail: { type: String, required: false },
+  timestamp: { type: Date, required: false },
+  path: { type: String, required: true },
 }, {
   timestamps: true,
 });

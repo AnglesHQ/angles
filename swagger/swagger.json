@@ -942,7 +942,10 @@
         "deviceName": { "type": "string" },
         "deviceBrand": { "type": "string" },
         "deviceModel": { "type": "string" },
-        "userAgent": { "type": "string" }
+        "userAgent": { "type": "string" },
+        "screenHeight": { "type": "number" },
+        "screenWidth": { "type": "number" },
+        "pixelRatio": { "type": "number" }
       }
     },
     "Step": {
