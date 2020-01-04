@@ -2,6 +2,7 @@ const multer = require('multer');
 const fs = require('fs');
 
 const multerConfig = multer({
+  limits: { fileSize: 10485760 },
   storage: multer.diskStorage({
     destination(req, file, next) {
       const directory = `screenshots/${req.headers.buildid}`;

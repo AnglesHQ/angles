@@ -20,7 +20,11 @@ exports.create = (req, res) => {
         return Promise.reject(error);
       }
       build = foundBuild;
-      const options = { width: 300, height: 300, responseType: 'base64' };
+      const options = {
+        width: 300,
+        height: 300,
+        responseType: 'base64',
+      };
       return imageThumbnail(req.file.path, options);
     }).then((thumbnail) => {
       const screenshot = new Screenshot({

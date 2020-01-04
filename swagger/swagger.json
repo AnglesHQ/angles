@@ -27,6 +27,10 @@
     {
       "name": "Execution",
       "description": "API for managing the executions"
+    },
+    {
+      "name": "Screenshot",
+      "description": "API for managing the screenshots"
     }
   ],
   "schemes": [
@@ -790,6 +794,77 @@
           }
         }
       }
+    },
+    "/screenshot": {
+      "post": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Create new screenshot for an execution",
+        "parameters": [
+          {
+            "in": "header",
+            "description": "id of the build this screenshot is for",
+            "name": "buildId",
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "description": "timestamp when the screenshot was taken",
+            "name": "timestamp",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "screenshot",
+            "in": "formData",
+            "type": "file",
+            "description": "Screenshot to upload"
+          }
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "New screenshot is created",
+            "schema": {
+              "$ref": "#/definitions/Screenshot"
+            }
+          },
+          "404": {
+            "description": "Build not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get all Screenshots",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Screenshot"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -960,7 +1035,20 @@
         "actual": { "type": "object" },
         "info": { "type": "string" },
         "status": {"type": "string", "enum": ["INFO", "PASS", "ERROR", "FAIL"]},
-        "timestamp": { "type": "string", "format": "date-time" }
+        "timestamp": { "type": "string", "format": "date-time" },
+        "screenshot": { "type": "string" }
+      }
+    },
+    "Screenshot": {
+      "properties": {
+        "_id": {
+          "type": "string",
+          "uniqueItems": true
+        },
+        "build": { "type": "string" },
+        "thumbnail": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "path": { "type": "String" }
       }
     },
     "Action": {
