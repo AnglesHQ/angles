@@ -1,4 +1,4 @@
-const { check, param } = require('express-validator');
+const { check, param, query } = require('express-validator');
 const buildController = require('../controllers/build.controller.js');
 
 module.exports = (app, path) => {
@@ -22,14 +22,28 @@ module.exports = (app, path) => {
       .withMessage('Max length for component name is 50 characters'),
   ], buildController.create);
 
-  app.get(`${path}/build`, buildController.findAll);
+  app.get(`${path}/build`, [
+    query('teamId')
+      .exists()
+      .isMongoId(),
+    query('limit')
+      .optional()
+      .isNumeric(),
+    query('skip')
+      .optional()
+      .isNumeric(),
+  ], buildController.findAll);
 
   app.get(`${path}/build/:buildId`, [
-    param('buildId').isMongoId(),
+    param('buildId')
+      .exists()
+      .isMongoId(),
   ], buildController.findOne);
 
   app.put(`${path}/build/:buildId`, [
-    param('buildId').isMongoId(),
+    param('buildId')
+      .exists()
+      .isMongoId(),
     check('environment')
       .exists()
       .isString(),
@@ -39,7 +53,9 @@ module.exports = (app, path) => {
   ], buildController.update);
 
   app.put(`${path}/build/:buildId/keep`, [
-    param('buildId').isMongoId(),
+    param('buildId')
+      .exists()
+      .isMongoId(),
     check('keep')
       .exists()
       .isBoolean(),

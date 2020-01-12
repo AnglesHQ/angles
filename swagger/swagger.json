@@ -408,6 +408,29 @@
           "Build"
         ],
         "summary": "Get all builds for the dashboard",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of team that we want to retrieve the builds for.",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Limit the number of builds to retrieve",
+            "type": "number"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "The builds you want to skip (or offset) in the data base query",
+            "type": "number"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",

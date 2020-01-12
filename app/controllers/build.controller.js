@@ -1,4 +1,6 @@
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
+
 const Build = require('../models/build.js');
 const Team = require('../models/team.js');
 const Environment = require('../models/environment.js');
@@ -58,16 +60,37 @@ exports.create = (req, res) => {
 };
 
 exports.findAll = (req, res) => {
-  Build.find()
-    .populate('team')
-    .populate('environment')
-    .then((builds) => {
-      res.send(builds);
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId } = req.query;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = parseInt(req.query.skip, 10) || 0;
+
+  return Team.findById({ _id: teamId })
+    .then((teamFound) => {
+      if (!teamFound) {
+        const error = new Error(`No team found with name ${req.body.team}`);
+        error.status = 404;
+        return Promise.reject(error);
+      }
+      return Build.find({ team: mongoose.Types.ObjectId(teamId) }, null, { limit, skip })
+        .populate('team')
+        .populate('environment')
+        .sort('-createdAt');
     })
-    .catch((err) => {
-      res.status(500).send({
-        message: err.message || 'Some error occurred while retrieving builds.',
-      });
+    .then((builds) => res.status(200).send(builds))
+    .catch((error) => {
+      if (error.status === 404) {
+        res.status(404).send({
+          message: error.message,
+        });
+      } else {
+        res.status(500).send({
+          message: error.message || 'Some error occurred while retrieving builds.',
+        });
+      }
     });
 };
 
