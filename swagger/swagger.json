@@ -92,7 +92,10 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Teams"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Team"
+              }
             }
           }
         }
@@ -171,7 +174,7 @@
             "in": "body",
             "description": "Team with new values of properties",
             "schema": {
-              "type": "Object",
+              "type": "object",
               "required": [
                 "name"
               ],
@@ -252,7 +255,10 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Environments"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Environment"
+              }
             }
           }
         }
@@ -331,7 +337,7 @@
             "in": "body",
             "description": "Request to update the environment",
             "schema": {
-              "type": "Object",
+              "type": "object",
               "required": [
                 "name"
               ],
@@ -829,13 +835,14 @@
             "in": "header",
             "description": "id of the build this screenshot is for",
             "name": "buildId",
-            "schema": { "type": "string" }
+            "type": "string"
           },
           {
             "in": "header",
             "description": "timestamp when the screenshot was taken",
             "name": "timestamp",
-            "schema": { "type": "string", "format": "date-time" }
+            "type": "string",
+            "format": "date-time"
           },
           {
             "name": "screenshot",
@@ -1171,7 +1178,7 @@
         "build": { "type": "string" },
         "thumbnail": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "path": { "type": "String" }
+        "path": { "type": "string" }
       }
     },
     "Action": {
