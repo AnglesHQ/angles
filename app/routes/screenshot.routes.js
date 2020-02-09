@@ -11,6 +11,9 @@ module.exports = (app, path) => {
     header('timestamp')
       .exists()
       .isISO8601(),
+    header('view')
+      .optional()
+      .isString(),
   ],
   multerConfig.single('screenshot'),
   screenshotController.create,
@@ -23,6 +26,7 @@ module.exports = (app, path) => {
   ], screenshotController.findOne);
 
   app.get(`${path}/screenshot/:screenshotId/image`, [
+    param('screenshotId').isMongoId(),
   ], screenshotController.findOneImage);
 
   app.put(`${path}/screenshot/:screenshotId`, [

@@ -6,7 +6,7 @@ const Component = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    unique: false,
     lowercase: true,
   },
   features: [{

@@ -1,57 +1,72 @@
-const mongoose = require('mongoose');
 const Build = require('../models/build.js');
 const TestExecution = require('../models/execution.js');
 
 const buildMetricsUtils = {};
 
 buildMetricsUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
+buildMetricsUtils.defaultResultMap = new Map([['PASS', 0], ['FAIL', 0], ['ERROR', 0], ['SKIPPED', 0]]);
+const [defaultStatus] = buildMetricsUtils.executionStates;
 
 buildMetricsUtils.addExecutionToBuild = (build, execution) => {
   let buildSuite = build.suites.find((suite) => suite.name === execution.suite);
   if (buildSuite) {
     // if build suite exists update it.
     buildSuite.executions.push(execution);
-    buildMetricsUtils.calculateSuiteMetrics(buildSuite);
-    return Build.findOneAndUpdate(
-      { _id: build.id },
-      { $set: { 'suites.$[elem]': buildSuite } },
-      {
-        arrayFilters: [
-          {
-            'elem._id': new mongoose.Types.ObjectId(buildSuite.id),
-          },
-        ],
-        new: true,
-      },
-    ).exec();
+    buildMetricsUtils.calculateBuildMetrics(build);
+  } else {
+    // if it doesn't exists create it.
+    buildSuite = {
+      name: execution.suite,
+      executions: [execution],
+    };
+    build.suites.push(buildSuite);
+    buildMetricsUtils.calculateBuildMetrics(build);
   }
-  // if the build suite doesn't exist create it.
-  buildSuite = {
-    name: execution.suite,
-    executions: [execution],
-  };
-  buildMetricsUtils.calculateSuiteMetrics(buildSuite);
   return Build.updateOne(
     { _id: build.id },
-    { $push: { suites: buildSuite } },
+    { $set: build },
   ).then(() => Build.findById(build.id));
 };
 
+buildMetricsUtils.calculateBuildMetrics = (build) => {
+  build.result = new Map(buildMetricsUtils.defaultResultMap);
+  build.start = undefined;
+  build.end = undefined;
+  build.status = defaultStatus;
+  for (let i = 0, len = build.suites.length; i < len; i += 1) {
+    let suite = build.suites[i];
+    suite = buildMetricsUtils.calculateSuiteMetrics(suite);
+    suite.result.forEach((value, key) => {
+      build.result.set(key, build.result.get(key) + value);
+    });
+    if (build.end === undefined || build.end < suite.end) {
+      build.end = suite.end;
+    }
+    if (build.start === undefined || build.start > suite.start) {
+      build.start = suite.start;
+    }
+    build.status = buildMetricsUtils.determineNewState(build.status, suite.status);
+  }
+  return build;
+};
+
 buildMetricsUtils.calculateSuiteMetrics = (suite) => {
-  // (re)set results map
-  suite.result = new Map([['PASS', 0], ['FAIL', 0], ['ERROR', 0], ['SKIPPED', 0]]);
+  suite.result = new Map(buildMetricsUtils.defaultResultMap);
   suite.start = undefined;
   suite.end = undefined;
+  suite.status = defaultStatus;
   for (let i = 0, len = suite.executions.length; i < len; i += 1) {
     const execution = suite.executions[i];
     suite.result.set(execution.status, suite.result.get(execution.status) + 1);
     if (suite.end === undefined || suite.end < execution.end) {
       suite.end = execution.end;
     }
-    if (suite.start === undefined || suite.start < execution.start) {
+    if (suite.start === undefined || suite.start > execution.start) {
       suite.start = execution.start;
     }
+    suite.status = buildMetricsUtils.determineNewState(suite.status, execution.status);
   }
+  return suite;
 };
 
 buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
@@ -90,6 +105,13 @@ buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
   }
 };
 
+buildMetricsUtils.determineNewState = (existingState, newState) => {
+  if (buildMetricsUtils.executionStates.indexOf(existingState)
+    > buildMetricsUtils.executionStates.indexOf(newState)) {
+    return existingState;
+  }
+  return newState;
+};
 
 buildMetricsUtils.createExecution = (req, build) => {
   const {

@@ -1,7 +1,7 @@
 {
-  "name": "qac-dashboard",
+  "name": "angles",
   "version": "1.0.0",
-  "description": "qa-central test dashboard",
+  "description": "angles test dashboard api",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -24,6 +24,7 @@
   "homepage": "https://github.com/qa-central/qac-dashboard#readme",
   "dependencies": {
     "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-validator": "^6.2.0",
     "image-thumbnail": "^1.0.6",

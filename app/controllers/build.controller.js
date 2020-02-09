@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
+const buildMetricsUtils = require('../utils/build-metrics.js');
 
 const Build = require('../models/build.js');
 const Team = require('../models/team.js');
@@ -35,14 +36,15 @@ exports.create = (req, res) => {
           matchComponent = component;
         }
       });
-
       const build = new Build({
         environment: environmentFound,
         team: teamFound,
         name: req.body.name,
         component: matchComponent,
         suite: [],
+        result: new Map(buildMetricsUtils.defaultResultMap),
       });
+      buildMetricsUtils.calculateBuildMetrics(build);
       build.save()
         .then((data) => {
           res.status(201).send(data);

@@ -32,6 +32,7 @@ exports.create = (req, res) => {
         timestamp: req.headers.timestamp,
         thumbnail,
         path: req.file.path,
+        view: req.headers.view,
       });
       return screenshot.save();
     })

@@ -64,6 +64,19 @@ const BuildSchema = Schema({
     of: Number,
     required: false,
   },
+  status: {
+    type: String,
+    enum: executionStates,
+    required: true,
+  },
+  start: {
+    type: Date,
+    required: false,
+  },
+  end: {
+    type: Date,
+    required: false,
+  },
   artifacts: [{
     type: Artifact,
     required: false,

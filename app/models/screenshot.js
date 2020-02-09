@@ -20,6 +20,10 @@ const ScreenshotSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  view: {
+    type: String,
+    required: false,
+  },
 }, {
   timestamps: true,
 });
