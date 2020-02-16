@@ -104,7 +104,7 @@ exports.findOne = (req, res) => {
   return Build.findById(req.params.buildId)
     .populate('team')
     .populate('environment')
-    .populate('executions')
+    .populate('suites.executions')
     .then((build) => {
       if (!build) {
         return res.status(404).send({
