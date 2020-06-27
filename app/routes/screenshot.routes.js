@@ -19,7 +19,11 @@ module.exports = (app, path) => {
   screenshotController.create,
   screenshotController.createFail);
 
-  app.get(`${path}/screenshot`, screenshotController.findAll);
+  app.get(`${path}/screenshot`, [
+    param('buildId')
+      .exists()
+      .isMongoId(),
+  ], screenshotController.findAll);
 
   app.get(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),

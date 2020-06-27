@@ -883,6 +883,15 @@
           "Screenshot"
         ],
         "summary": "Get all Screenshots",
+        "parameters": [
+          {
+            "name": "buildId",
+            "in": "query",
+            "required": true,
+            "description": "ID of build that we want to retrieve the screenshots for.",
+            "type": "string"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",

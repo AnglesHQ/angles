@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const imageThumbnail = require('image-thumbnail');
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
@@ -57,13 +58,22 @@ exports.createFail = (error, req, res) => {
 };
 
 exports.findAll = (req, res) => {
-  Screenshot.find()
-    .then((screenshots) => {
-      res.send(screenshots);
-    }).catch((err) => {
-      res.status(500).send({
-        message: err.message || 'Some error occurred while retrieving screenshots.',
-      });
+  const { buildId } = req.query;
+  return Build.findById({ _id: buildId })
+    .then((buildFound) => {
+      if (!buildFound) {
+        const error = new Error(`No build found with id ${buildId}`);
+        error.status = 404;
+        return Promise.reject(error);
+      }
+      return Screenshot.find({ build: mongoose.Types.ObjectId(buildId) })
+        .then((screenshots) => {
+          res.send(screenshots);
+        }).catch((err) => {
+          res.status(500).send({
+            message: err.message || 'Some error occurred while retrieving screenshots.',
+          });
+        });
     });
 };
 
