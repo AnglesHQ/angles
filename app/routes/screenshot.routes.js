@@ -33,6 +33,16 @@ module.exports = (app, path) => {
     param('screenshotId').isMongoId(),
   ], screenshotController.findOneImage);
 
+  app.get(`${path}/screenshot/:screenshotId/compare/:screenshotCompareId`, [
+    param('screenshotId').exists().isMongoId(),
+    param('screenshotCompareId').exists().isMongoId(),
+  ], screenshotController.compareImages);
+
+  app.get(`${path}/screenshot/:screenshotId/compare/:screenshotCompareId/image`, [
+    param('screenshotId').exists().isMongoId(),
+    param('screenshotCompareId').exists().isMongoId(),
+  ], screenshotController.compareImagesAndReturnImage);
+
   app.put(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),
     check('name')

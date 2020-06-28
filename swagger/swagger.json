@@ -839,6 +839,12 @@
           },
           {
             "in": "header",
+            "description": "The view/page named for the screenshot",
+            "name": "view",
+            "type": "string"
+          },
+          {
+            "in": "header",
             "description": "timestamp when the screenshot was taken",
             "name": "timestamp",
             "type": "string",
@@ -887,9 +893,30 @@
           {
             "name": "buildId",
             "in": "query",
-            "required": true,
+            "required": false,
             "description": "ID of build that we want to retrieve the screenshots for.",
             "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "Name of the view you want to finf screenshots for.",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "The number of screenshots you want to return.",
+            "type": "number"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "The images you want to skip (or offset) in the data base query",
+            "type": "number"
           }
         ],
         "responses": {
@@ -992,6 +1019,94 @@
           },
           "404": {
             "description": "Screenshot not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
+    "/screenshot/{screenshotId}/compare/{screenshotCompareId}": {
+      "parameters": [
+        {
+          "name": "screenshotId",
+          "in": "path",
+          "required": true,
+          "description": "ID of screenshot you want to compare against the base",
+          "type": "string"
+        },
+        {
+          "name": "screenshotCompareId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the base screenshot",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Allows you to compare the screenshot against a previous screenshot",
+        "responses": {
+          "200": {
+            "description": "Comparison sucessful and results returned",
+            "schema": {
+              "type": "json"
+            }
+          },
+          "404": {
+            "description": "Screenshots not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
+    "/screenshot/{screenshotId}/compare/{screenshotCompareId}/image": {
+      "parameters": [
+        {
+          "name": "screenshotId",
+          "in": "path",
+          "required": true,
+          "description": "ID of screenshot you want to compare against the base",
+          "type": "string"
+        },
+        {
+          "name": "screenshotCompareId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the base screenshot",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Allows you to compare the screenshot against a previous screenshot and returns the image",
+        "responses": {
+          "200": {
+            "description": "Comparison sucessful and results returned as an image",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "404": {
+            "description": "Screenshots not found",
             "schema": {
               "$ref": "#/definitions/DefaultResponse"
             }
