@@ -181,44 +181,56 @@ exports.compareImagesAndReturnImage = (req, res) => {
   return Promise.all(promises).then((results) => {
     const screenshot = results[0];
     const screenshotCompare = results[1];
+    if (screenshot === null || screenshotCompare === null) {
+      res.status(404).send({
+        message: 'Unable to retrieve one or both images',
+      });
+    }
+    const tempFileName = `compares/${screenshot.id}_${screenshotCompare.id}-compare.png`;
+    // check if compare already exists and just return it.
+    fs.access(tempFileName, fs.F_OK, (err) => {
+      if (err) {
+        const options = {
+          output: {
+            errorColor: {
+              red: 255,
+              green: 0,
+              blue: 255,
+            },
+            errorType: 'movement',
+            transparency: 0.3,
+            largeImageThreshold: 1200,
+            useCrossOrigin: false,
+            outputDiff: true,
+          },
+          scaleToSameSize: true,
+          ignore: 'antialiasing',
+        };
 
-    const options = {
-      output: {
-        errorColor: {
-          red: 255,
-          green: 0,
-          blue: 255,
-        },
-        errorType: 'movement',
-        transparency: 0.3,
-        largeImageThreshold: 1200,
-        useCrossOrigin: false,
-        outputDiff: true,
-      },
-      scaleToSameSize: true,
-      ignore: 'antialiasing',
-    };
-
-    const loadImagesPromises = [
-      fsPromises.readFile(screenshot.path),
-      fsPromises.readFile(screenshotCompare.path),
-    ];
-    return Promise.all(loadImagesPromises).then((imageLoadResults) => {
-      compareImages(
-        imageLoadResults[0],
-        imageLoadResults[1],
-        options,
-      ).then((data) => {
-        const tempFileName = `compares/${Date.now()}-compare.png`;
-        fsPromises.writeFile(path.resolve(tempFileName), data.getBuffer()).then(() => {
-          console.log(path.resolve(tempFileName));
-          return res.sendFile(path.resolve(tempFileName));
+        const loadImagesPromises = [
+          fsPromises.readFile(screenshot.path),
+          fsPromises.readFile(screenshotCompare.path),
+        ];
+        return Promise.all(loadImagesPromises).then((imageLoadResults) => {
+          compareImages(
+            imageLoadResults[0],
+            imageLoadResults[1],
+            options,
+          ).then((data) => {
+            fsPromises.writeFile(path.resolve(tempFileName), data.getBuffer()).then(() => {
+              console.log(path.resolve(tempFileName));
+              return res.sendFile(path.resolve(tempFileName));
+            });
+          });
+        }).catch((compareError) => {
+          res.status(500).send({
+            message: compareError.message || 'Some error occurred comparing the images',
+          });
         });
-      });
-    }).catch((err) => {
-      res.status(500).send({
-        message: err.message || 'Some error occurred loading the images',
-      });
+      }
+      // file exists
+      console.log(`file exists ${path.resolve(tempFileName)}`);
+      return res.sendFile(path.resolve(tempFileName));
     });
   }).catch((err) => {
     res.status(500).send({
