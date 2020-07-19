@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Platform = require('./platform.js');
 
 const { Schema } = mongoose;
 
@@ -22,6 +23,22 @@ const ScreenshotSchema = mongoose.Schema({
   },
   view: {
     type: String,
+    required: false,
+  },
+  height: {
+    type: Number,
+    required: false,
+  },
+  width: {
+    type: Number,
+    required: false,
+  },
+  platform: {
+    type: Platform,
+    required: false,
+  },
+  metaData: {
+    type: Map,
     required: false,
   },
 }, {

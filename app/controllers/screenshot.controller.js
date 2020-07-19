@@ -6,6 +6,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const { compare } = require('resemblejs');
 const compareImages = require('resemblejs/compareImages');
+const sizeOf = require('image-size');
 
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
@@ -29,16 +30,25 @@ exports.create = (req, res) => {
         height: 300,
         responseType: 'base64',
       };
-      return imageThumbnail(req.file.path, options);
-    }).then((thumbnail) => {
-      const screenshot = new Screenshot({
-        build,
-        timestamp: req.headers.timestamp,
-        thumbnail,
-        path: req.file.path,
-        view: req.headers.view,
+      const promises = [
+        imageThumbnail(req.file.path, options),
+        sizeOf(req.file.path),
+      ];
+      return Promise.all(promises).then((results) => {
+        const thumbnail = results[0];
+        const dimensions = results[1];
+        // with the thumbnail and the dimension store the details.
+        const screenshot = new Screenshot({
+          build,
+          timestamp: req.headers.timestamp,
+          thumbnail,
+          height: dimensions.height,
+          width: dimensions.width,
+          path: req.file.path,
+          view: req.headers.view,
+        });
+        return screenshot.save();
       });
-      return screenshot.save();
     })
     .then((savedScreenshot) => {
       res.status(201).send(savedScreenshot);
@@ -186,9 +196,11 @@ exports.compareImagesAndReturnImage = (req, res) => {
         message: 'Unable to retrieve one or both images',
       });
     }
+    // create name based on the two id's
     const tempFileName = `compares/${screenshot.id}_${screenshotCompare.id}-compare.png`;
-    // check if compare already exists and just return it.
+    // check if the file already exists
     fs.access(tempFileName, fs.F_OK, (err) => {
+      // file doesn't exists then create it by doing the compare.
       if (err) {
         const options = {
           output: {
@@ -206,7 +218,6 @@ exports.compareImagesAndReturnImage = (req, res) => {
           scaleToSameSize: true,
           ignore: 'antialiasing',
         };
-
         const loadImagesPromises = [
           fsPromises.readFile(screenshot.path),
           fsPromises.readFile(screenshotCompare.path),
@@ -217,10 +228,8 @@ exports.compareImagesAndReturnImage = (req, res) => {
             imageLoadResults[1],
             options,
           ).then((data) => {
-            fsPromises.writeFile(path.resolve(tempFileName), data.getBuffer()).then(() => {
-              console.log(path.resolve(tempFileName));
-              return res.sendFile(path.resolve(tempFileName));
-            });
+            fsPromises.writeFile(path.resolve(tempFileName), data.getBuffer())
+              .then(() => res.sendFile(path.resolve(tempFileName)));
           });
         }).catch((compareError) => {
           res.status(500).send({
@@ -228,8 +237,7 @@ exports.compareImagesAndReturnImage = (req, res) => {
           });
         });
       }
-      // file exists
-      console.log(`file exists ${path.resolve(tempFileName)}`);
+      // if file does exist just return it.
       return res.sendFile(path.resolve(tempFileName));
     });
   }).catch((err) => {
@@ -244,9 +252,9 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
+  console.info(req.body.platform);
   return Screenshot.findByIdAndUpdate(req.params.screenshotId, {
-    name: req.body.name,
+    platform: req.body.platform,
   }, { new: true })
     .then((screenshot) => {
       if (!screenshot) {

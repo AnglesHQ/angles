@@ -23,8 +23,6 @@ module.exports = (app, path) => {
     check('platforms.*.browserName').optional().isString(),
     check('platforms.*.browserVersion').optional().isString(),
     check('platforms.*.deviceName').optional().isString(),
-    check('platforms.*.deviceBrand').optional().isString(),
-    check('platforms.*.deviceModel').optional().isString(),
     check('platforms.*.userAgent').optional().isString(),
   ], executionController.create);
 

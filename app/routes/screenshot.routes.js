@@ -45,11 +45,16 @@ module.exports = (app, path) => {
 
   app.put(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),
-    check('name')
-      .exists()
-      .isString()
-      .isLength({ max: 50 })
-      .withMessage('Max length for team name is 50 characters'),
+    check('platform').exists(),
+    check('platform.platformName').exists().isString(),
+    check('platform.platformVersion').optional().isString(),
+    check('platform.browserName').optional().isString(),
+    check('platform.browserVersion').optional().isString(),
+    check('platform.deviceName').optional().isString(),
+    check('platform.userAgent').optional().isString(),
+    check('platform.screenHeight').optional().isNumeric(),
+    check('platform.screenWidth').optional().isNumeric(),
+    check('platform.pixelRatio').optional(),
   ], screenshotController.update);
 
   app.delete(`${path}/screenshot/:screenshotId`, [

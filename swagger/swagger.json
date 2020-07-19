@@ -750,7 +750,7 @@
         }
       },
       "put": {
-        "summary": "Update Execution with give ID",
+        "summary": "Update Execution with given ID",
         "tags": [
           "Execution"
         ],
@@ -993,6 +993,42 @@
             }
           }
         }
+      },
+      "put": {
+        "summary": "Update Screenshot with given ID",
+        "tags": [
+          "Screenshot"
+        ],
+        "parameters": [
+          {
+            "name": "update",
+            "in": "body",
+            "description": "Screenshot details to be added to the screenshot e.g. platform",
+            "schema": {
+              "$ref": "#/definitions/ScreenshotUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Screenshot has been updated",
+            "schema": {
+              "$ref": "#/definitions/Screenshot"
+            }
+          },
+          "404": {
+            "description": "Screenshot not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
       }
     },
     "/screenshot/{screenshotId}/image": {
@@ -1058,7 +1094,7 @@
           "200": {
             "description": "Comparison sucessful and results returned",
             "schema": {
-              "type": "json"
+              "type": "object"
             }
           },
           "404": {
@@ -1269,8 +1305,6 @@
         "browserName": { "type": "string" },
         "browserVersion": { "type": "string" },
         "deviceName": { "type": "string" },
-        "deviceBrand": { "type": "string" },
-        "deviceModel": { "type": "string" },
         "userAgent": { "type": "string" },
         "screenHeight": { "type": "number" },
         "screenWidth": { "type": "number" },
@@ -1303,6 +1337,13 @@
         "thumbnail": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
         "path": { "type": "string" }
+      }
+    },
+    "ScreenshotUpdate": {
+      "properties": {
+          "platform": {
+            "$ref": "#/definitions/Platform"
+          }
       }
     },
     "Action": {
