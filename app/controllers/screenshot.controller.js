@@ -83,8 +83,14 @@ exports.findAll = (req, res) => {
           error.status = 404;
           return Promise.reject(error);
         }
+        const query = { build: mongoose.Types.ObjectId(buildId) };
+        if (view) { query.view = view; }
         return Screenshot.find(
-          { build: mongoose.Types.ObjectId(buildId), view }, null, { limit, skip },
+          query, null, {
+            limit,
+            skip,
+            sort: { _id: -1 },
+          },
         );
       })
       .then((screenshots) => {
@@ -96,7 +102,7 @@ exports.findAll = (req, res) => {
       });
   }
   return Screenshot.find(
-    { view }, null, { limit, skip },
+    { view }, null, { sort: { _id: -1 }, limit, skip },
   ).then((screenshots) => {
     res.send(screenshots);
   }).catch((err) => {
@@ -252,7 +258,6 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  console.info(req.body.platform);
   return Screenshot.findByIdAndUpdate(req.params.screenshotId, {
     platform: req.body.platform,
   }, { new: true })
