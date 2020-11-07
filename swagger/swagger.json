@@ -423,6 +423,20 @@
             "type": "string"
           },
           {
+            "name": "buildIds",
+            "in": "query",
+            "required": false,
+            "description": "IDs of builds that we want to retrieve, comma seperated.",
+            "type": "string"
+          },
+          {
+            "name": "returnExecutionDetails",
+            "in": "query",
+            "required": false,
+            "description": "Boolean to see if you want the execution details returned as well.",
+            "type": "boolean"
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -1005,7 +1019,7 @@
             "in": "body",
             "description": "Screenshot details to be added to the screenshot e.g. platform",
             "schema": {
-              "$ref": "#/definitions/ScreenshotUpdate"
+              "$ref": "#/definitions/Execution"
             }
           }
         ],
@@ -1143,6 +1157,169 @@
           },
           "404": {
             "description": "Screenshots not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
+    "/baseline": {
+      "post": {
+        "tags": [
+          "Baseline"
+        ],
+        "summary": "Create a new baseline to map for a specific view and deviceName, which image is the baseline.",
+        "parameters": [
+          {
+            "name": "create",
+            "in": "body",
+            "description": "Baseline that we want to create",
+            "schema": {
+              "$ref": "#/definitions/CreateBaseline"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "New baseline is created",
+            "schema": {
+              "$ref": "#/definitions/StoredBaseline"
+            }
+          },
+          "409": {
+            "description": "Duplicate baseline found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Baseline"
+        ],
+        "summary": "Get all baselines for the dashboard in system",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/StoredBaseline"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/baseline/{baselineId}": {
+      "parameters": [
+        {
+          "name": "baselineId",
+          "in": "path",
+          "required": true,
+          "description": "ID of baseline that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Baseline"
+        ],
+        "summary": "Get baseline with given ID",
+        "responses": {
+          "200": {
+            "description": "Baseline is found",
+            "schema": {
+              "$ref": "#/definitions/StoredBaseline"
+            }
+          },
+          "404": {
+            "description": "No baseline found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete baseline with given ID",
+        "tags": [
+          "Baseline"
+        ],
+        "responses": {
+          "200": {
+            "description": "Baseline has been deleted",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "404": {
+            "description": "Baseline not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update baseline with give ID",
+        "tags": [
+          "Baseline"
+        ],
+        "parameters": [
+          {
+            "name": "update",
+            "in": "body",
+            "description": "Update baseline and set a new screenshotId",
+            "schema": {
+              "type": "object",
+              "required": [
+                "screenshotId"
+              ],
+              "properties": {
+                "screenshotId": {"type": "string"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Baseline has been updated",
+            "schema": {
+              "$ref": "#/definitions/StoredBaseline"
+            }
+          },
+          "404": {
+            "description": "No baseline found",
             "schema": {
               "$ref": "#/definitions/DefaultResponse"
             }
@@ -1448,6 +1625,64 @@
         "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]},
         "result": {}
       }
+    },
+    "IgnoreBox": {
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "properties": {
+        "left": { "type": "number" },
+        "top": { "type": "number" },
+        "right": { "type": "number" },
+        "bottom": { "type": "number" }
+      }
+    },
+    "Baseline": {
+      "required": [
+        "view",
+        "deviceName"
+      ],
+      "properties": {
+        "view": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "ignoreBoxes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/IgnoreBox"
+          }
+        }
+      }
+    },
+    "CreateBaseline": {
+      "allOf": [
+        {"$ref": "#/definitions/Baseline"},
+        {
+          "required": [
+            "screenshotId"
+          ],
+          "properties": {
+            "screenshotId": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "StoredBaseline": {
+      "allOf": [
+        {"$ref": "#/definitions/Baseline"},
+        {
+          "properties": {
+            "_id": { "type": "string", "uniqueItems": true },
+            "height": { "type": "number" },
+            "width": { "type": "number" },
+            "screenshot": {
+              "$ref": "#/definitions/Screenshot"
+            }
+          }
+        }
+      ]
     }
   }
 }

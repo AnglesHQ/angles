@@ -26,6 +26,12 @@ module.exports = (app, path) => {
     query('teamId')
       .exists()
       .isMongoId(),
+    query('buildIds')
+      .optional()
+      .isString(),
+    query('returnExecutionDetails')
+      .optional()
+      .isBoolean(),
     query('limit')
       .optional()
       .isNumeric(),

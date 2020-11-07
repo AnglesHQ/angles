@@ -66,7 +66,7 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { teamId } = req.query;
+  const { teamId, buildIds, returnExecutionDetails } = req.query;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
 
@@ -77,10 +77,27 @@ exports.findAll = (req, res) => {
         error.status = 404;
         return Promise.reject(error);
       }
-      return Build.find({ team: mongoose.Types.ObjectId(teamId) }, null, { limit, skip })
+      let query;
+      if (buildIds) {
+        const builIdsArray = buildIds.split(',');
+        query = {
+          team: mongoose.Types.ObjectId(teamId),
+          _id: { $in: builIdsArray },
+        };
+      } else {
+        query = {
+          team: mongoose.Types.ObjectId(teamId),
+        };
+      }
+      const buildQuery = Build.find(query, null, { limit, skip })
         .populate('team')
         .populate('environment')
         .sort('-createdAt');
+      if (returnExecutionDetails === 'true') {
+        // if asking for addExecutionDetails
+        buildQuery.populate('suites.executions');
+      }
+      return buildQuery;
     })
     .then((builds) => res.status(200).send(builds))
     .catch((error) => {

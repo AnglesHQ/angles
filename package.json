@@ -28,7 +28,7 @@
     "express": "^4.17.1",
     "express-validator": "^6.2.0",
     "image-size": "^0.8.3",
-    "image-thumbnail": "^1.0.6",
+    "image-thumbnail": "^1.0.10",
     "mongoose": "^5.7.5",
     "multer": "^1.4.2",
     "randomstring": "^1.1.5",
@@ -43,15 +43,15 @@
     "@typescript-eslint/parser": "^2.5.0",
     "babel-eslint": "^10.0.3",
     "chai": "^4.2.0",
-    "eslint": "^6.6.0",
+    "eslint": "^7.7.0",
     "eslint-config-airbnb": "^18.0.1",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-jsx-a11y": "^6.2.3",
     "eslint-plugin-react": "^7.16.0",
     "eslint-plugin-react-hooks": "^1.7.0",
+    "minimist": ">=0.2.1",
     "should": "^13.2.3",
-    "supertest": "^4.0.2",
-    "minimist": ">=0.2.1"
+    "supertest": "^4.0.2"
   }
 }

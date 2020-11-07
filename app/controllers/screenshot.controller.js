@@ -89,7 +89,6 @@ exports.findAll = (req, res) => {
           query, null, {
             limit,
             skip,
-            sort: { _id: -1 },
           },
         );
       })
