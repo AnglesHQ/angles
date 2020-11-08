@@ -69,7 +69,7 @@ exports.findAll = (req, res) => {
   const { teamId, buildIds, returnExecutionDetails } = req.query;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
-
+  let query = {};
   return Team.findById({ _id: teamId })
     .then((teamFound) => {
       if (!teamFound) {
@@ -77,7 +77,6 @@ exports.findAll = (req, res) => {
         error.status = 404;
         return Promise.reject(error);
       }
-      let query;
       if (buildIds) {
         const builIdsArray = buildIds.split(',');
         query = {
@@ -97,9 +96,19 @@ exports.findAll = (req, res) => {
         // if asking for addExecutionDetails
         buildQuery.populate('suites.executions');
       }
-      return buildQuery;
+
+      // add both queries to this.
+      const promises = [
+        buildQuery.exec(),
+        Build.countDocuments(query).exec(),
+      ];
+      return Promise.all(promises).then((results) => {
+        const builds = results[0];
+        const count = results[1];
+        const response = { builds, count };
+        return res.status(200).send(response);
+      });
     })
-    .then((builds) => res.status(200).send(builds))
     .catch((error) => {
       if (error.status === 404) {
         res.status(404).send({
