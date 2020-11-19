@@ -1,6 +1,6 @@
 {
   "name": "angles",
-  "version": "1.0.0",
+  "version": "1.0.0-BETA1",
   "description": "angles test dashboard api",
   "main": "server.js",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/qa-central/qac-dashboard.git"
+    "url": "git+https://github.com/AnglesHQ/angles.git"
   },
   "keywords": [
     "qa",
@@ -19,9 +19,9 @@
   "author": "Sergio Neves Barros",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/qa-central/qac-dashboard/issues"
+    "url": "https://github.com/AnglesHQ/angles/issues"
   },
-  "homepage": "https://github.com/qa-central/qac-dashboard#readme",
+  "homepage": "https://github.com/AnglesHQ/angles#readme",
   "dependencies": {
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
