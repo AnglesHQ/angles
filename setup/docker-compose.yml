@@ -2,7 +2,7 @@ version: "2.0"
 
 services:
   mongodb:
-    container_name: mongodb
+    container_name: "mongo-angles"
     hostname: mongodb
     image: mongo:4.2.0
     volumes:
@@ -16,6 +16,22 @@ services:
     command:
         - --auth
         - --bind_ip_all
+
+  backend:
+    container_name: "angles"
+    image: angleshq/angles:${ANGLES_VERSION}
+    ports:
+       - 3000:3000
+    depends_on:
+      - mongodb
+
+  frontend:
+    container_name: "angles-ui"
+    image: angleshq/angles-ui:${ANGLES_VERSION}
+    ports:
+       - 3001:3001
+    depends_on:
+      - backend
 
 volumes:
  qac_mongo_db:

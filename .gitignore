@@ -3,3 +3,5 @@
 .DS_Store
 screenshots/
 compares/
+/build/
+.DS_Store:
