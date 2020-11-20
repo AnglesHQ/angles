@@ -1,3 +1,3 @@
 module.exports = {
-  url: 'mongodb://qac:Q%40cPassword@mongodb:27017/qac',
+  url: 'mongodb://angleshq:%40nglesPassword@mongodb:27017/angles',
 };

@@ -6,13 +6,16 @@ services:
     hostname: mongodb
     image: mongo:4.2.0
     volumes:
-        - qac_mongo_db:/data/db
-        - qac_mongo_config:/data/configdb
+        - angles_mongo_db:/data/db
+        - angles_mongo_config:/data/configdb
+        - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+
     ports:
         - 27017:27017
     environment:
         - MONGO_INITDB_ROOT_USERNAME=admin
-        - MONGO_INITDB_ROOT_PASSWORD=Q@cPassword
+        - MONGO_INITDB_ROOT_PASSWORD=@nglesPassword
+        - MONGO_INITDB_DATABASE=angles
     command:
         - --auth
         - --bind_ip_all
@@ -34,7 +37,7 @@ services:
       - backend
 
 volumes:
- qac_mongo_db:
-   external: true
- qac_mongo_config:
-   external: true
+ angles_mongo_db:
+    name: angles_mongo_db
+ angles_mongo_config:
+     name: angles_mongo_config
