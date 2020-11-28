@@ -12,6 +12,27 @@ const hasValidPlatformDetails = ({ platform }) => {
   return false;
 };
 
+const doPlatformDetailsMatch = (baseline, screenshot) => {
+  if (baseline.platform.platformName !== screenshot.platform.platformName) {
+    return false;
+  }
+  if (baseline.platform.deviceName !== undefined) {
+    // we compare the platform names
+    if (baseline.platform.deviceName === screenshot.platform.deviceName) {
+      return true;
+    }
+    return false;
+  }
+  if (baseline.platform.browserName !== undefined) {
+    if (baseline.platform.browserName === screenshot.platform.browserName
+    && baseline.screenHeight === screenshot.width
+    && baseline.screenWidth === screenshot.height) {
+      return true;
+    }
+  }
+  return false;
+};
+
 // Create and save a new test execution
 exports.create = (req, res) => {
   // check the request is valid
@@ -33,7 +54,7 @@ exports.create = (req, res) => {
     }
     if (screenshot.view !== req.body.view) {
       return res.status(400).send({
-        message: `The screenshot with id ${req.body.screenshotId} is not for the same view.`,
+        message: `The screenshot with id ${req.body.screenshotId} is not for the same view. Expected [${screenshot.view}], Actual [${req.body.view}]`,
       });
     }
     if (screenshot.platform === undefined) {
@@ -139,25 +160,38 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Screenshot.findById(req.body.screenshot)
-    .then((screenshot) => {
-      if (!screenshot) {
-        return res.status(404).send({
-          message: `Screenshot not found with id ${req.params.screenshot}`,
-        });
-      }
-      return Baseline.findByIdAndUpdate(req.params.baselineId, {
-        screenshot,
-      }, { new: true });
-    })
-    .then((baseline) => {
-      if (!baseline) {
-        return res.status(404).send({
-          message: `Baseline not found with id ${req.params.baselineId}`,
-        });
-      }
-      return res.status(200).send(baseline);
-    }).catch((err) => res.status(500).send({
+
+  const promises = [
+    Screenshot.findById(req.body.screenshotId).exec(),
+    Baseline.findById(req.params.baselineId).exec(),
+  ];
+  return Promise.all(promises).then((results) => {
+    const screenshot = results[0];
+    const baselineFound = results[1];
+    if (!screenshot) {
+      return res.status(404).send({
+        message: `Screenshot not found with id ${req.body.screenshotId}`,
+      });
+    }
+    if (!baselineFound) {
+      return res.status(404).send({
+        message: `Baseline not found with id ${req.params.baselineId}`,
+      });
+    }
+    if (screenshot.view !== baselineFound.view) {
+      return res.status(400).send({
+        message: `The screenshot with id ${req.body.screenshotId} has a different view to the baseline and therefore can not be used for the requested baseline. Expected [${screenshot.view}], Actual [${baselineFound.view}].`,
+      });
+    }
+    if (doPlatformDetailsMatch(baselineFound, screenshot)) {
+      return res.status(400).send({
+        message: `The screenshot with id ${req.body.screenshotId} has a different platform details to the baseline. Please ensure either the deviceName matches or the browserName and screenWidth and screenHeight`,
+      });
+    }
+    baselineFound.screenshot = screenshot;
+    return baselineFound.save();
+  }).then((savedBaseline) => res.status(200).send(savedBaseline))
+    .catch((err) => res.status(500).send({
       message: `Error updating build with id ${req.params.baselineId} due to [${err}]`,
     }));
 };
