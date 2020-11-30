@@ -123,11 +123,11 @@ exports.findAll = (req, res) => {
     view: req.query.view,
     'platform.platformName': req.query.platformName,
   };
-  if (req.query.deviceName) baseLineQuery.platform.browserName = req.query.deviceName;
-  if (req.query.browserName) baseLineQuery.platform.browserName = req.query.browserName;
+  if (req.query.deviceName) baseLineQuery['platform.deviceName'] = req.query.deviceName;
+  if (req.query.browserName) baseLineQuery['platform.browserName'] = req.query.browserName;
   if (req.query.screenHeight) baseLineQuery.screenHeight = req.query.screenHeight;
   if (req.query.screenWidth) baseLineQuery.screenWidth = req.query.screenWidth;
-  return Baseline.find(baseLineQuery)
+  return Baseline.find(baseLineQuery).populate('screenshot')
     .then((baselines) => {
       res.send(baselines);
     }).catch((err) => {
