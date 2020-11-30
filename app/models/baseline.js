@@ -21,6 +21,27 @@ const IgnoreBox = new Schema({
   },
 });
 
+const Platform = new Schema({
+  platformName: {
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+  },
+  browserName: {
+    type: String,
+    required: false,
+    trim: true,
+    lowercase: true,
+  },
+  deviceName: {
+    type: String,
+    required: false,
+    trim: true,
+    lowercase: true,
+  },
+});
+
 const BaselineSchema = mongoose.Schema({
   screenshot: {
     type: Schema.Types.ObjectId,
@@ -32,18 +53,17 @@ const BaselineSchema = mongoose.Schema({
     required: true,
     lowercase: true,
   },
-  deviceName: {
-    type: String,
-    required: true,
-    lowercase: true,
-  },
-  height: {
-    type: Number,
+  platform: {
+    type: Platform,
     required: true,
   },
-  width: {
+  screenHeight: {
     type: Number,
-    required: true,
+    required: false,
+  },
+  screenWidth: {
+    type: Number,
+    required: false,
   },
   ignoreBoxes: [{
     type: IgnoreBox,
@@ -53,6 +73,6 @@ const BaselineSchema = mongoose.Schema({
   timestamps: true,
 });
 
-BaselineSchema.index({ view: 1, deviceName: 1 }, { unique: true });
+BaselineSchema.index({ view: 1 }, { unique: false });
 
 module.exports = mongoose.model('Baseline', BaselineSchema);

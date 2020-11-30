@@ -1,4 +1,4 @@
-const { check, param } = require('express-validator');
+const { check, param, query } = require('express-validator');
 
 const baselineController = require('../controllers/baseline.controller.js');
 
@@ -11,13 +11,32 @@ module.exports = (app, path) => {
       .exists()
       .isString(),
     check('deviceName')
-      .exists()
+      .optional()
       .isString(),
     check('ignoreBoxes')
       .optional(),
   ], baselineController.create);
 
-  app.get(`${path}/baseline`, baselineController.findAll);
+  app.get(`${path}/baseline`, [
+    query('view')
+      .exists()
+      .isString(),
+    query('platformName')
+      .exists()
+      .isString(),
+    query('deviceName')
+      .optional()
+      .isString(),
+    query('browserName')
+      .optional()
+      .isString(),
+    query('screenHeight')
+      .optional()
+      .isNumeric(),
+    query('screenWidth')
+      .optional()
+      .isNumeric(),
+  ], baselineController.findAll);
 
   app.get(`${path}/baseline/:baselineId`, [
     param('baselineId').isMongoId(),

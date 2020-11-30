@@ -1180,7 +1180,7 @@
           {
             "name": "create",
             "in": "body",
-            "description": "Baseline that we want to create",
+            "description": "Baseline that you want to create.",
             "schema": {
               "$ref": "#/definitions/CreateBaseline"
             }
@@ -1214,7 +1214,51 @@
         "tags": [
           "Baseline"
         ],
-        "summary": "Get all baselines for the dashboard in system",
+        "summary": "Get all baselines for the dashboard in system (please either provide a deviceName or a browser name). If no deviceName is provide height and width are required to identify the correct baseline.",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": true,
+            "description": "The view you want to retrieve the baselines for.",
+            "type": "string"
+          },
+          {
+            "name": "platformName",
+            "in": "query",
+            "required": true,
+            "description": "PlatformName you want to retrieve the baselines for.",
+            "type": "string"
+          },
+          {
+            "name": "deviceName",
+            "in": "query",
+            "required": false,
+            "description": "DeviceName you want to retrieve the baselines for.",
+            "type": "string"
+          },
+          {
+            "name": "browsername",
+            "in": "query",
+            "required": false,
+            "description": "Browsername you wan to retrieve the baselines for.",
+            "type": "string"
+          },
+          {
+            "name": "screenHeight",
+            "in": "query",
+            "required": false,
+            "description": "The screenHeight you want to retrieve baselines for (only required when not providing deviceName)",
+            "type": "number"
+          },
+          {
+            "name": "screenWidth",
+            "in": "query",
+            "required": false,
+            "description": "The screenWidth want to retrieve baselines for (only required when not providing deviceName)",
+            "type": "number"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1647,13 +1691,28 @@
       ],
       "properties": {
         "view": { "type": "string" },
-        "deviceName": { "type": "string" },
+        "platform": {
+          "$ref": "#/definitions/BaselinePlatform"
+        },
         "ignoreBoxes": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/IgnoreBox"
           }
         }
+      }
+    },
+    "BaselinePlatform": {
+      "required": [
+        "platformName"
+      ],
+      "properties": {
+        "platformName": { "type": "string" },
+        "browserName": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "screenHeight": { "type": "number" },
+        "screenWidth": { "type": "number" },
+        "pixelRatio": { "type": "number" }
       }
     },
     "CreateBaseline": {
