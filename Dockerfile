@@ -6,6 +6,9 @@ WORKDIR /app
 
 EXPOSE 3000/tcp
 
+VOLUME /app/screenshots
+VOLUME /app/compares
+
 # install app dependencies
 COPY package.json ./
 COPY package-lock.json ./

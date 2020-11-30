@@ -27,6 +27,9 @@ services:
        - 3000:3000
     depends_on:
       - mongodb
+    volumes:
+      -  angles_screenshots:/app/screenshots
+      -  angles_screenshot_compares:/app/compares
 
   frontend:
     container_name: "angles-ui"
@@ -41,3 +44,7 @@ volumes:
     name: angles_mongo_db
  angles_mongo_config:
      name: angles_mongo_config
+ angles_screenshots:
+     name: angles_screenshots
+ angles_screenshot_compares:
+     name: angels_screenshot_compares
