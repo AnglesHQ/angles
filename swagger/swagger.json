@@ -1170,6 +1170,43 @@
         }
       }
     },
+    "/screenshot/{screenshotId}/baseline/compare": {
+      "parameters": [
+        {
+          "name": "screenshotId",
+          "in": "path",
+          "required": true,
+          "description": "ID of screenshot you want to compare against the baseline",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Allows you to compare the screenshot against the baseline",
+        "responses": {
+          "200": {
+            "description": "Comparison sucessful and results returned",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "404": {
+            "description": "Screenshots or baseline not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
     "/baseline": {
       "post": {
         "tags": [

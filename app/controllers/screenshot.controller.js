@@ -10,6 +10,7 @@ const sizeOf = require('image-size');
 
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
+const Baseline = require('../models/baseline.js');
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
@@ -163,7 +164,7 @@ exports.compareImages = (req, res) => {
     const screenshotCompare = results[1];
     const options = {
       // if there is more than 10% difference then just return it.
-      returnEarlyThreshold: 10,
+      returnEarlyThreshold: 35,
     };
     compare(screenshot.path, screenshotCompare.path, options, (err, data) => {
       if (err) {
@@ -250,6 +251,74 @@ exports.compareImagesAndReturnImage = (req, res) => {
       message: err.message || 'Some error occurred while creating the build.',
     });
   });
+};
+
+exports.compareImageAgainstBaseline = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  let screenshotToCompare;
+  return Screenshot.findById(req.params.screenshotId)
+    .then((screenshot) => {
+      if (!screenshot) {
+        const error = new Error(`No Screenshot found with id ${req.body.build}`);
+        error.status = 404;
+        return Promise.reject(error);
+      }
+      if (!screenshot.view) {
+        const error = new Error(`Screenshot with id ${req.params.screenshotId} does not have a view set, so can not be compared.`);
+        error.status = 422;
+        return Promise.reject(error);
+      }
+      screenshotToCompare = screenshot;
+      // generate baseline query using screenshot details.
+      const baseLineQuery = {
+        view: screenshotToCompare.view,
+        'platform.platformName': screenshotToCompare.platform.platformName,
+      };
+      if (screenshotToCompare.platform.deviceName) baseLineQuery['platform.deviceName'] = screenshotToCompare.platform.deviceName;
+      if (screenshotToCompare.platform.browserName) {
+        baseLineQuery['platform.browserName'] = screenshotToCompare.platform.browserName;
+        baseLineQuery.screenHeight = screenshotToCompare.height;
+        baseLineQuery.screenWidth = screenshotToCompare.width;
+      }
+      return Baseline.find(baseLineQuery).populate('screenshot');
+    })
+    .then((baselines) => {
+      // compare image with baseline and return result.
+      if (!baselines || baselines.length === 0) {
+        const error = new Error(`No baselines found for screenshot with id ${req.params.screenshotId}`);
+        error.status = 404;
+        return Promise.reject(error);
+      }
+      const options = {
+        // if there is more than 10% difference then just return it.
+        returnEarlyThreshold: 10,
+      };
+      return compare(screenshotToCompare.path, baselines[0].screenshot.path, options,
+        (err, data) => {
+          if (err) {
+            return res.status(404).send({
+              message: 'Something went wrong comparing the images',
+            });
+          }
+          return res.status(200).send(
+            data,
+          );
+        });
+    })
+    .catch((error) => {
+      if (error.status !== 500) {
+        res.status(error.status).send({
+          message: error.message,
+        });
+      } else {
+        res.status(500).send({
+          message: `Error creating execution [${error}]`,
+        });
+      }
+    });
 };
 
 exports.update = (req, res) => {

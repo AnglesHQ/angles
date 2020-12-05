@@ -43,6 +43,10 @@ module.exports = (app, path) => {
     param('screenshotCompareId').exists().isMongoId(),
   ], screenshotController.compareImagesAndReturnImage);
 
+  app.get(`${path}/screenshot/:screenshotId/baseline/compare`, [
+    param('screenshotId').exists().isMongoId(),
+  ], screenshotController.compareImageAgainstBaseline);
+
   app.put(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),
     check('platform').exists(),
