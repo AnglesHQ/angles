@@ -2,29 +2,30 @@
 A test dashboard that will allow you to store your automated test results in a common way an display the reports from various test execution frameworks
 
 ## Setup
-To setup your own instance of the Angles dashboard you can use the [docker compose](setup/docker-compose.yml) file and [Docker-compose](https://docs.docker.com/compose/). 
+To setup your own instance of the Angles dashboard you can use the [docker compose](setup/docker-compose.yml) file and [Docker-compose](https://docs.docker.com/compose/).
 
 The Angles dashboard is made up of 3 parts (each of which run in their own container):
-- the backend ([angles](https://hub.docker.com/repository/docker/angleshq/angles)), 
-- the frontend ([angles-ui](https://hub.docker.com/repository/docker/angleshq/angles-ui)) 
+- the backend ([angles](https://hub.docker.com/repository/docker/angleshq/angles)),
+- the frontend ([angles-ui](https://hub.docker.com/repository/docker/angleshq/angles-ui))
 - and the default mongo container (where the test results are stored).
 
 ### Setting up Angles
 You'll need to clone the angles project and then using a terminal navigate to the [setup directory](setup/) which contains the docker-compose.yml file and the mongo-init.js file.
 The mongo-int.js file will setup the necessary database collections and indexes.
 
-Before you can install 
+Before you can install Angles you'll have to define the environment variable for the Angles version you'll want to install by exporting ANGLES_VERSION.
+If you're not running Angles locally (e.g. 127.0.0.1), you should also change the environment variable "REACT_APP_ANGLES_API_URL" in the docker-compose file to point to the url where the angles API is accessible (e.g. domain name or external ip address).
 
 ```shellscript
-# set the version you want to install 
-export ANGLES_VERSION=1.0.0-BETA1
+# set the version you want to install
+export ANGLES_VERSION=1.0.0-BETA2
 
 # run in same directory as docker-compose file
 docker-compose up --build -d  
 ```
 
 ### Tearing down Angles
-If you would like to tear down the containers, you can run the following command in the directory with the docker-compose.yml file. 
+If you would like to tear down the containers, you can run the following command in the directory with the docker-compose.yml file.
 
 ```shellscript
 # and to tear it down
@@ -34,7 +35,7 @@ NOTE: Angles creates volumes to store persistent data (e.g. database config and 
 
 ### Angles API
 Once Angles is running you can access the documentation by navigating to the following url http://<angles-server-ip:3000/api-docs.
- 
+
 Or if you just want to have a look at the api documentation it can be found in the [swagger json](swagger/swagger.json) which you can then load in the [swagger editor](https://editor.swagger.io/?url=https://raw.githubusercontent.com/AnglesHQ/angles/master/swagger/swagger.json).
 
 This API is what the Angles clients ([Java Client](https://github.com/AnglesHQ/angles-java-client), more to follow) and the [Angles-ui](https://github.com/AnglesHQ/angles-ui) can use to store and retrieve data in and from the angles back-end.
