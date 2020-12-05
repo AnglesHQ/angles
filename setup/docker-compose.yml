@@ -36,6 +36,9 @@ services:
     image: angleshq/angles-ui:${ANGLES_VERSION}
     ports:
        - 3001:3001
+    environment:
+       - REACT_APP_ANGLES_API_URL=http://127.0.0.1:3000
+       - PORT=3001
     depends_on:
       - backend
 
