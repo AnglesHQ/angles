@@ -6,6 +6,10 @@ WORKDIR /app
 
 EXPOSE 3000/tcp
 
+# variables to configure the swagger doc
+ENV REACT_APP_SWAGGER_ANGLES_API_URL=127.0.0.1:3000
+ENV REACT_APP_SWAGGER_SCHEMES=http
+
 VOLUME /app/screenshots
 VOLUME /app/compares
 
