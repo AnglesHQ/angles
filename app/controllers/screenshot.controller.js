@@ -12,6 +12,19 @@ const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
 
+/* platformId will allow for quicker identifications of what platform a screenshot was taken on */
+const extractPlatformId = (platform, screenshot) => {
+  if (platform.deviceName) {
+    /* if device name is given we assume it's a mobile device */
+    return `${platform.platformName}_${platform.deviceName}`.toLowerCase();
+  }
+  if (platform.browserName) {
+    /* otherwise we assume it's desktop and use the browser/resolution combination */
+    return `${platform.platformName}_${platform.browserName}_${screenshot.width}x${screenshot.height}`.toLowerCase();
+  }
+  return undefined;
+};
+
 exports.create = (req, res) => {
   const errors = validationResult(req);
   let build;
@@ -112,6 +125,53 @@ exports.findAll = (req, res) => {
   });
 };
 
+/* This method will find the latest image for a specific view on every unique platform */
+exports.findLatestForViewGroupedByPlatform = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { view } = req.query;
+  return Screenshot.aggregate([
+    { $match: { view } },
+    { $sort: { _id: 1 } },
+    { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
+    { $project: { _id: '$lastId' } },
+  ]).then((screenshotsIdsArray) => {
+    const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
+    return Screenshot.find({ _id: { $in: latestScreenshotIds } });
+  }).then((screenshots) => {
+    res.send(screenshots);
+  }).catch((err) => {
+    res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving screenshots.',
+    });
+  });
+};
+
+exports.findLatestForTagGroupedByView = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { tag } = req.query;
+  return Screenshot.aggregate([
+    { $match: { tags: { $in: [tag] } } },
+    { $sort: { view: 1, _id: 1 } },
+    { $group: { _id: { view: '$view' }, lastId: { $last: '$_id' } } },
+    { $project: { _id: '$lastId' } },
+  ]).then((screenshotsIdsArray) => {
+    const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
+    return Screenshot.find({ _id: { $in: latestScreenshotIds } });
+  }).then((screenshots) => {
+    res.send(screenshots);
+  }).catch((err) => {
+    res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving screenshots.',
+    });
+  });
+};
+
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -163,8 +223,8 @@ exports.compareImages = (req, res) => {
     const screenshot = results[0];
     const screenshotCompare = results[1];
     const options = {
-      // if there is more than 10% difference then just return it.
-      returnEarlyThreshold: 35,
+      // if there is more than 50% difference then just return it.
+      returnEarlyThreshold: 50,
     };
     compare(screenshot.path, screenshotCompare.path, options, (err, data) => {
       if (err) {
@@ -222,7 +282,7 @@ exports.compareImagesAndReturnImage = (req, res) => {
             outputDiff: true,
           },
           scaleToSameSize: true,
-          ignore: 'antialiasing',
+          ignore: 'less',
         };
         const loadImagesPromises = [
           fsPromises.readFile(screenshot.path),
@@ -293,8 +353,8 @@ exports.compareImageAgainstBaseline = (req, res) => {
         return Promise.reject(error);
       }
       const options = {
-        // if there is more than 10% difference then just return it.
-        returnEarlyThreshold: 10,
+        // if there is more than 50% difference then just return it.
+        returnEarlyThreshold: 50,
       };
       return compare(screenshotToCompare.path, baselines[0].screenshot.path, options,
         (err, data) => {
@@ -326,17 +386,23 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Screenshot.findByIdAndUpdate(req.params.screenshotId, {
-    platform: req.body.platform,
-  }, { new: true })
+  const { platform, tags } = req.body;
+
+  return Screenshot.findById(req.params.screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
         return res.status(404).send({
           message: `Screenshot not found with id ${req.params.screenshotId}`,
         });
       }
-      return res.status(200).send(screenshot);
-    })
+      const screenshotToModify = screenshot;
+      if (tags) screenshotToModify.tags = tags;
+      if (platform) {
+        screenshotToModify.platform = platform;
+        screenshotToModify.platformId = extractPlatformId(platform, screenshot);
+      }
+      return screenshotToModify.save();
+    }).then((savedScreenshot) => res.status(200).send(savedScreenshot))
     .catch((err) => res.status(500).send({
       message: `Error updating screenshot with id ${req.params.screenshotId} due to [${err}]`,
     }));

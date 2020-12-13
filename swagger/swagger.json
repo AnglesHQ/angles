@@ -946,6 +946,90 @@
         }
       }
     },
+    "/screenshot/grouped/platform": {
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get all screenshots for a specific view grouped by platform",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "Name of the view you want to find screenshots for.",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "The number of screenshots you want to return.",
+            "type": "number"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "The images you want to skip (or offset) in the data base query",
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Screenshot"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screenshot/grouped/tag": {
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get all screenshots for a specific tag grouped by view",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "description": "Name of the tag you want to find screenshots for.",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "The number of screenshots you want to return.",
+            "type": "number"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "The images you want to skip (or offset) in the data base query",
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Screenshot"
+              }
+            }
+          }
+        }
+      }
+    },
     "/screenshot/{screenshotId}": {
       "parameters": [
         {

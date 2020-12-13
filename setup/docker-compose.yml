@@ -26,7 +26,7 @@ services:
     ports:
        - 3000:3000
     environment:
-       - REACT_APP_SWAGGER_ANGLES_API_URL=http://127.0.0.1:3000
+       - REACT_APP_SWAGGER_ANGLES_API_URL=127.0.0.1:3000
        - REACT_APP_SWAGGER_SCHEMES=http
        - PORT=3000
     depends_on:

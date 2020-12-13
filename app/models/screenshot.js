@@ -37,10 +37,14 @@ const ScreenshotSchema = mongoose.Schema({
     type: Platform,
     required: false,
   },
-  metaData: {
-    type: Map,
+  platformId: {
+    type: String,
     required: false,
   },
+  tags: [{
+    type: String,
+    required: false,
+  }],
 }, {
   timestamps: true,
 });

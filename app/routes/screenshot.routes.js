@@ -1,4 +1,9 @@
-const { check, param, header } = require('express-validator');
+const {
+  check,
+  query,
+  param,
+  header,
+} = require('express-validator');
 
 const multerConfig = require('../utils/multer-config-screenshots.js');
 const screenshotController = require('../controllers/screenshot.controller.js');
@@ -24,6 +29,18 @@ module.exports = (app, path) => {
       .exists()
       .isMongoId(),
   ], screenshotController.findAll);
+
+  app.get(`${path}/screenshot/grouped/platform`, [
+    query('view')
+      .exists()
+      .isString(),
+  ], screenshotController.findLatestForViewGroupedByPlatform);
+
+  app.get(`${path}/screenshot/grouped/tag`, [
+    query('tag')
+      .exists()
+      .isString(),
+  ], screenshotController.findLatestForTagGroupedByView);
 
   app.get(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),
@@ -59,6 +76,7 @@ module.exports = (app, path) => {
     check('platform.screenHeight').optional().isNumeric(),
     check('platform.screenWidth').optional().isNumeric(),
     check('platform.pixelRatio').optional(),
+    check('tags').optional().isArray(),
   ], screenshotController.update);
 
   app.delete(`${path}/screenshot/:screenshotId`, [
