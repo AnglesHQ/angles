@@ -158,7 +158,7 @@ exports.findLatestForTagGroupedByView = (req, res) => {
   return Screenshot.aggregate([
     { $match: { tags: { $in: [tag] } } },
     { $sort: { view: 1, _id: 1 } },
-    { $group: { _id: { view: '$view' }, lastId: { $last: '$_id' } } },
+    { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
     { $project: { _id: '$lastId' } },
   ]).then((screenshotsIdsArray) => {
     const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
