@@ -946,6 +946,76 @@
         }
       }
     },
+    "/screenshot/grouped/platform": {
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get all screenshots for a specific view grouped by platform",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": true,
+            "description": "Name of the view you want to find screenshots for.",
+            "type": "string"
+          },
+          {
+            "name": "numberOfDays",
+            "in": "query",
+            "required": true,
+            "description": "The number of days in the past you want to return screenshots for.",
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Screenshot"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screenshot/grouped/tag": {
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get all screenshots for a specific tag grouped by view",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "description": "Name of the tag you want to find screenshots for.",
+            "type": "string"
+          },
+          {
+            "name": "numberOfDays",
+            "in": "query",
+            "required": true,
+            "description": "The number of days in the past you want to return screenshots for.",
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Screenshot"
+              }
+            }
+          }
+        }
+      }
+    },
     "/screenshot/{screenshotId}": {
       "parameters": [
         {
