@@ -131,9 +131,11 @@ exports.findLatestForViewGroupedByPlatform = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { view } = req.query;
+  const { view, numberOfDays } = req.query;
+  const searchDate = new Date();
+  searchDate.setDate(searchDate.getDate() - numberOfDays);
   return Screenshot.aggregate([
-    { $match: { view } },
+    { $match: { view, createdAt: { $gt: searchDate } } },
     { $sort: { _id: 1 } },
     { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
     { $project: { _id: '$lastId' } },
@@ -154,9 +156,11 @@ exports.findLatestForTagGroupedByView = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { tag } = req.query;
+  const { tag, numberOfDays } = req.query;
+  const searchDate = new Date();
+  searchDate.setDate(searchDate.getDate() - numberOfDays);
   return Screenshot.aggregate([
-    { $match: { tags: { $in: [tag] } } },
+    { $match: { tags: { $in: [tag] }, createdAt: { $gt: searchDate } } },
     { $sort: { view: 1, _id: 1 } },
     { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
     { $project: { _id: '$lastId' } },

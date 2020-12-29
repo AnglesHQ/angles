@@ -956,22 +956,15 @@
           {
             "name": "view",
             "in": "query",
-            "required": false,
+            "required": true,
             "description": "Name of the view you want to find screenshots for.",
             "type": "string"
           },
           {
-            "name": "limit",
+            "name": "numberOfDays",
             "in": "query",
-            "required": false,
-            "description": "The number of screenshots you want to return.",
-            "type": "number"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The images you want to skip (or offset) in the data base query",
+            "required": true,
+            "description": "The number of days in the past you want to return screenshots for.",
             "type": "number"
           }
         ],
@@ -1003,17 +996,10 @@
             "type": "string"
           },
           {
-            "name": "limit",
+            "name": "numberOfDays",
             "in": "query",
-            "required": false,
-            "description": "The number of screenshots you want to return.",
-            "type": "number"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The images you want to skip (or offset) in the data base query",
+            "required": true,
+            "description": "The number of days in the past you want to return screenshots for.",
             "type": "number"
           }
         ],

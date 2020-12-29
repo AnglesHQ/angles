@@ -34,12 +34,18 @@ module.exports = (app, path) => {
     query('view')
       .exists()
       .isString(),
+    query('numberOfDays')
+      .exists()
+      .isNumeric(),
   ], screenshotController.findLatestForViewGroupedByPlatform);
 
   app.get(`${path}/screenshot/grouped/tag`, [
     query('tag')
       .exists()
       .isString(),
+    query('numberOfDays')
+      .exists()
+      .isNumeric(),
   ], screenshotController.findLatestForTagGroupedByView);
 
   app.get(`${path}/screenshot/:screenshotId`, [
