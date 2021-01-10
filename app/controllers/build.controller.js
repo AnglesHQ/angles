@@ -191,10 +191,11 @@ exports.setArtifacts = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
   return Build.findByIdAndUpdate(req.params.buildId, {
     artifacts: req.body.artifacts,
   }, { new: true })
+    .populate('team')
+    .populate('environment')
     .then((build) => {
       if (!build) {
         return res.status(404).send({
@@ -202,7 +203,8 @@ exports.setArtifacts = (req, res) => {
         });
       }
       return res.status(200).send(build);
-    }).catch((err) => res.status(500).send({
+    })
+    .catch((err) => res.status(500).send({
       message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
     }));
 };
