@@ -31,4 +31,7 @@ const TeamSchema = mongoose.Schema({
   timestamps: true,
 });
 
-module.exports = mongoose.model('Team', TeamSchema);
+module.exports = {
+  Team: mongoose.model('Team', TeamSchema),
+  Component: mongoose.model('Component', Component),
+};

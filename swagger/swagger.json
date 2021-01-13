@@ -206,6 +206,51 @@
         }
       }
     },
+    "/team/{teamId}/components": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "description": "ID of team that we want to add components to.",
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Adds components to the components array for team with given ID",
+        "tags": [
+          "Team"
+        ],
+        "parameters": [
+          {
+            "name": "update",
+            "in": "body",
+            "description": "Components you want to add to the team with the given ID.",
+            "schema": {
+              "required": [
+                "components"
+              ],
+              "properties": {
+                "components": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "New components were added to the team.",
+            "schema": {
+              "$ref": "#/definitions/Build"
+            }
+          }
+        }
+      }
+    },
     "/environment": {
       "post": {
         "tags": [
@@ -626,9 +671,16 @@
             "in": "body",
             "description": "Artifacts you want to store with build with the given ID.",
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Artifact"
+              "required": [
+                "artifacts"
+              ],
+              "properties": {
+                "artifacts": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Artifact"
+                  }
+                }
               }
             }
           }

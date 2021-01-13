@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const buildMetricsUtils = require('../utils/build-metrics.js');
 
 const Build = require('../models/build.js');
-const Team = require('../models/team.js');
+const { Team } = require('../models/team.js');
 const Environment = require('../models/environment.js');
 
 exports.create = (req, res) => {

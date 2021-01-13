@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const Team = require('../models/team.js');
+const { Team, Component } = require('../models/team.js');
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
@@ -93,6 +93,31 @@ exports.update = (req, res) => {
       });
     });
 };
+
+exports.addComponents = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  return Team.findById(req.params.teamId)
+    .then((team) => {
+      if (!team) {
+        return res.status(404).send({
+          message: `Team not found with id ${req.params.teamId}`,
+        });
+      }
+      req.body.components.forEach((name) => {
+        team.components.push(new Component({ name }));
+      });
+      return team.save();
+    })
+    .then((savedTeam) => res.status(200).send(savedTeam))
+    .catch((err) => res.status(500).send({
+      message: `Error adding component(s) to team with id ${req.params.teamId} due to [${err}]`,
+    }));
+};
+
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);

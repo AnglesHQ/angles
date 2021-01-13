@@ -36,6 +36,14 @@ module.exports = (app, path) => {
       .withMessage('Max length for team name is 50 characters'),
   ], teamController.update);
 
+  app.put(`${path}/team/:teamId/components`, [
+    param('teamId').isMongoId(),
+    check('components')
+      .exists()
+      .custom((componentArray) => Array.isArray(componentArray) && componentArray.length > 0)
+      .withMessage('At least one component is required'),
+  ], teamController.addComponents);
+
   app.delete(`${path}/team/:teamId`, [
     param('teamId').isMongoId(),
   ], teamController.delete);
