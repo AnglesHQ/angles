@@ -3,6 +3,7 @@ const {
   query,
   param,
   header,
+  oneOf,
 } = require('express-validator');
 
 const multerConfig = require('../utils/multer-config-screenshots.js');
@@ -25,9 +26,17 @@ module.exports = (app, path) => {
   screenshotController.createFail);
 
   app.get(`${path}/screenshot`, [
-    param('buildId')
-      .exists()
-      .isMongoId(),
+    oneOf([
+      query('buildId')
+        .optional()
+        .isMongoId(),
+      query('view')
+        .optional()
+        .isString(),
+      query('platformId')
+        .optional()
+        .isString(),
+    ]),
   ], screenshotController.findAll);
 
   app.get(`${path}/screenshot/grouped/platform`, [

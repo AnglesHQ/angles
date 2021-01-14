@@ -45,6 +45,8 @@ module.exports = (app, path) => {
   app.put(`${path}/baseline/:baselineId`, [
     param('baselineId').isMongoId(),
     check('screenshotId').isMongoId().exists(),
+    check('ignoreBoxes')
+      .optional(),
   ], baselineController.update);
 
   app.delete(`${path}/baseline/:baselineId`, [

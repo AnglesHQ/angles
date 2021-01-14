@@ -104,6 +104,9 @@ exports.create = (req, res) => {
       screenHeight: screenshot.height,
       screenWidth: screenshot.width,
     });
+    if (req.body.ignoreBoxes) {
+      baseline.ignoreBoxes = req.body.ignoreBoxes;
+    }
     return baseline.save();
   }).then((data) => {
     res.status(201).send(data);
@@ -183,12 +186,15 @@ exports.update = (req, res) => {
         message: `The screenshot with id ${req.body.screenshotId} has a different view to the baseline and therefore can not be used for the requested baseline. Expected [${screenshot.view}], Actual [${baselineFound.view}].`,
       });
     }
-    if (doPlatformDetailsMatch(baselineFound, screenshot)) {
+    if (!doPlatformDetailsMatch(baselineFound, screenshot)) {
       return res.status(400).send({
         message: `The screenshot with id ${req.body.screenshotId} has a different platform details to the baseline. Please ensure either the deviceName matches or the browserName and screenWidth and screenHeight`,
       });
     }
     baselineFound.screenshot = screenshot;
+    if (req.body.ignoreBoxes) {
+      baselineFound.ignoreBoxes = req.body.ignoreBoxes;
+    }
     return baselineFound.save();
   }).then((savedBaseline) => res.status(200).send(savedBaseline))
     .catch((err) => res.status(500).send({

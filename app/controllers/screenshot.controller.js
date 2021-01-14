@@ -85,7 +85,11 @@ exports.createFail = (error, req, res) => {
 };
 
 exports.findAll = (req, res) => {
-  const { buildId, view } = req.query;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { buildId, view, platformId } = req.query;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
 
@@ -99,6 +103,7 @@ exports.findAll = (req, res) => {
         }
         const query = { build: mongoose.Types.ObjectId(buildId) };
         if (view) { query.view = view; }
+        if (platformId) { query.platformId = platformId; }
         return Screenshot.find(
           query, null, {
             limit,
@@ -114,8 +119,11 @@ exports.findAll = (req, res) => {
         });
       });
   }
+  const query = {};
+  if (view) { query.view = view; }
+  if (platformId) { query.platformId = platformId; }
   return Screenshot.find(
-    { view }, null, { sort: { _id: -1 }, limit, skip },
+    query, null, { sort: { _id: -1 }, limit, skip },
   ).then((screenshots) => {
     res.send(screenshots);
   }).catch((err) => {

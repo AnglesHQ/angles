@@ -954,7 +954,7 @@
         "tags": [
           "Screenshot"
         ],
-        "summary": "Get all Screenshots",
+        "summary": "Get all Screenshots, please provide either a buildId, view (or view with platformId)",
         "parameters": [
           {
             "name": "buildId",
@@ -968,6 +968,13 @@
             "in": "query",
             "required": false,
             "description": "Name of the view you want to finf screenshots for.",
+            "type": "string"
+          },
+          {
+            "name": "platformId",
+            "in": "query",
+            "required": false,
+            "description": "Unique Identifier of the platform you want to rertrieve the images for.",
             "type": "string"
           },
           {
@@ -1509,7 +1516,13 @@
                 "screenshotId"
               ],
               "properties": {
-                "screenshotId": {"type": "string"}
+                "screenshotId": {"type": "string"},
+                "ignoreBoxes": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/IgnoreBox"
+                  }
+                }
               }
             }
           }
