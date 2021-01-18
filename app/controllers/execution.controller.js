@@ -44,7 +44,38 @@ exports.create = (req, res) => {
 };
 
 exports.findAll = (req, res) => {
-  TestExecution.find()
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { buildId, executionIds } = req.query;
+  if (buildId) {
+    return Build.findById(buildId)
+      // .populate('suites.executions')
+      .then((buildFound) => {
+        if (!buildFound) {
+          const error = new Error(`No build found with id ${req.body.build}`);
+          error.status = 404;
+          return Promise.reject(error);
+        }
+        const query = { build: buildFound };
+        if (executionIds) {
+          const executionIdArray = executionIds.split(',');
+          query._id = { $in: executionIdArray };
+        }
+        return TestExecution.find(query);
+      })
+      .then((executionsFound) => {
+        res.status(200).send(executionsFound);
+      })
+      .catch((err) => {
+        res.status(500).send({
+          message: err.message || 'Some error occurred while retrieving test executions.',
+        });
+      });
+  }
+  const executionIdArray = executionIds.split(',');
+  return TestExecution.find({ _id: { $in: executionIdArray } })
     .then((testExecutions) => {
       res.status(200).send(testExecutions);
     }).catch((err) => {

@@ -471,7 +471,7 @@
             "name": "buildIds",
             "in": "query",
             "required": false,
-            "description": "IDs of builds that we want to retrieve, comma seperated.",
+            "description": "IDs of builds that we want to retrieve, comma separated.",
             "type": "string"
           },
           {
@@ -739,7 +739,23 @@
         "tags": [
           "Execution"
         ],
-        "summary": "Get all executions",
+        "summary": "Get all executions either by ids (comma separated) or by buildId",
+        "parameters": [
+          {
+            "name": "buildId",
+            "in": "query",
+            "required": false,
+            "description": "ID of build that we want to retrieve the executions for.",
+            "type": "string"
+          },
+          {
+            "name": "executionIds",
+            "in": "query",
+            "required": false,
+            "description": "IDs of execution that we want to retrieve, comma separated.",
+            "type": "string"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",

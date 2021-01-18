@@ -1,4 +1,9 @@
-const { check, param } = require('express-validator');
+const {
+  check,
+  query,
+  param,
+  oneOf,
+} = require('express-validator');
 
 const executionController = require('../controllers/execution.controller.js');
 
@@ -26,7 +31,16 @@ module.exports = (app, path) => {
     check('platforms.*.userAgent').optional().isString(),
   ], executionController.create);
 
-  app.get(`${path}/execution`, executionController.findAll);
+  app.get(`${path}/execution`, [
+    oneOf([
+      query('buildId')
+        .exists()
+        .isMongoId(),
+      query('executionIds')
+        .exists()
+        .isString(),
+    ]),
+  ], executionController.findAll);
 
   app.get(`${path}/execution/:executionId`, [
     param('executionId').isMongoId(),

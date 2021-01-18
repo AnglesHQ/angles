@@ -13,5 +13,7 @@ db.createCollection('screenshots');
 
 db.testexecutions.createIndex({ "build": 1 });
 db.build.createIndex({ "team": 1 });
+db.team.createIndex({"name": 1});
+db.environment.createIndex({"name": 1});
 db.screenshots.createIndex({ "build": 1 });
 db.screenshots.createIndex({ "view": 1 });

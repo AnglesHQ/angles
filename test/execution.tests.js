@@ -62,10 +62,10 @@ describe('Execution API Tests', () => {
     // build.remove();
   });
 
-  describe('GET /execution', () => {
+  describe('GET /execution for a specific build', () => {
     it('respond with json containing a list of all executions', (done) => {
       request(app)
-        .get(`${baseUrl}execution`)
+        .get(`${baseUrl}execution?buildId=${testbuild._id}`)
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(200, done);
