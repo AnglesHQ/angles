@@ -22,5 +22,7 @@ module.exports = {
     'react',
   ],
   rules: {
+    'no-underscore-dangle': ['error', { allow: ['_id'] }],
+    'no-unused-vars': ['error', { varsIgnorePattern: 'should' }],
   },
 };

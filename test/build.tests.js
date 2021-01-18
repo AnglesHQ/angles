@@ -1,43 +1,54 @@
-/* eslint no-underscore-dangle: ["error", { "allow": ["_id"] } ] */
-/* eslint no-unused-vars: ["error", { "varsIgnorePattern": "should" } ] */
-
 const request = require('supertest');
 const should = require('should');
 const app = require('../server.js');
 const Build = require('../app/models/build.js');
+const Environment = require('../app/models/environment.js');
+const { Team } = require('../app/models/team.js');
 
 const baseUrl = '/rest/api/v1.0/';
+let team;
+let environment;
+let createdBuild;
 
 describe('Build API Tests', () => {
-  before(() => {
-    // do the setup required for all tests
-    Build.deleteMany({ name: /^unit-testing/ }, (err) => {
-      if (err) {
-        console.log(err);
-      } else {
-        console.log('Cleared any lingering test builds');
-      }
+  before((done) => {
+    const clearingPromises = [
+      Team.deleteMany({ name: 'build-unit-testing-team' }).exec(),
+      Environment.deleteMany({ name: 'build-unit-testing-environment' }).exec(),
+    ];
+    Promise.all(clearingPromises).then(() => {
+      // instantiate a test team
+      team = new Team({
+        name: 'build-unit-testing-team',
+        components: [{ name: 'build-component' }],
+      });
+      // instantiate a test environment
+      environment = new Environment({
+        name: 'build-unit-testing-environment',
+      });
+      const savePromises = [
+        team.save(),
+        environment.save(),
+      ];
+      Promise.all(savePromises).then(() => {
+        done();
+      });
     });
   });
-
-  describe('GET /build', () => {
-    it('respond with json containing a list of all builds', (done) => {
-      request(app)
-        .get(`${baseUrl}build`)
-        .set('Accept', 'application/json')
-        .expect('Content-Type', /json/)
-        .expect(200, done);
-    });
-    // add a build and ensure it's returned in the the full list.
-  });
+  after(() => {
+    // teardown
+    team.remove();
+    environment.remove();
+    Build.remove({ _id: createdBuild._id });
+  })
 
   describe('POST /build', () => {
-    it('succesfully create build with valid details', (done) => {
+    it('successfully create build with valid details', (done) => {
       const createBuildRequest = {
-        environment: 'unit-testing-environment',
-        team: 'unit-testing-team',
-        name: 'unit-testing-build',
-        component: '',
+        environment: environment.name,
+        team: team.name,
+        name: 'build-unit-testing-build',
+        component: team.components[0].name,
       };
       request(app)
         .post(`${baseUrl}build`)
@@ -48,7 +59,22 @@ describe('Build API Tests', () => {
         .end((err, res) => {
           if (err) return done(err);
           res.body._id.should.match(/[a-f\d]{24}/);
+          createdBuild = res.body;
           return done();
+        });
+    });
+  });
+
+  describe('GET /builds for a team', () => {
+    it('respond with json containing a list of all builds for the team', (done) => {
+      request(app)
+        .get(`${baseUrl}build?teamId=${team._id}`)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          should(res.body.builds).be.an.Array();
+          done();
         });
     });
   });

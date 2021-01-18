@@ -1,26 +1,36 @@
 const request = require('supertest');
 const app = require('../server.js');
-const Team = require('../app/models/team.js');
+const { Team } = require('../app/models/team.js');
 
 const baseUrl = '/rest/api/v1.0/';
+let team;
+let createdTeam;
 
 describe('Team API Tests', () => {
-  before(() => {
+  before((done) => {
     // clear lingering test environments
     Team.deleteMany({ name: /^unit-testing/ }, (err) => {
       if (err) {
         console.log(err);
       } else {
         console.log('Cleared any lingering test teams');
+        // setup the test enviroment
+        team = new Team({
+          name: 'unit-testing-team',
+          components: [{ name: 'component1' }],
+        });
+        team.save(() => {
+          done();
+        });
       }
     });
-    // setup the test enviroment
-    const team = new Team({
-      name: 'unit-testing-team',
-      components: [],
-    });
-    team.save();
   });
+
+  after(() => {
+    // clean-up created teams
+    team.remove();
+    Team.remove({ _id: createdTeam._id });
+  })
 
   describe('GET /team', () => {
     it('respond with json containing a list of all teams', (done) => {
@@ -36,10 +46,24 @@ describe('Team API Tests', () => {
     it('respond with 201 when creating a valid team', (done) => {
       request(app)
         .post(`${baseUrl}team`)
-        .send({ name: 'unit-testing-team-new', components: [] })
+        .send({ name: 'unit-testing-team-new', components: [{ name: 'component' }] })
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
-        .expect(201, done);
+        .expect(201)
+        .end((err, res) => {
+          createdTeam = res.body;
+          if (err) throw err;
+          done();
+        });
+    });
+
+    it('respond with 201 when adding a component to an existing team', (done) => {
+      request(app)
+        .put(`${baseUrl}team/${team._id}/components`)
+        .send({ components: ['component2'] })
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200, done);
     });
   });
 
@@ -62,10 +86,19 @@ describe('Team API Tests', () => {
         .expect(422, done);
     });
 
+    it('respond with 422 when trying to create a team with no components', (done) => {
+      request(app)
+        .post(`${baseUrl}team`)
+        .send({ name: 'unit-testing-team-new', components: [] })
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
     it('respond with 409 when trying to create an team that already exists', (done) => {
       request(app)
         .post(`${baseUrl}team`)
-        .send({ name: 'unit-testing-team', components: [] })
+        .send({ name: 'unit-testing-team', components: [{ name: 'component' }] })
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(409, done);

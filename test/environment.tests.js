@@ -3,25 +3,32 @@ const app = require('../server.js');
 const Environment = require('../app/models/environment.js');
 
 const baseUrl = '/rest/api/v1.0/';
-
+let environment;
+let createdEnvironment;
 
 describe('Environment API Tests', () => {
-  before(() => {
+  before((done) => {
     // clear lingering test environments
     Environment.deleteMany({ name: /^unit-testing/ }, (err) => {
       if (err) {
         console.log(err);
       } else {
         console.log('Cleared any lingering test environments');
+        // setup the test enviroment
+        environment = new Environment({
+          name: 'unit-testing-environment',
+        });
+        environment.save(() => {
+          console.log('TEAM SAVED');
+          done();
+        });
       }
     });
-    // setup the test enviroment
-    const environment = new Environment({
-      name: 'unit-testing-environment',
-    });
-    environment.save();
   });
-
+  after(() => {
+    environment.remove();
+    Environment.remove({ _id: createdEnvironment._id });
+  })
   describe('GET /environment', () => {
     it('respond with json containing a list of all environments', (done) => {
       request(app)
@@ -39,7 +46,12 @@ describe('Environment API Tests', () => {
         .send({ name: 'unit-testing-environment-new' })
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
-        .expect(201, done);
+        .expect(201)
+        .end((err, res) => {
+          createdEnvironment = res.body;
+          if (err) throw err;
+          done();
+        });
     });
   });
 
@@ -65,7 +77,7 @@ describe('Environment API Tests', () => {
     it('respond with 409 when trying to create an environment that already exists', (done) => {
       request(app)
         .post(`${baseUrl}environment`)
-        .send({ name: 'unit-testing-environment' })
+        .send({ name: environment.name })
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(409, done);
