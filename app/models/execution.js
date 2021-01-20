@@ -65,7 +65,6 @@ const Action = mongoose.Schema({
   },
 });
 
-
 const TestExecutionSchema = mongoose.Schema({
   title: {
     type: String,
@@ -86,7 +85,7 @@ const TestExecutionSchema = mongoose.Schema({
   },
   start: {
     type: Date,
-    required: true,
+    required: false,
   },
   end: {
     type: Date,

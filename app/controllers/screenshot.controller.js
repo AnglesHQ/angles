@@ -53,7 +53,7 @@ exports.create = (req, res) => {
         const dimensions = results[1];
         // with the thumbnail and the dimension store the details.
         const screenshot = new Screenshot({
-          build,
+          build: build._id,
           timestamp: req.headers.timestamp,
           thumbnail,
           height: dimensions.height,

@@ -24,7 +24,7 @@ exports.create = (req, res) => {
       return buildMetricsUtils.addExecutionToBuild(buildFound, testExecution);
     })
     .then((savedBuild) => {
-      testExecution.build = savedBuild;
+      testExecution.build = savedBuild._id;
       return testExecution.save();
     })
     .then((savedTestExecution) => {
@@ -135,13 +135,13 @@ exports.setPlatform = (req, res) => {
   return TestExecution.findByIdAndUpdate(req.params.executionId, {
     platforms: req.body.platforms,
   }, { new: true })
-    .then((build) => {
-      if (!build) {
+    .then((execution) => {
+      if (!execution) {
         return res.status(404).send({
           message: `Execution not found with id ${req.params.executionId}`,
         });
       }
-      return res.status(200).send(build);
+      return res.status(200).send(execution);
     }).catch((err) => res.status(500).send({
       message: `Error updating execution with id ${req.params.executionId} due to [${err}]`,
     }));
