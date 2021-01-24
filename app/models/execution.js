@@ -78,6 +78,12 @@ const TestExecutionSchema = mongoose.Schema({
     trim: true,
     lowercase: true,
   },
+  feature: {
+    type: String,
+    required: false,
+    trim: true,
+    lowercase: true,
+  },
   build: {
     type: Schema.Types.ObjectId,
     ref: 'Build',

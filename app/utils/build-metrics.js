@@ -115,13 +115,14 @@ buildMetricsUtils.determineNewState = (existingState, newState) => {
 
 buildMetricsUtils.createExecution = (req, build) => {
   const {
-    title, suite, start, end, platforms, tags, meta, actions,
+    title, suite, start, end, platforms, tags, meta, actions, feature,
   } = req.body;
 
   const testExecution = new TestExecution({
     title,
     suite,
     build,
+    feature,
     start,
     end,
     platforms,

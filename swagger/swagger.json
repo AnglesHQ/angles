@@ -1796,6 +1796,7 @@
         "title": { "type": "string" },
         "suite": { "type": "string" },
         "build": { "type": "string", "uniqueItems": true },
+        "feature": { "type": "string" },
         "actions": {
           "type": "array",
           "items": {
