@@ -18,7 +18,7 @@ If you're not running Angles locally (e.g. 127.0.0.1), you should also change th
 
 ```shellscript
 # set the version you want to install
-export ANGLES_VERSION=1.0.0-BETA2
+export ANGLES_VERSION=1.0.0-BETA4
 
 # run in same directory as docker-compose file
 docker-compose up --build -d  
