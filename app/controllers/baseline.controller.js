@@ -25,8 +25,8 @@ const doPlatformDetailsMatch = (baseline, screenshot) => {
   }
   if (baseline.platform.browserName !== undefined) {
     if (baseline.platform.browserName === screenshot.platform.browserName
-    && baseline.screenHeight === screenshot.width
-    && baseline.screenWidth === screenshot.height) {
+    && baseline.screenHeight === screenshot.height
+    && baseline.screenWidth === screenshot.width) {
       return true;
     }
   }
