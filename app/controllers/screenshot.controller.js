@@ -1,5 +1,4 @@
 const { validationResult } = require('express-validator');
-const imageThumbnail = require('image-thumbnail');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const path = require('path');
@@ -7,7 +6,7 @@ const mongoose = require('mongoose');
 const { compare } = require('resemblejs');
 const compareImages = require('resemblejs/compareImages');
 const sizeOf = require('image-size');
-
+const sharp = require('sharp');
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
@@ -39,19 +38,25 @@ exports.create = (req, res) => {
         return Promise.reject(error);
       }
       build = foundBuild;
-      const options = {
-        width: 300,
-        height: 300,
-        responseType: 'base64',
-      };
       const promises = [
-        imageThumbnail(req.file.path, options),
+        sharp(req.file.path).resize(300, 300, {
+          xres: 72,
+          yres: 72,
+          fit: 'contain',
+          position: 'centre',
+          background: {
+            r: 0,
+            g: 0,
+            b: 0,
+            alpha: 1.0,
+          },
+        }).toBuffer(),
         sizeOf(req.file.path),
       ];
       return Promise.all(promises).then((results) => {
-        const thumbnail = results[0];
+        const thumbnailBuffer = results[0];
         const dimensions = results[1];
-        // with the thumbnail and the dimension store the details.
+        const thumbnail = thumbnailBuffer.toString('base64');
         const screenshot = new Screenshot({
           build: build._id,
           timestamp: req.headers.timestamp,
