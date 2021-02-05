@@ -15,7 +15,7 @@ exports.create = (req, res) => {
   }
   let testExecution;
   return Build.findById(req.body.build)
-    .populate('suites')
+    .populate('suites.executions')
     .then((buildFound) => {
       if (!buildFound) {
         const error = new Error(`No build found with id ${req.body.build}`);
@@ -23,15 +23,16 @@ exports.create = (req, res) => {
         return Promise.reject(error);
       }
       testExecution = buildMetricsUtils.createExecution(req, buildFound);
-      return buildMetricsUtils.addExecutionToBuild(buildFound, testExecution);
+      return testExecution.save();
+    })
+    .then((savedExecution) => {
+      testExecution = savedExecution;
+      return buildMetricsUtils.addExecutionToBuild(testExecution.build, testExecution);
     })
     .then((savedBuild) => {
       testExecution.build = savedBuild._id;
-      return testExecution.save();
-    })
-    .then((savedTestExecution) => {
-      log(`Created test "${savedTestExecution.title}", suite "${savedTestExecution.suite}" build "${savedTestExecution.build}", with id: "${savedTestExecution._id}"`);
-      res.status(201).send(savedTestExecution);
+      log(`Created test "${testExecution.title}", suite "${testExecution.suite}" build "${testExecution.build}", with id: "${testExecution._id}"`);
+      res.status(201).send(testExecution);
     })
     .catch((error) => {
       if (error.status === 404) {

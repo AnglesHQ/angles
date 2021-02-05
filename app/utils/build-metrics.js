@@ -1,6 +1,8 @@
+const debug = require('debug');
 const Build = require('../models/build.js');
 const TestExecution = require('../models/execution.js');
 
+const log = debug('metrics');
 const buildMetricsUtils = {};
 
 buildMetricsUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
@@ -8,24 +10,29 @@ buildMetricsUtils.defaultResultMap = new Map([['PASS', 0], ['FAIL', 0], ['ERROR'
 const [defaultStatus] = buildMetricsUtils.executionStates;
 
 buildMetricsUtils.addExecutionToBuild = (build, execution) => {
-  let buildSuite = build.suites.find((suite) => suite.name === execution.suite);
-  if (buildSuite) {
-    // if build suite exists update it.
-    buildSuite.executions.push(execution);
-    buildMetricsUtils.calculateBuildMetrics(build);
-  } else {
-    // if it doesn't exists create it.
-    buildSuite = {
+  const buildSuite = build.suites.find((suite) => suite.name === execution.suite);
+  let query;
+  let update;
+  if (buildSuite === undefined) {
+    const newSuite = {
       name: execution.suite,
-      executions: [execution],
-    };
-    build.suites.push(buildSuite);
-    buildMetricsUtils.calculateBuildMetrics(build);
+      executions: [],
+    }
+    newSuite.executions.push(execution);
+    query = { _id: build.id };
+    update = { $push: { suites: newSuite } };
+  } else {
+    // if build suite exists add the test to it.
+    query = { _id: build.id, 'suites.name': execution.suite };
+    update = { $push: { 'suites.$.executions': execution } };
   }
-  return Build.updateOne(
-    { _id: build.id },
-    { $set: build },
-  ).then(() => Build.findById(build.id));
+  return Build.findOneAndUpdate(query, update)
+    .populate('suites.executions')
+    .then((updatedBuild) => {
+      const buildWithMetrics = buildMetricsUtils.calculateBuildMetrics(updatedBuild);
+      return buildWithMetrics.save();
+    })
+    .then((savedBuildWithMetrics) => savedBuildWithMetrics);
 };
 
 buildMetricsUtils.calculateBuildMetrics = (build) => {
