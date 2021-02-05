@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const fs = require('fs');
+const debug = require('debug');
 const fsPromises = require('fs').promises;
 const path = require('path');
 const mongoose = require('mongoose');
@@ -10,6 +11,8 @@ const sharp = require('sharp');
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
+
+const log = debug('screenshot:controller');
 
 /* platformId will allow for quicker identifications of what platform a screenshot was taken on */
 const extractPlatformId = (platform, screenshot) => {
@@ -70,6 +73,7 @@ exports.create = (req, res) => {
       });
     })
     .then((savedScreenshot) => {
+      log(`Created screenshot "${savedScreenshot.path}", view "${savedScreenshot.view}" build "${savedScreenshot.build}", with id: "${savedScreenshot._id}"`);
       res.status(201).send(savedScreenshot);
     })
     .catch((error) => {

@@ -1,12 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-
+const pino = require('pino');
+const expressPino = require('express-pino-logger');
 // mongo db config
 const mongoose = require('mongoose');
 const dbConfig = require('./config/database.config.js');
 
+
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+const expressLogger = expressPino({ logger });
+
 // create express app
+const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
 
@@ -15,6 +21,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // parse requests of content-type - application/json
 app.use(bodyParser.json());
+
+// use the pino logger
+app.use(expressLogger);
 
 // Configuring the database
 mongoose.Promise = global.Promise;
@@ -26,9 +35,9 @@ mongoose.connect(dbConfig.url, {
   useCreateIndex: true,
   useFindAndModify: false,
 }).then(() => {
-  console.log('Successfully connected to the database');
+  logger.info('Successfully connected to the database');
 }).catch((err) => {
-  console.log('Could not connect to the database. Exiting now...', err);
+  logger.error('Could not connect to the database. Exiting now...', err);
   process.exit();
 });
 
@@ -44,6 +53,6 @@ require('./app/routes/screenshot.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/baseline.routes.js')(app, '/rest/api/v1.0');
 
 // listen for requests
-module.exports = app.listen(3000, () => {
-  console.log('Server is listening on port 3000');
+module.exports = app.listen(PORT, () => {
+  logger.info('Server is listening on port %d', PORT);
 });

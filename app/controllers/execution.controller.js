@@ -1,8 +1,10 @@
 const { validationResult } = require('express-validator');
+const debug = require('debug');
 const TestExecution = require('../models/execution.js');
 const Build = require('../models/build.js');
 const buildMetricsUtils = require('../utils/build-metrics.js');
 
+const log = debug('execution:controller');
 
 // Create and save a new test execution
 exports.create = (req, res) => {
@@ -13,7 +15,7 @@ exports.create = (req, res) => {
   }
   let testExecution;
   return Build.findById(req.body.build)
-    .populate('suites.executions')
+    .populate('suites')
     .then((buildFound) => {
       if (!buildFound) {
         const error = new Error(`No build found with id ${req.body.build}`);
@@ -28,6 +30,7 @@ exports.create = (req, res) => {
       return testExecution.save();
     })
     .then((savedTestExecution) => {
+      log(`Created test "${savedTestExecution.title}", suite "${savedTestExecution.suite}" build "${savedTestExecution.build}", with id: "${savedTestExecution._id}"`);
       res.status(201).send(savedTestExecution);
     })
     .catch((error) => {

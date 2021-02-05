@@ -1,6 +1,9 @@
 const { validationResult } = require('express-validator');
+const debug = require('debug');
 const Baseline = require('../models/baseline.js');
 const Screenshot = require('../models/screenshot.js');
+
+const log = debug('baseline:controller');
 
 const hasValidPlatformDetails = ({ platform }) => {
   // a platform name must be provided (and a device name or browser name)
@@ -109,6 +112,7 @@ exports.create = (req, res) => {
     }
     return baseline.save();
   }).then((data) => {
+    log(`Created baseline with id "${data._id}" for view "${data.view}" and platorm "${data.platformName}"`);
     res.status(201).send(data);
   }).catch((err) => {
     res.status(500).send({

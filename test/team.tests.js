@@ -30,7 +30,7 @@ describe('Team API Tests', () => {
     // clean-up created teams
     team.remove();
     Team.remove({ _id: createdTeam._id });
-  })
+  });
 
   describe('GET /team', () => {
     it('respond with json containing a list of all teams', (done) => {

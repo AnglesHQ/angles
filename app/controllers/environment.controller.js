@@ -1,5 +1,8 @@
 const { validationResult } = require('express-validator');
+const debug = require('debug');
 const Environment = require('../models/environment.js');
+
+const log = debug('environment:controller');
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
@@ -20,6 +23,7 @@ exports.create = (req, res) => {
       // save the environment
       environment.save()
         .then((data) => {
+          log(`Created environment "${data.name}" with id: "${data._id}"`);
           res.status(201).send(data);
         }).catch((err) => {
           res.status(500).send({

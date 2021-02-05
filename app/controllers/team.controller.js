@@ -1,5 +1,8 @@
 const { validationResult } = require('express-validator');
+const debug = require('debug');
 const { Team, Component } = require('../models/team.js');
+
+const log = debug('team:controller');
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
@@ -18,6 +21,7 @@ exports.create = (req, res) => {
       });
       team.save()
         .then((data) => {
+          log(`Created team "${team.name}" with id: "${data._id}"`);
           res.status(201).send(data);
         }).catch((err) => {
           res.status(500).send({
@@ -117,7 +121,6 @@ exports.addComponents = (req, res) => {
       message: `Error adding component(s) to team with id ${req.params.teamId} due to [${err}]`,
     }));
 };
-
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);

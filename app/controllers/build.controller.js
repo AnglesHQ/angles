@@ -1,10 +1,13 @@
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
+const debug = require('debug');
 const buildMetricsUtils = require('../utils/build-metrics.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
 const Environment = require('../models/environment.js');
+
+const log = debug('build:controller');
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
@@ -47,6 +50,7 @@ exports.create = (req, res) => {
       buildMetricsUtils.calculateBuildMetrics(build);
       build.save()
         .then((data) => {
+          log(`Created build "${data.name}" for team "${data.team.name}" with id: ${data._id}`);
           res.status(201).send(data);
         }).catch((err) => {
           res.status(500).send({
