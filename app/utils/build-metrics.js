@@ -28,11 +28,12 @@ buildMetricsUtils.addExecutionToBuild = (build, execution) => {
     query = { _id: build.id, 'suites.name': execution.suite };
     update = { $push: { 'suites.$.executions': execution } };
   }
-  return Build.findOneAndUpdate(query, update)
+  return Build.findOneAndUpdate(query, update, { new: true })
     .populate('suites.executions')
     .then((updatedBuild) => {
       // once updated we update the build metrics
       const buildWithMetrics = buildMetricsUtils.calculateBuildMetrics(updatedBuild);
+      log(`Update build: ${JSON.stringify(buildWithMetrics)}`);
       return buildWithMetrics.save();
     })
     .then((savedBuildWithMetrics) => savedBuildWithMetrics);
@@ -49,6 +50,7 @@ buildMetricsUtils.calculateBuildMetrics = (build) => {
     suite.result.forEach((value, key) => {
       build.result.set(key, build.result.get(key) + value);
     });
+    log(`Build metrics for build ${build._id} are ${JSON.stringify(build.result)}`);
     if (build.end === undefined || build.end < suite.end) {
       build.end = suite.end;
     }
