@@ -1,12 +1,14 @@
 const request = require('supertest');
 const should = require('should');
 const randomstring = require('randomstring');
+const pino = require('pino');
 const app = require('../server.js');
 const Execution = require('../app/models/execution.js');
 const Environment = require('../app/models/environment.js');
 const { Team } = require('../app/models/team.js');
 const Build = require('../app/models/build.js');
 
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let environment;
 let team;
@@ -18,9 +20,9 @@ describe('Execution API Tests', () => {
     // do the setup required for all tests
     Execution.deleteMany({ name: /^unit-testing/ }, (err) => {
       if (err) {
-        console.log(err);
+        logger.error('Error occured whilst clearing test executions', err);
       } else {
-        console.log('Cleared any lingering test executions');
+        logger.info('Cleared any lingering test executions');
       }
     });
 
@@ -52,7 +54,7 @@ describe('Execution API Tests', () => {
         done();
       });
     }).catch((err) => {
-      console.error(err);
+      logger.error(err);
     });
   });
   after(() => {

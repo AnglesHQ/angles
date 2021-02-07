@@ -1,7 +1,9 @@
 const request = require('supertest');
+const pino = require('pino');
 const app = require('../server.js');
 const Environment = require('../app/models/environment.js');
 
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let environment;
 let createdEnvironment;
@@ -11,15 +13,14 @@ describe('Environment API Tests', () => {
     // clear lingering test environments
     Environment.deleteMany({ name: /^unit-testing/ }, (err) => {
       if (err) {
-        console.log(err);
+        logger.error(err);
       } else {
-        console.log('Cleared any lingering test environments');
+        logger.info('Cleared any lingering test environments');
         // setup the test enviroment
         environment = new Environment({
           name: 'unit-testing-environment',
         });
         environment.save(() => {
-          console.log('TEAM SAVED');
           done();
         });
       }
@@ -28,7 +29,7 @@ describe('Environment API Tests', () => {
   after(() => {
     environment.remove();
     Environment.remove({ _id: createdEnvironment._id });
-  })
+  });
   describe('GET /environment', () => {
     it('respond with json containing a list of all environments', (done) => {
       request(app)

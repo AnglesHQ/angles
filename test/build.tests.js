@@ -1,10 +1,12 @@
 const request = require('supertest');
 const should = require('should');
+const pino = require('pino');
 const app = require('../server.js');
 const Build = require('../app/models/build.js');
 const Environment = require('../app/models/environment.js');
 const { Team } = require('../app/models/team.js');
 
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let team;
 let environment;
@@ -31,6 +33,7 @@ describe('Build API Tests', () => {
         environment.save(),
       ];
       Promise.all(savePromises).then(() => {
+        logger.info('Created required environment and team for build tests.');
         done();
       });
     });
@@ -40,7 +43,7 @@ describe('Build API Tests', () => {
     team.remove();
     environment.remove();
     Build.remove({ _id: createdBuild._id });
-  })
+  });
 
   describe('POST /build', () => {
     it('successfully create build with valid details', (done) => {

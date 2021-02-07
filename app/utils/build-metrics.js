@@ -14,14 +14,16 @@ buildMetricsUtils.addExecutionToBuild = (build, execution) => {
   let query;
   let update;
   if (buildSuite === undefined) {
+    log(`Creating suite ${execution.suite} for build ${build._id} and adding test ${execution._id}`);
     const newSuite = {
       name: execution.suite,
       executions: [],
-    }
+    };
     newSuite.executions.push(execution);
     query = { _id: build.id };
     update = { $push: { suites: newSuite } };
   } else {
+    log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
     // if build suite exists add the test to it.
     query = { _id: build.id, 'suites.name': execution.suite };
     update = { $push: { 'suites.$.executions': execution } };
@@ -29,6 +31,7 @@ buildMetricsUtils.addExecutionToBuild = (build, execution) => {
   return Build.findOneAndUpdate(query, update)
     .populate('suites.executions')
     .then((updatedBuild) => {
+      // once updated we update the build metrics
       const buildWithMetrics = buildMetricsUtils.calculateBuildMetrics(updatedBuild);
       return buildWithMetrics.save();
     })

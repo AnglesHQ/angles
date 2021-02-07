@@ -1,19 +1,22 @@
 const request = require('supertest');
+const pino = require('pino');
 const app = require('../server.js');
 const { Team } = require('../app/models/team.js');
 
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let team;
 let createdTeam;
+
 
 describe('Team API Tests', () => {
   before((done) => {
     // clear lingering test environments
     Team.deleteMany({ name: /^unit-testing/ }, (err) => {
       if (err) {
-        console.log(err);
+        logger.log('Error occured whilst clearing testing teams', err);
       } else {
-        console.log('Cleared any lingering test teams');
+        logger.info('Cleared any lingering test teams');
         // setup the test enviroment
         team = new Team({
           name: 'unit-testing-team',
@@ -29,7 +32,7 @@ describe('Team API Tests', () => {
   after(() => {
     // clean-up created teams
     team.remove();
-    Team.remove({ _id: createdTeam._id });
+    Team.findOneAndRemove({ _id: createdTeam._id }).exec();
   });
 
   describe('GET /team', () => {
