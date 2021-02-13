@@ -36,6 +36,9 @@ module.exports = (app, path) => {
       query('platformId')
         .optional()
         .isString(),
+      query('screenshotIds')
+        .optional()
+        .isString(),
     ]),
   ], screenshotController.findAll);
 

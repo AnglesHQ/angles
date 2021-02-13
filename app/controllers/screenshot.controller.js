@@ -98,7 +98,12 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { buildId, view, platformId } = req.query;
+  const {
+    buildId,
+    view,
+    platformId,
+    screenshotIds,
+  } = req.query;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
 
@@ -120,6 +125,20 @@ exports.findAll = (req, res) => {
           },
         );
       })
+      .then((screenshots) => {
+        res.send(screenshots);
+      }).catch((err) => {
+        res.status(500).send({
+          message: err.message || 'Some error occurred while retrieving screenshots.',
+        });
+      });
+  }
+
+  if (screenshotIds) {
+    const query = { _id: { $in: screenshotIds.split(',') } };
+    if (view) { query.view = view; }
+    if (platformId) { query.platformId = platformId; }
+    return Screenshot.find(query, null, { limit, skip })
       .then((screenshots) => {
         res.send(screenshots);
       }).catch((err) => {

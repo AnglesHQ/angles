@@ -1043,7 +1043,14 @@
             "name": "platformId",
             "in": "query",
             "required": false,
-            "description": "Unique Identifier of the platform you want to rertrieve the images for.",
+            "description": "Unique Identifier of the platform you want to retrieve the images for.",
+            "type": "string"
+          },
+          {
+            "name": "screenshotIds",
+            "in": "query",
+            "required": false,
+            "description": "Comma seperated list of screenshot ids for the screenshots you want to retrieve.",
             "type": "string"
           },
           {

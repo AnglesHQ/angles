@@ -124,7 +124,6 @@ exports.findHistory = (req, res) => {
       const limit = parseInt(req.query.limit, 10) || 20;
       const skip = parseInt(req.query.skip, 10) || 0;
       const query = { 'build.team': testExecution.team, title: testExecution.title, suite: testExecution.suite };
-      log(query);
       return TestExecution.find(query, null, { sort: { _id: -1 }, limit, skip })
         .populate('build');
     }).then((testExecutions) => res.status(200).send(testExecutions))
