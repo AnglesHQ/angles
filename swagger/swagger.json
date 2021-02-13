@@ -868,6 +868,59 @@
         }
       }
     },
+    "/execution/{executionId}/history": {
+      "parameters": [
+        {
+          "name": "executionId",
+          "in": "path",
+          "required": true,
+          "description": "ID of execution that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Execution"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Limit the number of executions to retrieve",
+            "type": "number"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "The executions you want to skip (or offset) in the data base query",
+            "type": "number"
+          }
+        ],
+        "summary": "Get the history for the execution with given ID. This finds the hisory by suite name and title, so these have to be unique as a combination for this test.",
+        "responses": {
+          "200": {
+            "description": "Execution is found",
+            "schema": {
+              "$ref": "#/definitions/StoredExecution"
+            }
+          },
+          "404": {
+            "description": "Execution not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
     "/execution/{executionId}/platforms": {
       "parameters": [
         {

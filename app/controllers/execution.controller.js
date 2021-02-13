@@ -107,6 +107,31 @@ exports.findOne = (req, res) => {
     }));
 };
 
+exports.findHistory = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  log(req.params.executionId);
+  return TestExecution.findById(req.params.executionId)
+    .populate('build')
+    .then((testExecution) => {
+      if (!testExecution) {
+        return res.status(404).send({
+          message: `Execution not found with id ${req.params.executionId}`,
+        });
+      }
+      const limit = parseInt(req.query.limit, 10) || 20;
+      const skip = parseInt(req.query.skip, 10) || 0;
+      const query = { 'build.team': testExecution.team, title: testExecution.title, suite: testExecution.suite };
+      log(query);
+      return TestExecution.find(query, null, { sort: { _id: -1 }, limit, skip });
+    }).then((testExecutions) => res.status(200).send(testExecutions))
+    .catch((err) => res.status(500).send({
+      message: `Error retrieving team with id ${req.params.executionId} due to [${err}]`,
+    }));
+};
+
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

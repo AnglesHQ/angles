@@ -46,6 +46,17 @@ module.exports = (app, path) => {
     param('executionId').isMongoId(),
   ], executionController.findOne);
 
+  app.get(`${path}/execution/:executionId/history`, [
+    param('executionId').isMongoId(),
+    query('limit')
+      .optional()
+      .isNumeric(),
+    query('skip')
+      .optional()
+      .isNumeric(),
+  ], executionController.findHistory);
+
+
   app.put(`${path}/execution/:executionId`, [
     param('executionId').isMongoId(),
   ], executionController.update);
