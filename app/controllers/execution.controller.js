@@ -125,7 +125,8 @@ exports.findHistory = (req, res) => {
       const skip = parseInt(req.query.skip, 10) || 0;
       const query = { 'build.team': testExecution.team, title: testExecution.title, suite: testExecution.suite };
       log(query);
-      return TestExecution.find(query, null, { sort: { _id: -1 }, limit, skip });
+      return TestExecution.find(query, null, { sort: { _id: -1 }, limit, skip })
+        .populate('build');
     }).then((testExecutions) => res.status(200).send(testExecutions))
     .catch((err) => res.status(500).send({
       message: `Error retrieving team with id ${req.params.executionId} due to [${err}]`,
