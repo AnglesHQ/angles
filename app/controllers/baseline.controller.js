@@ -2,39 +2,9 @@ const { validationResult } = require('express-validator');
 const debug = require('debug');
 const Baseline = require('../models/baseline.js');
 const Screenshot = require('../models/screenshot.js');
+const validationUtils = require('../utils/validation-utils.js');
 
 const log = debug('baseline:controller');
-
-const hasValidPlatformDetails = ({ platform }) => {
-  // a platform name must be provided (and a device name or browser name)
-  if (platform.platformName !== undefined
-    && (platform.deviceName !== undefined || platform.browserName !== undefined)) {
-    return true;
-  }
-  // Desktop, then we use resolution and browserName
-  return false;
-};
-
-const doPlatformDetailsMatch = (baseline, screenshot) => {
-  if (baseline.platform.platformName !== screenshot.platform.platformName) {
-    return false;
-  }
-  if (baseline.platform.deviceName !== undefined) {
-    // we compare the platform names
-    if (baseline.platform.deviceName === screenshot.platform.deviceName) {
-      return true;
-    }
-    return false;
-  }
-  if (baseline.platform.browserName !== undefined) {
-    if (baseline.platform.browserName === screenshot.platform.browserName
-    && baseline.screenHeight === screenshot.height
-    && baseline.screenWidth === screenshot.width) {
-      return true;
-    }
-  }
-  return false;
-};
 
 // Create and save a new test execution
 exports.create = (req, res) => {
@@ -65,7 +35,7 @@ exports.create = (req, res) => {
         message: `The screenshot with id ${req.body.screenshotId} does not have platform details set. Platform details are required when setting a baseline image.`,
       });
     }
-    if (!hasValidPlatformDetails(screenshot)) {
+    if (!validationUtils.screenshotHasValidPlatformDetails(screenshot)) {
       return res.status(400).send({
         message: `The screenshot with id ${req.body.screenshotId} does not have valid platform details set. Please ensure that platform is set for the screenshot (with device name or browserName set)`,
       });
@@ -111,9 +81,9 @@ exports.create = (req, res) => {
       baseline.ignoreBoxes = req.body.ignoreBoxes;
     }
     return baseline.save();
-  }).then((data) => {
-    log(`Created baseline with id "${data._id}" for view "${data.view}" and platorm "${data.platformName}"`);
-    res.status(201).send(data);
+  }).then((savedBaseline) => {
+    log(`Created baseline with id "${savedBaseline._id}" for view "${savedBaseline.view}" and platorm "${savedBaseline.platformName}"`);
+    res.status(201).send(savedBaseline);
   }).catch((err) => {
     res.status(500).send({
       message: err.message || 'Some error occurred while creating the baseline.',
@@ -134,14 +104,12 @@ exports.findAll = (req, res) => {
   if (req.query.browserName) baseLineQuery['platform.browserName'] = req.query.browserName;
   if (req.query.screenHeight) baseLineQuery.screenHeight = req.query.screenHeight;
   if (req.query.screenWidth) baseLineQuery.screenWidth = req.query.screenWidth;
-  return Baseline.find(baseLineQuery).populate('screenshot')
-    .then((baselines) => {
-      res.send(baselines);
-    }).catch((err) => {
-      res.status(500).send({
-        message: err.message || 'Some error occurred while retrieving baselines.',
-      });
-    });
+  return Baseline.find(baseLineQuery)
+    .populate('screenshot')
+    .then((baselines) => res.send(baselines))
+    .catch((err) => res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving baselines.',
+    }));
 };
 
 exports.findOne = (req, res) => {
@@ -190,7 +158,7 @@ exports.update = (req, res) => {
         message: `The screenshot with id ${req.body.screenshotId} has a different view to the baseline and therefore can not be used for the requested baseline. Expected [${screenshot.view}], Actual [${baselineFound.view}].`,
       });
     }
-    if (!doPlatformDetailsMatch(baselineFound, screenshot)) {
+    if (!validationUtils.doPlatformDetailsMatch(baselineFound, screenshot)) {
       return res.status(400).send({
         message: `The screenshot with id ${req.body.screenshotId} has a different platform details to the baseline. Please ensure either the deviceName matches or the browserName and screenWidth and screenHeight`,
       });

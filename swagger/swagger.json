@@ -498,11 +498,19 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "The response contains a count of total builds and contains the returned builds in an array",
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/StoredBuild"
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "number"
+                },
+                "builds": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/StoredBuild"
+                  }
+                }
               }
             }
           }
@@ -901,9 +909,20 @@
         "summary": "Get the history for the execution with given ID. This finds the hisory by suite name and title, so these have to be unique as a combination for this test.",
         "responses": {
           "200": {
-            "description": "Execution is found",
+            "description": "The response contains a count of total executions and contains the returned executions in an array",
             "schema": {
-              "$ref": "#/definitions/StoredExecution"
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "number"
+                },
+                "executions": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/StoredExecution"
+                  }
+                }
+              }
             }
           },
           "404": {

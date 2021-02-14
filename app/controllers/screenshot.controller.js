@@ -11,21 +11,9 @@ const sharp = require('sharp');
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
+const validationUtils = require('../utils/validation-utils.js');
 
 const log = debug('screenshot:controller');
-
-/* platformId will allow for quicker identifications of what platform a screenshot was taken on */
-const extractPlatformId = (platform, screenshot) => {
-  if (platform.deviceName) {
-    /* if device name is given we assume it's a mobile device */
-    return `${platform.platformName}_${platform.deviceName}`.toLowerCase();
-  }
-  if (platform.browserName) {
-    /* otherwise we assume it's desktop and use the browser/resolution combination */
-    return `${platform.platformName}_${platform.browserName}_${screenshot.width}x${screenshot.height}`.toLowerCase();
-  }
-  return undefined;
-};
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
@@ -36,9 +24,9 @@ exports.create = (req, res) => {
   return Build.findById(req.headers.buildid)
     .then((foundBuild) => {
       if (!foundBuild) {
-        const error = new Error(`No build found with id ${req.headers.buildid}`);
-        error.status = 404;
-        return Promise.reject(error);
+        return res.status(404).send({
+          message: `No build found with id ${req.headers.buildid}`,
+        });
       }
       build = foundBuild;
       const promises = [
@@ -74,24 +62,14 @@ exports.create = (req, res) => {
     })
     .then((savedScreenshot) => {
       log(`Created screenshot "${savedScreenshot.path}", view "${savedScreenshot.view}" build "${savedScreenshot.build}", with id: "${savedScreenshot._id}"`);
-      res.status(201).send(savedScreenshot);
+      return res.status(201).send(savedScreenshot);
     })
-    .catch((error) => {
-      if (error.status === 404) {
-        res.status(404).send({
-          message: error.message,
-        });
-      } else {
-        res.status(500).send({
-          message: `Error creating screenshot [${error}]`,
-        });
-      }
-    });
+    .catch((error) => res.status(500).send({
+      message: `Error creating screenshot [${error}]`,
+    }));
 };
 
-exports.createFail = (error, req, res) => {
-  res.status(400).send({ error: error.message });
-};
+exports.createFail = (error, req, res) => res.status(400).send({ error: error.message });
 
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
@@ -107,58 +85,47 @@ exports.findAll = (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
 
+  // use buildId
   if (buildId) {
     return Build.findById({ _id: buildId })
       .then((buildFound) => {
         if (!buildFound) {
-          const error = new Error(`No build found with id ${buildId}`);
-          error.status = 404;
-          return Promise.reject(error);
+          return res.status(404).send({
+            message: `No build found with id ${buildId}`,
+          });
         }
         const query = { build: mongoose.Types.ObjectId(buildId) };
         if (view) { query.view = view; }
         if (platformId) { query.platformId = platformId; }
-        return Screenshot.find(
-          query, null, {
-            limit,
-            skip,
-          },
-        );
+        return Screenshot.find(query, null, { limit, skip });
       })
-      .then((screenshots) => {
-        res.send(screenshots);
-      }).catch((err) => {
-        res.status(500).send({
-          message: err.message || 'Some error occurred while retrieving screenshots.',
-        });
-      });
+      .then((screenshots) => res.send(screenshots))
+      .catch((err) => res.status(500).send({
+        message: err.message || 'Some error occurred while retrieving screenshots.',
+      }));
   }
 
+  // use screenshotIds
   if (screenshotIds) {
     const query = { _id: { $in: screenshotIds.split(',') } };
     if (view) { query.view = view; }
     if (platformId) { query.platformId = platformId; }
     return Screenshot.find(query, null, { limit, skip })
-      .then((screenshots) => {
-        res.send(screenshots);
-      }).catch((err) => {
-        res.status(500).send({
-          message: err.message || 'Some error occurred while retrieving screenshots.',
-        });
-      });
+      .then((screenshots) => res.send(screenshots))
+      .catch((err) => res.status(500).send({
+        message: err.message || 'Some error occurred while retrieving screenshots.',
+      }));
   }
+
+  // else use view and platform id to find screenshots
   const query = {};
   if (view) { query.view = view; }
   if (platformId) { query.platformId = platformId; }
-  return Screenshot.find(
-    query, null, { sort: { _id: -1 }, limit, skip },
-  ).then((screenshots) => {
-    res.send(screenshots);
-  }).catch((err) => {
-    res.status(500).send({
+  return Screenshot.find(query, null, { sort: { _id: -1 }, limit, skip })
+    .then((screenshots) => res.send(screenshots))
+    .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while retrieving screenshots.',
-    });
-  });
+    }));
 };
 
 /* This method will find the latest image for a specific view on every unique platform */
@@ -178,13 +145,10 @@ exports.findLatestForViewGroupedByPlatform = (req, res) => {
   ]).then((screenshotsIdsArray) => {
     const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
     return Screenshot.find({ _id: { $in: latestScreenshotIds } });
-  }).then((screenshots) => {
-    res.send(screenshots);
-  }).catch((err) => {
-    res.status(500).send({
+  }).then((screenshots) => res.send(screenshots))
+    .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while retrieving screenshots.',
-    });
-  });
+    }));
 };
 
 exports.findLatestForTagGroupedByView = (req, res) => {
@@ -203,13 +167,10 @@ exports.findLatestForTagGroupedByView = (req, res) => {
   ]).then((screenshotsIdsArray) => {
     const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
     return Screenshot.find({ _id: { $in: latestScreenshotIds } });
-  }).then((screenshots) => {
-    res.send(screenshots);
-  }).catch((err) => {
-    res.status(500).send({
+  }).then((screenshots) => res.send(screenshots))
+    .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while retrieving screenshots.',
-    });
-  });
+    }));
 };
 
 exports.findOne = (req, res) => {
@@ -272,15 +233,11 @@ exports.compareImages = (req, res) => {
           message: 'Something went wrong comparing the images',
         });
       }
-      return res.status(200).send(
-        data,
-      );
+      return res.status(200).send(data);
     });
-  }).catch((err) => {
-    res.status(500).send({
-      message: err.message || 'Some error occurred while creating the build.',
-    });
-  });
+  }).catch((err) => res.status(500).send({
+    message: err.message || 'Some error occurred while creating the build.',
+  }));
 };
 
 exports.compareImagesAndReturnImage = (req, res) => {
@@ -298,14 +255,14 @@ exports.compareImagesAndReturnImage = (req, res) => {
     const screenshot = results[0];
     const screenshotCompare = results[1];
     if (screenshot === null || screenshotCompare === null) {
-      res.status(404).send({
+      return res.status(404).send({
         message: 'Unable to retrieve one or both images',
       });
     }
     // create name based on the two id's
     const tempFileName = `compares/${screenshot.id}_${screenshotCompare.id}-compare.png`;
     // check if the file already exists
-    fs.access(tempFileName, fs.F_OK, (err) => {
+    return fs.access(tempFileName, fs.F_OK, (err) => {
       // file doesn't exists then create it by doing the compare.
       if (err) {
         const options = {
@@ -328,29 +285,28 @@ exports.compareImagesAndReturnImage = (req, res) => {
           fsPromises.readFile(screenshot.path),
           fsPromises.readFile(screenshotCompare.path),
         ];
-        return Promise.all(loadImagesPromises).then((imageLoadResults) => {
-          compareImages(
-            imageLoadResults[0],
-            imageLoadResults[1],
-            options,
-          ).then((data) => {
-            fsPromises.writeFile(path.resolve(tempFileName), data.getBuffer())
-              .then(() => res.sendFile(path.resolve(tempFileName)));
+        return Promise.all(loadImagesPromises)
+          .then((imageLoadResults) => {
+            compareImages(
+              imageLoadResults[0],
+              imageLoadResults[1],
+              options,
+            ).then((data) => {
+              fsPromises.writeFile(path.resolve(tempFileName), data.getBuffer())
+                .then(() => res.sendFile(path.resolve(tempFileName)));
+            });
+          }).catch((compareError) => {
+            res.status(500).send({
+              message: compareError.message || 'Some error occurred comparing the images',
+            });
           });
-        }).catch((compareError) => {
-          res.status(500).send({
-            message: compareError.message || 'Some error occurred comparing the images',
-          });
-        });
       }
       // if file does exist just return it.
       return res.sendFile(path.resolve(tempFileName));
     });
-  }).catch((err) => {
-    res.status(500).send({
-      message: err.message || 'Some error occurred while creating the build.',
-    });
-  });
+  }).catch((err) => res.status(500).send({
+    message: err.message || 'Some error occurred while creating the build.',
+  }));
 };
 
 exports.compareImageAgainstBaseline = (req, res) => {
@@ -362,14 +318,14 @@ exports.compareImageAgainstBaseline = (req, res) => {
   return Screenshot.findById(req.params.screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
-        const error = new Error(`No Screenshot found with id ${req.body.build}`);
-        error.status = 404;
-        return Promise.reject(error);
+        return res.status(404).send({
+          message: `No Screenshot found with id ${req.body.build}`,
+        });
       }
       if (!screenshot.view) {
-        const error = new Error(`Screenshot with id ${req.params.screenshotId} does not have a view set, so can not be compared.`);
-        error.status = 422;
-        return Promise.reject(error);
+        return res.status(400).send({
+          message: `Screenshot with id ${req.params.screenshotId} does not have a view set, so can not be compared.`,
+        });
       }
       screenshotToCompare = screenshot;
       // generate baseline query using screenshot details.
@@ -388,37 +344,24 @@ exports.compareImageAgainstBaseline = (req, res) => {
     .then((baselines) => {
       // compare image with baseline and return result.
       if (!baselines || baselines.length === 0) {
-        const error = new Error(`No baselines found for screenshot with id ${req.params.screenshotId}`);
-        error.status = 404;
-        return Promise.reject(error);
+        return res.status(404).send({
+          message: `No baselines found for screenshot with id ${req.params.screenshotId}`,
+        });
       }
-      const options = {
-        // if there is more than 50% difference then just return it.
-        returnEarlyThreshold: 50,
-      };
+      const options = { returnEarlyThreshold: 50 };
       return compare(screenshotToCompare.path, baselines[0].screenshot.path, options,
         (err, data) => {
           if (err) {
-            return res.status(404).send({
-              message: 'Something went wrong comparing the images',
+            return res.status(500).send({
+              message: `Unable to compare images due to [${err}]`,
             });
           }
-          return res.status(200).send(
-            data,
-          );
+          return res.status(200).send(data);
         });
     })
-    .catch((error) => {
-      if (error.status !== 500) {
-        res.status(error.status).send({
-          message: error.message,
-        });
-      } else {
-        res.status(500).send({
-          message: `Error creating execution [${error}]`,
-        });
-      }
-    });
+    .catch((error) => res.status(500).send({
+      message: `Error creating execution [${error}]`,
+    }));
 };
 
 exports.update = (req, res) => {
@@ -439,7 +382,7 @@ exports.update = (req, res) => {
       if (tags) screenshotToModify.tags = tags;
       if (platform) {
         screenshotToModify.platform = platform;
-        screenshotToModify.platformId = extractPlatformId(platform, screenshot);
+        screenshotToModify.platformId = validationUtils.generatePlatformId(platform, screenshot);
       }
       return screenshotToModify.save();
     }).then((savedScreenshot) => res.status(200).send(savedScreenshot))

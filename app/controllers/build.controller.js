@@ -20,18 +20,23 @@ exports.create = (req, res) => {
     Environment.findOne({ name: req.body.environment }).exec(),
   ];
 
-  return Promise.all(promises).then((results) => {
-    const teamFound = results[0];
-    const environmentFound = results[1];
-    if (teamFound == null || teamFound === undefined) {
-      res.status(404).send({
-        message: `No team found with name ${req.body.team}`,
-      });
-    } else if (environmentFound == null || environmentFound === undefined) {
-      res.status(404).send({
-        message: `No environment found with name ${req.body.environment}`,
-      });
-    } else {
+  return Promise.all(promises)
+    .then((results) => {
+      const teamFound = results[0];
+      const environmentFound = results[1];
+
+      if (teamFound == null || teamFound === undefined) {
+        return res.status(404).send({
+          message: `No team found with name ${req.body.team}`,
+        });
+      }
+
+      if (environmentFound == null || environmentFound === undefined) {
+        return res.status(404).send({
+          message: `No environment found with name ${req.body.environment}`,
+        });
+      }
+
       let matchComponent;
       // check if component is correct
       teamFound.components.forEach((component) => {
@@ -39,6 +44,12 @@ exports.create = (req, res) => {
           matchComponent = component;
         }
       });
+      if (!matchComponent) {
+        return res.status(404).send({
+          message: `No component found with name ${req.body.component}`,
+        });
+      }
+      // create and save build
       const build = new Build({
         environment: environmentFound,
         team: teamFound,
@@ -48,21 +59,16 @@ exports.create = (req, res) => {
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
       buildMetricsUtils.calculateBuildMetrics(build);
-      build.save()
+      return build.save()
         .then((data) => {
           log(`Created build "${data.name}" for team "${data.team.name}" with id: ${data._id}`);
-          res.status(201).send(data);
-        }).catch((err) => {
-          res.status(500).send({
-            message: err.message || 'Some error occurred while creating the build.',
-          });
-        });
-    }
-  }).catch((err) => {
-    res.status(500).send({
+          return res.status(201).send(data);
+        }).catch((err) => res.status(500).send({
+          message: err.message || 'Some error occurred while creating the build.',
+        }));
+    }).catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while creating the build.',
-    });
-  });
+    }));
 };
 
 exports.findAll = (req, res) => {
@@ -77,9 +83,9 @@ exports.findAll = (req, res) => {
   return Team.findById({ _id: teamId })
     .then((teamFound) => {
       if (!teamFound) {
-        const error = new Error(`No team found with name ${req.body.team}`);
-        error.status = 404;
-        return Promise.reject(error);
+        return res.status(404).send({
+          message: `No team found with name ${req.body.team}`,
+        });
       }
       if (buildIds) {
         const builIdsArray = buildIds.split(',');
@@ -113,16 +119,10 @@ exports.findAll = (req, res) => {
         return res.status(200).send(response);
       });
     })
-    .catch((error) => {
-      if (error.status === 404) {
-        res.status(404).send({
-          message: error.message,
-        });
-      } else {
-        res.status(500).send({
-          message: error.message || 'Some error occurred while retrieving builds.',
-        });
-      }
+    .catch((err) => {
+      res.status(500).send({
+        message: err.message || 'Unable to retrieve builds.',
+      });
     });
 };
 
@@ -148,6 +148,7 @@ exports.findOne = (req, res) => {
     }));
 };
 
+// TODO: We should be able to update more than just team and/or environment.
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

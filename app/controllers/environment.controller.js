@@ -9,40 +9,40 @@ exports.create = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Environment.where({ name: req.body.name }).findOne((searchErr, existingEnvironment) => {
-    if (existingEnvironment) {
-      res.status(409).send({
-        message: `Environment with name ${req.body.name} already exists.`,
-      });
-    } else {
+
+  return Environment.where({ name: req.body.name })
+    .findOne((searchErr, existingEnvironment) => {
+      if (existingEnvironment) {
+        return res.status(409).send({
+          message: `Environment with name ${req.body.name} already exists.`,
+        });
+      }
       // create new environment
       const environment = new Environment({
         name: req.body.name,
       });
 
       // save the environment
-      environment.save()
+      return environment.save()
         .then((data) => {
           log(`Created environment "${data.name}" with id: "${data._id}"`);
-          res.status(201).send(data);
-        }).catch((err) => {
-          res.status(500).send({
-            message: err.message || 'Some error occurred while creating the environment.',
-          });
-        });
-    }
-  });
+          return res.status(201).send(data);
+        }).catch((err) => res.status(500).send({
+          message: err.message || 'Some error occurred while creating the environment.',
+        }));
+    });
 };
 
 exports.findAll = (req, res) => {
-  Environment.find()
-    .then((environments) => {
-      res.send(environments);
-    }).catch((err) => {
-      res.status(500).send({
-        message: err.message || 'Some error occurred while retrieving environments.',
-      });
-    });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Environment.find()
+    .then((environments) => res.send(environments))
+    .catch((err) => res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving environments.',
+    }));
 };
 
 exports.findOne = (req, res) => {
@@ -71,9 +71,9 @@ exports.update = (req, res) => {
   return Environment.where({ name: req.body.name }).findOne()
     .then((existingEnvironment) => {
       if (existingEnvironment) {
-        const error = new Error(`Environment with name ${req.body.name} already exists.`);
-        error.status = 409;
-        return Promise.reject(error);
+        return res.status(409).send({
+          message: `Environment with name ${req.body.name} already exists.`,
+        });
       }
       return Environment.findByIdAndUpdate(req.params.environmentId, {
         name: req.body.name,
@@ -87,16 +87,9 @@ exports.update = (req, res) => {
       }
       return res.status(200).send(environment);
     })
-    .catch((err) => {
-      if (err.status === 409) {
-        return res.status(409).send({
-          message: err.message,
-        });
-      }
-      return res.status(500).send({
-        message: `Error updating environment with id ${req.params.environmentId} due to [${err}]`,
-      });
-    });
+    .catch((err) => res.status(500).send({
+      message: `Error updating environment with id ${req.params.environmentId} due to [${err}]`,
+    }));
 };
 
 exports.delete = (req, res) => {

@@ -11,36 +11,34 @@ exports.create = (req, res) => {
   }
   return Team.where({ name: req.body.name }).findOne((mongoErr, foundTeam) => {
     if (foundTeam) {
-      res.status(409).send({
+      return res.status(409).send({
         message: `Team with name ${req.body.name} already exists.`,
       });
-    } else {
-      const team = new Team({
-        name: req.body.name,
-        components: req.body.components,
-      });
-      team.save()
-        .then((data) => {
-          log(`Created team "${team.name}" with id: "${data._id}"`);
-          res.status(201).send(data);
-        }).catch((err) => {
-          res.status(500).send({
-            message: err.message || 'Some error occurred while creating the team.',
-          });
-        });
     }
+    const team = new Team({
+      name: req.body.name,
+      components: req.body.components,
+    });
+    return team.save()
+      .then((data) => {
+        log(`Created team "${team.name}" with id: "${data._id}"`);
+        return res.status(201).send(data);
+      }).catch((err) => res.status(500).send({
+        message: err.message || 'Some error occurred while creating the team.',
+      }));
   });
 };
 
 exports.findAll = (req, res) => {
-  Team.find()
-    .then((teams) => {
-      res.send(teams);
-    }).catch((err) => {
-      res.status(500).send({
-        message: err.message || 'Some error occurred while retrieving teams.',
-      });
-    });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Team.find()
+    .then((teams) => res.send(teams))
+    .catch((err) => res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving teams.',
+    }));
 };
 
 exports.findOne = (req, res) => {
@@ -66,14 +64,12 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
-  // if check if there is another team with the same name
   return Team.where({ name: req.body.name }).findOne()
     .then((foundTeam) => {
       if (foundTeam) {
-        const error = new Error(`Team with name ${req.body.name} already exists.`);
-        error.status = 409;
-        return Promise.reject(error);
+        return res.status(409).send({
+          message: `Team with name ${req.body.name} already exists.`,
+        });
       }
       return Team.findByIdAndUpdate(req.params.teamId, {
         name: req.body.name,
@@ -86,16 +82,9 @@ exports.update = (req, res) => {
       }
       return res.status(200).send(team);
     })
-    .catch((err) => {
-      if (err.status === 409) {
-        return res.status(409).send({
-          message: err.message,
-        });
-      }
-      return res.status(500).send({
-        message: `Error updating team with id ${req.params.teamId} due to [${err}]`,
-      });
-    });
+    .catch((err) => res.status(500).send({
+      message: `Error updating team with id ${req.params.teamId} due to [${err}]`,
+    }));
 };
 
 exports.addComponents = (req, res) => {
@@ -103,7 +92,6 @@ exports.addComponents = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
   return Team.findById(req.params.teamId)
     .then((team) => {
       if (!team) {
