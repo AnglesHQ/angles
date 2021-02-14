@@ -49,4 +49,7 @@ const ScreenshotSchema = mongoose.Schema({
   timestamps: true,
 });
 
+ScreenshotSchema.index({ build: 1 }, { unique: false });
+ScreenshotSchema.index({ view: 1 }, { unique: false });
+
 module.exports = mongoose.model('Screenshot', ScreenshotSchema);

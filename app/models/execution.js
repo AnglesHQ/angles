@@ -125,4 +125,7 @@ const TestExecutionSchema = mongoose.Schema({
   timestamps: true,
 });
 
+TestExecutionSchema.index({ build: 1 }, { unique: false });
+TestExecutionSchema.index({ suite: 1, title: 1 }, { unique: false });
+
 module.exports = mongoose.model('TestExecution', TestExecutionSchema);

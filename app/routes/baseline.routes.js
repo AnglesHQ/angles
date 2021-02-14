@@ -10,9 +10,6 @@ module.exports = (app, path) => {
     check('view')
       .exists()
       .isString(),
-    check('deviceName')
-      .optional()
-      .isString(),
     check('ignoreBoxes')
       .optional(),
   ], baselineController.create);
