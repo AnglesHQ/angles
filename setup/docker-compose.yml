@@ -5,6 +5,7 @@ services:
     container_name: "mongo-angles"
     hostname: mongodb
     image: mongo:4.2.0
+    restart: always
     volumes:
         - angles_mongo_db:/data/db
         - angles_mongo_config:/data/configdb
@@ -23,6 +24,7 @@ services:
   backend:
     container_name: "angles"
     image: angleshq/angles:${ANGLES_VERSION}
+    restart: always
     ports:
        - 3000:3000
     environment:
@@ -38,6 +40,7 @@ services:
   frontend:
     container_name: "angles-ui"
     image: angleshq/angles-ui:${ANGLES_VERSION}
+    restart: alwaysß
     ports:
        - 3001:3001
     environment:

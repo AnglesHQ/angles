@@ -21,7 +21,7 @@ const Artifact = new Schema({
     required: true,
     trim: true,
   },
-});
+}, { _id: false });
 
 const Suite = mongoose.Schema({
   name: {
@@ -49,7 +49,7 @@ const Suite = mongoose.Schema({
     required: true,
   },
   executions: [{ type: Schema.Types.ObjectId, ref: 'TestExecution' }],
-});
+}, { _id: false });
 
 
 const BuildSchema = Schema({

@@ -32,6 +32,12 @@ module.exports = (app, path) => {
     query('returnExecutionDetails')
       .optional()
       .isBoolean(),
+    query('environmentIds')
+      .optional()
+      .isString(),
+    query('componentIds')
+      .optional()
+      .isString(),
     query('limit')
       .optional()
       .isNumeric(),

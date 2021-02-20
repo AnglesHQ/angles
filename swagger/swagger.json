@@ -475,6 +475,20 @@
             "type": "string"
           },
           {
+            "name": "environmentIds",
+            "in": "query",
+            "required": false,
+            "description": "IDs of the environment you want to filter by, comma seperated.",
+            "type": "string"
+          },
+          {
+            "name": "componentIds",
+            "in": "query",
+            "required": false,
+            "description": "IDs of the component you want to filter by, comma seperated",
+            "type": "string"
+          },
+          {
             "name": "returnExecutionDetails",
             "in": "query",
             "required": false,
@@ -1604,11 +1618,12 @@
           {
             "name": "update",
             "in": "body",
-            "description": "Update baseline and set a new screenshotId",
+            "description": "Whilst updating a basline you need to provide at least a new screenshotId or a new array of ignoreBoxes.",
             "schema": {
               "type": "object",
               "required": [
-                "screenshotId"
+                "screenshotId",
+                "ignoreBoxes"
               ],
               "properties": {
                 "screenshotId": {"type": "string"},

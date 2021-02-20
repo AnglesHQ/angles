@@ -25,13 +25,13 @@ exports.create = (req, res) => {
       const teamFound = results[0];
       const environmentFound = results[1];
 
-      if (teamFound == null || teamFound === undefined) {
+      if (teamFound === null || teamFound === undefined) {
         return res.status(404).send({
           message: `No team found with name ${req.body.team}`,
         });
       }
 
-      if (environmentFound == null || environmentFound === undefined) {
+      if (environmentFound === null || environmentFound === undefined) {
         return res.status(404).send({
           message: `No environment found with name ${req.body.environment}`,
         });
@@ -76,7 +76,13 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { teamId, buildIds, returnExecutionDetails } = req.query;
+  const {
+    teamId,
+    buildIds,
+    returnExecutionDetails,
+    environmentIds,
+    componentIds,
+  } = req.query;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
   let query = {};
@@ -98,6 +104,9 @@ exports.findAll = (req, res) => {
           team: mongoose.Types.ObjectId(teamId),
         };
       }
+      if (environmentIds) query.environment = { $in: environmentIds.split(',') };
+      if (componentIds) query.component = { $in: componentIds.split(',') };
+      log(JSON.stringify(query));
       const buildQuery = Build.find(query, null, { limit, skip })
         .populate('team')
         .populate('environment')

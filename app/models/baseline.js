@@ -19,7 +19,7 @@ const IgnoreBox = new Schema({
     type: Number,
     required: true,
   },
-});
+}, { _id: false });
 
 const Platform = new Schema({
   platformName: {
@@ -40,7 +40,7 @@ const Platform = new Schema({
     trim: true,
     lowercase: true,
   },
-});
+}, { _id: false });
 
 const BaselineSchema = mongoose.Schema({
   screenshot: {

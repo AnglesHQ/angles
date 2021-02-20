@@ -37,7 +37,7 @@ const Step = mongoose.Schema({
     ref: 'Screenshot',
     required: false,
   },
-});
+}, { _id: false });
 
 const Action = mongoose.Schema({
   name: {
@@ -63,7 +63,7 @@ const Action = mongoose.Schema({
     type: Date,
     required: true,
   },
-});
+}, { _id: false });
 
 const TestExecutionSchema = mongoose.Schema({
   title: {
