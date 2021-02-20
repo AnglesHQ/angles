@@ -6,6 +6,8 @@ const buildMetricsUtils = require('../utils/build-metrics.js');
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
 const Environment = require('../models/environment.js');
+const Screenshot = require('../models/screenshot.js');
+const Baseline = require('../models/baseline.js');
 
 const log = debug('build:controller');
 
@@ -223,6 +225,13 @@ exports.setArtifacts = (req, res) => {
     }));
 };
 
+
+/*
+ TODO: when deleting a build we need to consider removing:
+  - associated execution
+  - associated Screenshot
+  - baselines
+ */
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -239,4 +248,46 @@ exports.delete = (req, res) => {
     }).catch((err) => res.status(500).send({
       message: `Could not delete build with id ${req.params.buildId} due to [${err}]`,
     }));
+};
+
+exports.deleteMany = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId, ageInDays } = req.query;
+  // delete by team and age (or default age 2 months) unless keep flag
+  return Team.findById({ _id: teamId })
+    .then((teamFound) => {
+      if (!teamFound) {
+        return res.status(404).send({
+          message: `Team not found with id ${teamId}`,
+        });
+      }
+      const date = new Date();
+      let daysToDeletion = 60;
+      if (ageInDays) { daysToDeletion = ageInDays; }
+      const deletionDate = new Date(date.setDate(date.getDate() - daysToDeletion));
+      const deleteBuildQuery = {
+        team: teamId,
+        createdAt: { $lt: deletionDate },
+        keep: { $ne: true },
+      };
+      return Build.find(deleteBuildQuery)
+        .then((buildsToDelete) => {
+          // TODO: delete all executions if we don't care.
+          log(`Builds to delete count ${buildsToDelete.length}`);
+          return Screenshot.find({ build: { $in: buildsToDelete } })
+            .then((screenshotsToDelete) => {
+              log(`Screenshots Count: ${screenshotsToDelete.length}`);
+              return Baseline.find({ screenshot: { $in: screenshotsToDelete } })
+                .then((baselinesToDelete) => {
+                  log(`Baseline count ${baselinesToDelete.length}`);
+                  return res.status(200).send({ message: `Will be deleting ${baselinesToDelete.length} baselines!` });
+                });
+            });
+        }).catch((err) => res.status(500).send({
+          message: `Could not delete build with id ${req.params.buildId} due to [${err}]`,
+        }));
+    });
 };

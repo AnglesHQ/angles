@@ -96,4 +96,13 @@ module.exports = (app, path) => {
   app.delete(`${path}/build/:buildId`, [
     param('buildId').isMongoId(),
   ], buildController.delete);
+
+  app.delete(`${path}/build/`, [
+    query('teamId')
+      .exists()
+      .isMongoId(),
+    query('ageInDays')
+      .optional()
+      .isNumeric(),
+  ], buildController.deleteMany);
 };

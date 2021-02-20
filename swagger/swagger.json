@@ -529,6 +529,48 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Will delete multiple builds based on the parameters",
+        "tags": [
+          "Build"
+        ],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of team that we want to remove builds for",
+            "type": "string"
+          },
+          {
+            "name": "ageInDays",
+            "in": "query",
+            "required": false,
+            "description": "The age in days we want to delete builds for (e.g. older than 30 days)",
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Builds have been deleted",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "404": {
+            "description": "Team not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
       }
     },
     "/build/{buildId}": {
