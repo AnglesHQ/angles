@@ -9,7 +9,7 @@ const EnvironmentSchema = mongoose.Schema({
   },
 }, {
   timestamps: true,
-});
+}, { collection: 'environments' });
 
 EnvironmentSchema.index({ name: 1 }, { unique: true });
 

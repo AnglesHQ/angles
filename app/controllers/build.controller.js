@@ -1,12 +1,16 @@
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 const debug = require('debug');
+const rimraf = require('rimraf');
+const path = require('path');
+
 const buildMetricsUtils = require('../utils/build-metrics.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
 const Environment = require('../models/environment.js');
 const Screenshot = require('../models/screenshot.js');
+const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
 
 const log = debug('build:controller');
@@ -61,13 +65,11 @@ exports.create = (req, res) => {
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
       buildMetricsUtils.calculateBuildMetrics(build);
-      return build.save()
-        .then((data) => {
-          log(`Created build "${data.name}" for team "${data.team.name}" with id: ${data._id}`);
-          return res.status(201).send(data);
-        }).catch((err) => res.status(500).send({
-          message: err.message || 'Some error occurred while creating the build.',
-        }));
+      return build.save();
+    })
+    .then((savedBuild) => {
+      log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
+      return res.status(201).send(savedBuild);
     }).catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while creating the build.',
     }));
@@ -250,6 +252,26 @@ exports.delete = (req, res) => {
     }));
 };
 
+const removeScreenshotDirectories = (buildsToDelete) => {
+  const buildIds = buildsToDelete.map((build) => build._id.toString());
+  log(`Deleting screenshots for builds with ids ${buildIds}`);
+  return new Promise((resolve) => {
+    // do a thing, possibly async, then…
+    buildIds.forEach((buildId) => {
+      const directoryToRemove = path.join(__dirname, `../../screenshots/${buildId}`);
+      rimraf(directoryToRemove, () => {
+        log(`Removed directory ${directoryToRemove}`);
+      });
+    });
+    resolve({ deleted: buildIds.length });
+  });
+};
+
+const returnUniqueDocumentIds = (documents) => {
+  const documentIds = documents.map((document) => document._id.toString());
+  return Array.from(new Set(documentIds));
+};
+
 exports.deleteMany = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -265,7 +287,7 @@ exports.deleteMany = (req, res) => {
         });
       }
       const date = new Date();
-      let daysToDeletion = 60;
+      let daysToDeletion = 90;
       if (ageInDays) { daysToDeletion = ageInDays; }
       const deletionDate = new Date(date.setDate(date.getDate() - daysToDeletion));
       const deleteBuildQuery = {
@@ -273,20 +295,35 @@ exports.deleteMany = (req, res) => {
         createdAt: { $lt: deletionDate },
         keep: { $ne: true },
       };
+      let allBuildsToDelete;
       return Build.find(deleteBuildQuery)
-        .then((buildsToDelete) => {
-          // TODO: delete all executions if we don't care.
-          log(`Builds to delete count ${buildsToDelete.length}`);
-          return Screenshot.find({ build: { $in: buildsToDelete } })
-            .then((screenshotsToDelete) => {
-              log(`Screenshots Count: ${screenshotsToDelete.length}`);
-              return Baseline.find({ screenshot: { $in: screenshotsToDelete } })
-                .then((baselinesToDelete) => {
-                  log(`Baseline count ${baselinesToDelete.length}`);
-                  return res.status(200).send({ message: `Will be deleting ${baselinesToDelete.length} baselines!` });
-                });
+        .then((builds) => {
+          allBuildsToDelete = builds;
+          return Screenshot.find({ build: { $in: allBuildsToDelete } });
+        })
+        .then((screenshotsToDelete) => Baseline.find({ screenshot: { $in: screenshotsToDelete } })
+          .populate('screenshot'))
+        .then((baseLines) => {
+          // We keep the builds that contain any baseline screenshots
+          const baselineScreenshots = baseLines.map((baseline) => baseline.screenshot);
+          const baselineBuilds = baselineScreenshots.map((screenshot) => screenshot.build);
+          const uniqueBaselineBuildIds = returnUniqueDocumentIds(baselineBuilds);
+          const buildsToDelete = allBuildsToDelete
+            .filter((build) => !uniqueBaselineBuildIds.includes(build._id.toString()));
+          const buildsToDeleteIds = returnUniqueDocumentIds(buildsToDelete);
+          const promises = [
+            removeScreenshotDirectories(buildsToDelete),
+            Screenshot.remove({ build: { $in: buildsToDelete } }).exec(),
+            Execution.remove({ build: { $in: buildsToDelete } }).exec(),
+            Build.deleteMany({ _id: { $in: buildsToDeleteIds } }).exec(),
+          ];
+          return Promise.all(promises)
+            .then((results) => {
+              log(results);
+              return res.status(200).send({ message: `Deleted [${buildsToDelete.length}] for team with id ${teamId} and age ${ageInDays}. Unable to delete ${uniqueBaselineBuildIds.length} builds as they have baselines set.` });
             });
-        }).catch((err) => res.status(500).send({
+        })
+        .catch((err) => res.status(500).send({
           message: `Could not delete build with id ${req.params.buildId} due to [${err}]`,
         }));
     });

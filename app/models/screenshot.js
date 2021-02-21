@@ -47,7 +47,7 @@ const ScreenshotSchema = mongoose.Schema({
   }],
 }, {
   timestamps: true,
-});
+}, { collection: 'screenshots' });
 
 ScreenshotSchema.index({ build: 1 }, { unique: false });
 ScreenshotSchema.index({ view: 1 }, { unique: false });

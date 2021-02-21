@@ -29,7 +29,7 @@ const TeamSchema = mongoose.Schema({
   }],
 }, {
   timestamps: true,
-});
+}, { collection: 'teams' });
 
 TeamSchema.index({ name: 1 }, { unique: true });
 

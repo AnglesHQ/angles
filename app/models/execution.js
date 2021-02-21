@@ -123,7 +123,7 @@ const TestExecutionSchema = mongoose.Schema({
   },
 }, {
   timestamps: true,
-});
+}, { collection: 'testexecutions' });
 
 TestExecutionSchema.index({ build: 1 }, { unique: false });
 TestExecutionSchema.index({ suite: 1, title: 1 }, { unique: false });

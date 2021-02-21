@@ -71,7 +71,7 @@ const BaselineSchema = mongoose.Schema({
   }],
 }, {
   timestamps: true,
-});
+}, { collection: 'baselines' });
 
 BaselineSchema.index({ view: 1 }, { unique: false });
 

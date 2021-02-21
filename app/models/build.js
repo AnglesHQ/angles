@@ -51,7 +51,6 @@ const Suite = mongoose.Schema({
   executions: [{ type: Schema.Types.ObjectId, ref: 'TestExecution' }],
 }, { _id: false });
 
-
 const BuildSchema = Schema({
   name: {
     type: String,
@@ -106,8 +105,8 @@ const BuildSchema = Schema({
   }],
 }, {
   timestamps: true,
-});
+}, { collection: 'builds' });
 
-BuildSchema.index({ team: 1 }, { unique: true });
+BuildSchema.index({ team: 1 }, { unique: false });
 
 module.exports = mongoose.model('Build', BuildSchema);

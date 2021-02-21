@@ -36,6 +36,7 @@
     "pino": "^6.11.0",
     "randomstring": "^1.1.5",
     "resemblejs": "^3.2.4",
+    "rimraf": "^2.6.3",
     "saslprep": "^1.0.3",
     "sharp": "^0.27.1",
     "swagger-ui-express": "^4.1.1",

@@ -49,6 +49,6 @@ const Platform = mongoose.Schema({
     type: Number,
     required: false,
   },
-});
+}, { _id: false });
 
 module.exports = Platform;
