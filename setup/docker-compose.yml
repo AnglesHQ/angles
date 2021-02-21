@@ -40,7 +40,7 @@ services:
   frontend:
     container_name: "angles-ui"
     image: angleshq/angles-ui:${ANGLES_VERSION}
-    restart: alwaysß
+    restart: always
     ports:
        - 3001:3001
     environment:
