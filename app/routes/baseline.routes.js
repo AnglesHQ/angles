@@ -3,6 +3,7 @@ const {
   query,
   param,
   oneOf,
+  body,
 } = require('express-validator');
 
 const baselineController = require('../controllers/baseline.controller.js');
@@ -47,10 +48,10 @@ module.exports = (app, path) => {
   app.put(`${path}/baseline/:baselineId`, [
     param('baselineId').isMongoId(),
     oneOf([
-      query('screenshotId')
+      body('screenshotId')
         .exists()
         .isMongoId(),
-      query('ignoreBoxes')
+      body('ignoreBoxes')
         .exists(),
     ]),
   ], baselineController.update);
