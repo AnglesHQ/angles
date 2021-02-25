@@ -1,1 +1,1 @@
-* 1 * * * . /app/cleanup/.env && bash /app/cleanup/clean-up.sh >> /var/log/cron.log 2>&1
+0 1 * * * . /app/cleanup/.env && bash /app/cleanup/clean-up.sh >> /var/log/cron.log 2>&1

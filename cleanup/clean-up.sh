@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 echo "============================== Starting Angles Build Cleanup Script =============================="
-teams=$(curl --silent "http://localhost:$PORT/rest/api/v1.0/team" | jq -c '.[]')
-for team in $teams
-do
+readarray -t teams < <(curl --silent "http://localhost:$PORT/rest/api/v1.0/team" | jq -cr '.[]')
+
+for team in "${teams[@]}"; do
   teamId=$(jq -r '._id' <<< $team)
   teamName=$(jq '.name' <<< $team)
   echo "$(date '+%d/%m/%Y %H:%M:%S'): Attempting to delete old builds for team $teamName with id $teamId";
