@@ -21,6 +21,10 @@
       "description": "API for managing the environments"
     },
     {
+      "name": "Phase",
+      "description": "API for managing the test phases for the various builds"
+    },
+    {
       "name": "Build",
       "description": "API for managing the builds"
     },
@@ -401,6 +405,171 @@
           },
           "404": {
             "description": "No team found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      }
+    },
+    "/phase": {
+      "post": {
+        "tags": [
+          "Phase"
+        ],
+        "summary": "Create new test phase for the dashboard",
+        "parameters": [
+          {
+            "name": "create",
+            "in": "body",
+            "description": "Phase that we want to create",
+            "schema": {
+              "$ref": "#/definitions/Phase"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "New test phase is created",
+            "schema": {
+              "$ref": "#/definitions/StoredPhase"
+            }
+          },
+          "409": {
+            "description": "Duplicate phase found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Phase"
+        ],
+        "summary": "Get all test phases for the dashboard in system",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Phase"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/phase/{phaseId}": {
+      "parameters": [
+        {
+          "name": "phaseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of test phase that we want to find",
+          "type": "string"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Phase"
+        ],
+        "summary": "Get test phase with given ID",
+        "responses": {
+          "200": {
+            "description": "Phase is found",
+            "schema": {
+              "$ref": "#/definitions/Phase"
+            }
+          },
+          "404": {
+            "description": "No phase found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete phase with given ID",
+        "tags": [
+          "Phase"
+        ],
+        "responses": {
+          "200": {
+            "description": "Phase has been deleted",
+            "schema": {
+              "$ref": "#/definitions/Phase"
+            }
+          },
+          "404": {
+            "description": "Phase not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update phase with give ID",
+        "tags": [
+          "Phase"
+        ],
+        "parameters": [
+          {
+            "name": "phase",
+            "in": "body",
+            "description": "Request to update the phase. Please provide either a name and/or orderNumber.",
+            "schema": {
+              "type": "object",
+              "required": [
+                "name",
+                "orderNumber"
+              ],
+              "properties": {
+                "name": {"type": "string"},
+                "orderNumber" : {"type": "number"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Phase is updated",
+            "schema": {
+              "$ref": "#/definitions/Phase"
+            }
+          },
+          "404": {
+            "description": "No phase found",
             "schema": {
               "$ref": "#/definitions/DefaultResponse"
             }
@@ -1793,14 +1962,46 @@
           }
         ]
     },
+    "Phase": {
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "uniqueItems": true
+        },
+        "orderNumber": {
+          "type": "number"
+        }
+      }
+    },
+    "StoredPhase": {
+        "allOf": [
+          {"$ref": "#/definitions/Phase"},
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              }
+            }
+          }
+        ]
+    },
     "Build": {
       "required": [
         "environment",
-        "team"
+        "team",
+        "component",
+        "name"
       ],
       "properties": {
         "environment": { "type": "string" },
         "team": { "type": "string" },
+        "component": { "type": "string" },
+        "name": { "type": "string" },
+        "phase": { "type": "string" },
         "artifacts": {
           "type": "array",
           "items": {

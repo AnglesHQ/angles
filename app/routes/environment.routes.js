@@ -5,8 +5,8 @@ module.exports = (app, path) => {
   app.post(`${path}/environment`, [
     check('name')
       .exists()
-      .isLength({ max: 30 })
-      .withMessage('Max length for environment name is 30 characters')
+      .isLength({ max: 50 })
+      .withMessage('Max length for environment name is 50 characters')
       .matches(/^[A-Za-z0-9-]+$/)
       .withMessage('Name must only contain letters, numbers and hyphens.'),
   ], environmentController.create);

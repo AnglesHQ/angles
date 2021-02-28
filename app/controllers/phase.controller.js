@@ -17,9 +17,10 @@ exports.create = (req, res) => {
           message: `Phase with name ${req.body.name} already exists.`,
         });
       }
-      // create new phase
+      const { name, orderNumber } = req.body;
       const phase = new Phase({
-        name: req.body.name,
+        name,
+        orderNumber,
       });
 
       // save the phase
@@ -68,16 +69,27 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Phase.where({ name: req.body.name }).findOne()
-    .then((existingPhase) => {
-      if (existingPhase) {
-        return res.status(409).send({
-          message: `Phase with name ${req.body.name} already exists.`,
-        });
-      }
-      return Phase.findByIdAndUpdate(req.params.phaseId, {
-        name: req.body.name,
-      }, { new: true });
+  const { name, orderNumber } = req.body;
+  let promise;
+  let updateRequest = {};
+  if (name) {
+    updateRequest = { name };
+    promise = Phase.where({ name }).findOne()
+      .then((existingPhase) => {
+        if (existingPhase) {
+          return res.status(409).send({
+            message: `Phase with name ${req.body.name} already exists.`,
+          });
+        }
+        return true;
+      });
+  } else {
+    promise = Promise.resolve(true);
+  }
+  return promise
+    .then(() => {
+      if (orderNumber) updateRequest.orderNumber = orderNumber;
+      return Phase.findByIdAndUpdate(req.params.phaseId, updateRequest, { new: true });
     })
     .then((phase) => {
       if (!phase) {

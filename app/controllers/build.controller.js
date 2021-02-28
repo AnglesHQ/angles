@@ -12,6 +12,7 @@ const Environment = require('../models/environment.js');
 const Screenshot = require('../models/screenshot.js');
 const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
+const Phase = require('../models/phase.js');
 
 const log = debug('build:controller');
 
@@ -21,25 +22,38 @@ exports.create = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
 
+  const { team, environment, phase } = req.body;
+  let phasePromise = Promise.resolve(true);
+  if (phase) {
+    phasePromise = Phase.findOne({ name: phase }).exec();
+  }
   const promises = [
-    Team.findOne({ name: req.body.team }).exec(),
-    Environment.findOne({ name: req.body.environment }).exec(),
+    Team.findOne({ name: team }).exec(),
+    Environment.findOne({ name: environment }).exec(),
+    phasePromise,
   ];
 
   return Promise.all(promises)
     .then((results) => {
       const teamFound = results[0];
       const environmentFound = results[1];
+      const phaseFound = results[2];
 
       if (teamFound === null || teamFound === undefined) {
         return res.status(404).send({
-          message: `No team found with name ${req.body.team}`,
+          message: `No team found with name ${team}`,
         });
       }
 
       if (environmentFound === null || environmentFound === undefined) {
         return res.status(404).send({
-          message: `No environment found with name ${req.body.environment}`,
+          message: `No environment found with name ${environment}`,
+        });
+      }
+
+      if (phase && (phaseFound === null || phaseFound === undefined)) {
+        return res.status(404).send({
+          message: `No phase found with name ${phase}`,
         });
       }
 
@@ -64,6 +78,9 @@ exports.create = (req, res) => {
         suite: [],
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
+      if (phase && phaseFound) {
+        build.phase = phaseFound;
+      }
       buildMetricsUtils.calculateBuildMetrics(build);
       return build.save();
     })

@@ -5,8 +5,8 @@ module.exports = (app, path) => {
   app.post(`${path}/team`, [
     check('name')
       .exists()
-      .isLength({ max: 30 })
-      .withMessage('Max length for team name is 30 characters')
+      .isLength({ max: 50 })
+      .withMessage('Max length for team name is 50 characters')
       .matches(/^[A-Za-z0-9-]+$/)
       .withMessage('Name must only contain letters, numbers and hyphens.'),
     check('components')
@@ -32,8 +32,8 @@ module.exports = (app, path) => {
     param('teamId').isMongoId(),
     check('name')
       .exists()
-      .isLength({ max: 30 })
-      .withMessage('Max length for team name is 30 characters')
+      .isLength({ max: 50 })
+      .withMessage('Max length for team name is 50 characters')
       .matches(/^[A-Za-z0-9-]+$/)
       .withMessage('Name must only contain letters, numbers and hyphens.'),
   ], teamController.update);

@@ -28,7 +28,7 @@ describe('Environment API Tests', () => {
   });
   after(() => {
     environment.remove();
-    Environment.remove({ _id: createdEnvironment._id });
+    Environment.findOneAndRemove({ _id: createdEnvironment._id }).exec();
   });
   describe('GET /environment', () => {
     it('respond with json containing a list of all environments', (done) => {

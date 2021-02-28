@@ -7,9 +7,9 @@ const PhaseSchema = mongoose.Schema({
     unique: true,
     lowercase: true,
   },
-  priotity: {
+  orderNumber: {
     type: Number,
-    required: true,
+    required: false,
   },
 }, {
   timestamps: true,
