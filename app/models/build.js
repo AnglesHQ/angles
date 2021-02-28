@@ -89,6 +89,11 @@ const BuildSchema = Schema({
     ref: 'Environment',
     required: true,
   },
+  phase: {
+    type: Schema.Types.ObjectId,
+    ref: 'Phase',
+    required: false,
+  },
   team: {
     type: Schema.Types.ObjectId,
     ref: 'Team',

@@ -5,11 +5,10 @@ module.exports = (app, path) => {
   app.post(`${path}/environment`, [
     check('name')
       .exists()
-      .isString()
-      .matches(/^[A-Za-z0-9\-\s]+$/)
-      .withMessage('Name must only contain letters, numbers and hyphens.')
-      .isLength({ max: 50 })
-      .withMessage('Max length for environment name is 50 characters'),
+      .isLength({ max: 30 })
+      .withMessage('Max length for environment name is 30 characters')
+      .matches(/^[A-Za-z0-9-]+$/)
+      .withMessage('Name must only contain letters, numbers and hyphens.'),
   ], environmentController.create);
 
   app.get(`${path}/environment`, environmentController.findAll);
@@ -22,9 +21,10 @@ module.exports = (app, path) => {
     param('environmentId').isMongoId(),
     check('name')
       .exists()
-      .isString()
       .isLength({ max: 50 })
-      .withMessage('Max length for team name is 50 characters'),
+      .withMessage('Max length for environment name is 50 characters')
+      .matches(/^[A-Za-z0-9-]+$/)
+      .withMessage('Name must only contain letters, numbers and hyphens.'),
   ], environmentController.update);
 
   app.delete(`${path}/environment/:environmentId`, [
