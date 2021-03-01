@@ -46,6 +46,12 @@ module.exports = (app, path) => {
       .isNumeric(),
   ], buildController.findAll);
 
+  app.get(`${path}/build/metrics`, [
+    query('teamId')
+      .exists()
+      .isMongoId(),
+  ], buildController.retrieveMetrics);
+
   app.get(`${path}/build/:buildId`, [
     param('buildId')
       .exists()

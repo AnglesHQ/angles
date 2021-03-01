@@ -345,3 +345,87 @@ exports.deleteMany = (req, res) => {
         }));
     });
 };
+
+exports.retrieveMetrics = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const {
+    teamId,
+    environmentIds,
+    componentIds,
+  } = req.query;
+  let query = {};
+  return Team.findById({ _id: teamId })
+    .then((teamFound) => {
+      if (!teamFound) {
+        return res.status(404).send({
+          message: `No team found with name ${req.body.team}`,
+        });
+      }
+      query = {
+        team: mongoose.Types.ObjectId(teamId),
+      };
+      if (environmentIds) query.environment = { $in: environmentIds.split(',') };
+      if (componentIds) query.component = { $in: componentIds.split(',') };
+      return Build.find(query)
+        .populate('team')
+        .populate('environment')
+        .populate('phase')
+        .populate('suites.executions', { actions: 0 })
+        .sort('-createdAt')
+        .then((builds) => {
+          const metrics = {};
+          metrics.executions = [];
+          builds.forEach((build) => {
+            // grab buil level variables (e.g. phase and environment)
+            let testPhase = 'default';
+            if (build.phase) {
+              testPhase = build.phase.name;
+            }
+            const environment = build.environment.name;
+
+            build.suites.forEach((suite) => {
+              suite.executions.forEach((execution) => {
+                const test = { phase: testPhase, environment };
+                // test execution metrics
+                test.id = `${execution.suite}.${execution.title}`;
+                test.status = execution.status;
+                const executionTimeInSeconds = Math.abs((new Date(execution.end)
+                  .getTime() - new Date(execution.start).getTime()) / 1000);
+                test.executionTime = executionTimeInSeconds;
+                test.date = execution.start;
+                test.platforms = [];
+
+                // sort out device metrics
+                execution.platforms.forEach((platform) => {
+                  let platformId = '';
+                  if (platform.platformVersion) {
+                    platformId = `${platform.platformName}_${platform.platformVersion}`;
+                  } else {
+                    platformId = `${platform.platformName}`;
+                  }
+                  if (platform.deviceName) {
+                    platformId += `_${platform.deviceName}`;
+                  } else {
+                    platformId += `${platform.platformName}_${platform.browserName}`;
+                    if (platform.browserVersion) {
+                      platformId += `_${platform.browserVersion}`;
+                    }
+                  }
+                  test.platforms.push(platformId);
+                });
+                metrics.executions.push(test);
+              });
+            });
+          });
+          return res.status(200).send(metrics);
+        });
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message: err.message || 'Unable to retrieve builds.',
+      });
+    });
+};
