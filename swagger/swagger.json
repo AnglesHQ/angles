@@ -1421,6 +1421,14 @@
           "required": true,
           "description": "ID of the base screenshot",
           "type": "string"
+        },
+        {
+          "name": "useCache",
+          "in": "query",
+          "required": false,
+          "default": true,
+          "description": "All compares are stored using the two id's of the images used to compare. By default we will return this cached version unless this flag is set to false (and the compare will be done again)",
+          "type": "boolean"
         }
       ],
       "get": {

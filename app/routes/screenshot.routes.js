@@ -71,6 +71,7 @@ module.exports = (app, path) => {
   app.get(`${path}/screenshot/:screenshotId/compare/:screenshotCompareId`, [
     param('screenshotId').exists().isMongoId(),
     param('screenshotCompareId').exists().isMongoId(),
+    query('useCache').optional().isBoolean(),
   ], screenshotController.compareImages);
 
   app.get(`${path}/screenshot/:screenshotId/compare/:screenshotCompareId/image`, [
@@ -81,6 +82,10 @@ module.exports = (app, path) => {
   app.get(`${path}/screenshot/:screenshotId/baseline/compare`, [
     param('screenshotId').exists().isMongoId(),
   ], screenshotController.compareImageAgainstBaseline);
+
+  app.get(`${path}/screenshot/:screenshotId/baseline/compare/image`, [
+    param('screenshotId').exists().isMongoId(),
+  ], screenshotController.compareImageAgainstBaselineAndReturnImage);
 
   app.put(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),

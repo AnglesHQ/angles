@@ -1,17 +1,16 @@
 const { validationResult } = require('express-validator');
 const fs = require('fs');
 const debug = require('debug');
-const fsPromises = require('fs').promises;
 const path = require('path');
 const mongoose = require('mongoose');
 const { compare } = require('resemblejs');
-const compareImages = require('resemblejs/compareImages');
 const sizeOf = require('image-size');
 const sharp = require('sharp');
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
 const validationUtils = require('../utils/validation-utils.js');
+const imageUtils = require('../utils/image-utils.js');
 
 const log = debug('screenshot:controller');
 
@@ -214,6 +213,7 @@ exports.compareImages = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
+
   // find both images
   const promises = [
     Screenshot.findById(req.params.screenshotId).exec(),
@@ -251,62 +251,22 @@ exports.compareImagesAndReturnImage = (req, res) => {
     Screenshot.findById(req.params.screenshotCompareId).exec(),
   ];
 
+  const { useCache } = req.query;
+
   return Promise.all(promises).then((results) => {
     const screenshot = results[0];
-    const screenshotCompare = results[1];
-    if (screenshot === null || screenshotCompare === null) {
+    const screenshotToCompare = results[1];
+    if (screenshot === null || screenshotToCompare === null) {
       return res.status(404).send({
         message: 'Unable to retrieve one or both images',
       });
     }
-    // create name based on the two id's
-    const tempFileName = `compares/${screenshot.id}_${screenshotCompare.id}-compare.png`;
-    // check if the file already exists
-    return fs.access(tempFileName, fs.F_OK, (err) => {
-      // file doesn't exists then create it by doing the compare.
-      if (err) {
-        const options = {
-          output: {
-            errorColor: {
-              red: 255,
-              green: 0,
-              blue: 255,
-            },
-            errorType: 'movement',
-            transparency: 0.3,
-            largeImageThreshold: 1200,
-            useCrossOrigin: false,
-            outputDiff: true,
-          },
-          scaleToSameSize: true,
-          ignore: 'less',
-        };
-        const loadImagesPromises = [
-          fsPromises.readFile(screenshot.path),
-          fsPromises.readFile(screenshotCompare.path),
-        ];
-        return Promise.all(loadImagesPromises)
-          .then((imageLoadResults) => {
-            compareImages(
-              imageLoadResults[0],
-              imageLoadResults[1],
-              options,
-            ).then((data) => {
-              fsPromises.writeFile(path.resolve(tempFileName), data.getBuffer())
-                .then(() => res.sendFile(path.resolve(tempFileName)));
-            });
-          }).catch((compareError) => {
-            res.status(500).send({
-              message: compareError.message || 'Some error occurred comparing the images',
-            });
-          });
-      }
-      // if file does exist just return it.
-      return res.sendFile(path.resolve(tempFileName));
-    });
-  }).catch((err) => res.status(500).send({
-    message: err.message || 'Some error occurred while creating the build.',
-  }));
+    return imageUtils.compareImages(screenshot, screenshotToCompare, undefined, useCache);
+  })
+    .then((tempFileName) => res.sendFile(path.resolve(tempFileName)))
+    .catch((err) => res.status(500).send({
+      message: err.message || 'Some error occurred while comparing the images.',
+    }));
 };
 
 exports.compareImageAgainstBaseline = (req, res) => {
@@ -339,17 +299,18 @@ exports.compareImageAgainstBaseline = (req, res) => {
         baseLineQuery.screenHeight = screenshotToCompare.height;
         baseLineQuery.screenWidth = screenshotToCompare.width;
       }
-      return Baseline.find(baseLineQuery).populate('screenshot');
+      return Baseline.findOne(baseLineQuery).populate('screenshot');
     })
-    .then((baselines) => {
+    .then((baseline) => {
       // compare image with baseline and return result.
-      if (!baselines || baselines.length === 0) {
+      if (!baseline) {
         return res.status(404).send({
           message: `No baselines found for screenshot with id ${req.params.screenshotId}`,
         });
       }
-      const options = { returnEarlyThreshold: 50 };
-      return compare(screenshotToCompare.path, baselines[0].screenshot.path, options,
+      const { ignoreBoxes } = baseline;
+      const options = { returnEarlyThreshold: 50, output: { ignoreBoxes } };
+      return compare(screenshotToCompare.path, baseline.screenshot.path, options,
         (err, data) => {
           if (err) {
             return res.status(500).send({
@@ -361,6 +322,59 @@ exports.compareImageAgainstBaseline = (req, res) => {
     })
     .catch((error) => res.status(500).send({
       message: `Error creating execution [${error}]`,
+    }));
+};
+
+exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { useCache } = req.query;
+  let screenshotToCompare;
+  return Screenshot.findById(req.params.screenshotId)
+    .then((screenshot) => {
+      if (!screenshot) {
+        return res.status(404).send({
+          message: `No Screenshot found with id ${req.body.screenshotId}`,
+        });
+      }
+      if (!screenshot.view) {
+        return res.status(400).send({
+          message: `Screenshot with id ${req.params.screenshotId} does not have a view set, so can not be compared.`,
+        });
+      }
+      screenshotToCompare = screenshot;
+      const {
+        view,
+        height,
+        width,
+        platform,
+      } = screenshotToCompare;
+      const baseLineQuery = {
+        view,
+        'platform.platformName': platform.platformName,
+      };
+      if (platform.deviceName) baseLineQuery['platform.deviceName'] = platform.deviceName;
+      if (platform.browserName) {
+        baseLineQuery['platform.browserName'] = platform.browserName;
+        baseLineQuery.screenHeight = height;
+        baseLineQuery.screenWidth = width;
+      }
+      return Baseline.findOne(baseLineQuery).populate('screenshot');
+    })
+    .then((baselineFound) => {
+      if (!baselineFound) {
+        return res.status(404).send({
+          message: `No baselines found for screenshot with id ${req.params.screenshotId}`,
+        });
+      }
+      const { screenshot, ignoreBoxes } = baselineFound;
+      return imageUtils.compareImages(screenshot, screenshotToCompare, ignoreBoxes, useCache);
+    })
+    .then((tempFileName) => res.sendFile(tempFileName))
+    .catch((err) => res.status(500).send({
+      message: err.message || 'Some error occurred while creating the build.',
     }));
 };
 
