@@ -274,30 +274,36 @@ exports.compareImageAgainstBaseline = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  let screenshotToCompare;
+  let screenshot;
   return Screenshot.findById(req.params.screenshotId)
-    .then((screenshot) => {
-      if (!screenshot) {
+    .then((screenshotFound) => {
+      if (!screenshotFound) {
         return res.status(404).send({
           message: `No Screenshot found with id ${req.body.build}`,
         });
       }
-      if (!screenshot.view) {
+      if (!screenshotFound.view) {
         return res.status(400).send({
           message: `Screenshot with id ${req.params.screenshotId} does not have a view set, so can not be compared.`,
         });
       }
-      screenshotToCompare = screenshot;
+      screenshot = screenshotFound;
+      const {
+        view,
+        platform,
+        height,
+        width,
+      } = screenshot;
       // generate baseline query using screenshot details.
       const baseLineQuery = {
-        view: screenshotToCompare.view,
-        'platform.platformName': screenshotToCompare.platform.platformName,
+        view,
+        'platform.platformName': platform.platformName,
       };
-      if (screenshotToCompare.platform.deviceName) baseLineQuery['platform.deviceName'] = screenshotToCompare.platform.deviceName;
-      if (screenshotToCompare.platform.browserName) {
-        baseLineQuery['platform.browserName'] = screenshotToCompare.platform.browserName;
-        baseLineQuery.screenHeight = screenshotToCompare.height;
-        baseLineQuery.screenWidth = screenshotToCompare.width;
+      if (platform.deviceName) baseLineQuery['platform.deviceName'] = platform.deviceName;
+      if (platform.browserName) {
+        baseLineQuery['platform.browserName'] = platform.browserName;
+        baseLineQuery.screenHeight = height;
+        baseLineQuery.screenWidth = width;
       }
       return Baseline.findOne(baseLineQuery).populate('screenshot');
     })
@@ -308,9 +314,9 @@ exports.compareImageAgainstBaseline = (req, res) => {
           message: `No baselines found for screenshot with id ${req.params.screenshotId}`,
         });
       }
-      const { ignoreBoxes } = baseline;
-      const options = { returnEarlyThreshold: 50, output: { ignoreBoxes } };
-      return compare(screenshotToCompare.path, baseline.screenshot.path, options,
+      // const { ignoreBoxes: ignoredBoxes } = baseline;
+      const options = { returnEarlyThreshold: 50, output: {} };
+      return compare(screenshot.path, baseline.screenshot.path, options,
         (err, data) => {
           if (err) {
             return res.status(500).send({
