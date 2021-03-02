@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const fs = require('fs');
 const debug = require('debug');
 const path = require('path');
+const resemble = require('resemblejs');
 const mongoose = require('mongoose');
 const { compare } = require('resemblejs');
 const sizeOf = require('image-size');
@@ -314,8 +315,21 @@ exports.compareImageAgainstBaseline = (req, res) => {
           message: `No baselines found for screenshot with id ${req.params.screenshotId}`,
         });
       }
-      // const { ignoreBoxes: ignoredBoxes } = baseline;
-      const options = { returnEarlyThreshold: 50, output: {} };
+      const { ignoreBoxes: baseLineIgnoredBoxes } = baseline;
+      // these are set as percentages so have to be converted.
+      const ignoredBoxes = [];
+      const { height, width } = screenshot;
+      baseLineIgnoredBoxes.forEach((baselineIgnoreBox) => {
+        const ignoreBox = {};
+        ignoreBox.left = width * (baselineIgnoreBox.left / 100);
+        ignoreBox.right = width * (1 - (baselineIgnoreBox.right / 100));
+        ignoreBox.top = height * (baselineIgnoreBox.top / 100);
+        ignoreBox.bottom = height * (1 - (baselineIgnoreBox.bottom / 100));
+        ignoredBoxes.push(ignoreBox);
+      });
+      const options = {
+        output: { eturnEarlyThreshold: 50, ignoredBoxes },
+      };
       return compare(screenshot.path, baseline.screenshot.path, options,
         (err, data) => {
           if (err) {
@@ -375,8 +389,19 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
           message: `No baselines found for screenshot with id ${req.params.screenshotId}`,
         });
       }
-      const { screenshot, ignoreBoxes } = baselineFound;
-      return imageUtils.compareImages(screenshot, screenshotToCompare, ignoreBoxes, useCache);
+      const { screenshot, ignoreBoxes: baseLineIgnoredBoxes } = baselineFound;
+      const ignoredBoxes = [];
+      const { height, width } = screenshot;
+      baseLineIgnoredBoxes.forEach((baselineIgnoreBox) => {
+        const ignoreBox = {};
+        ignoreBox.left = width * (baselineIgnoreBox.left / 100);
+        ignoreBox.right = width * (1 - (baselineIgnoreBox.right / 100));
+        ignoreBox.top = height * (baselineIgnoreBox.top / 100);
+        ignoreBox.bottom = height * (1 - (baselineIgnoreBox.bottom / 100));
+        ignoredBoxes.push(ignoreBox);
+      });
+      log(JSON.stringify(ignoredBoxes));
+      return imageUtils.compareImages(screenshot, screenshotToCompare, ignoredBoxes, useCache);
     })
     .then((tempFileName) => res.sendFile(tempFileName))
     .catch((err) => res.status(500).send({

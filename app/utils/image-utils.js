@@ -22,11 +22,11 @@ const defaultOptions = {
   ignore: 'less',
 };
 
-imageUtils.compareImages = (screenshot, screenshotToCompare, ignoreBoxes, useCache) => {
+imageUtils.compareImages = (screenshot, screenshotToCompare, ignoredBoxes, useCache) => {
   // create name based on the two id's
   const tempFileName = `compares/${screenshotToCompare.id}_${screenshot.id}-compare.png`;
   // set ignore boxes to use.
-  if (screenshotToCompare) defaultOptions.output.ignoreBoxes = ignoreBoxes;
+  if (screenshotToCompare) defaultOptions.output.ignoredBoxes = ignoredBoxes;
   // check if the file already exists
   return new Promise((resolve) => {
     fs.access(tempFileName, fs.F_OK, (err) => {
