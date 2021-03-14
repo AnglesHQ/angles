@@ -1,5 +1,13 @@
 # Angles dashboard
-A test dashboard that will allow you to store your automated test results in a common way an display the reports from various test execution frameworks
+Angles is dashboard that will allow you to store your automated test results and screenshots by providing a clear API, which allows you to enter your tests results from various frameworks and languages. This means you will no longer have different reporting for each of the testing frameworks you use and you can generate reports covering various test phases and tools.
+
+Some additional features provided are:
+- Visual comparison (against a baseline)
+- Setting ignore boxes (for areas that should be included in the compare)
+- Storing addition details as part of the test runs such as platform and artefact versions for system under test.
+- Automatic cleanup of builds and screenshots after 90 days (configurable)
+- Test Case history (allowing you to see the history of a single automated test case)
+- Test Matrix (allow you to compare multiple builds, to e.g. find any flakey test cases)
 
 ## Setup
 To setup your own instance of the Angles dashboard you can use the [docker compose](setup/docker-compose.yml) file and [Docker-compose](https://docs.docker.com/compose/).
@@ -18,7 +26,7 @@ If you're not running Angles locally (e.g. 127.0.0.1), you should also change th
 
 ```shellscript
 # set the version you want to install
-export ANGLES_VERSION=1.0.0-BETA4
+export ANGLES_VERSION=1.0.0
 
 # run in same directory as docker-compose file
 docker-compose up --build -d  
