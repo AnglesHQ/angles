@@ -135,15 +135,20 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
+  const { screenshotId } = req.body;
+  let screenshotPromise = new Promise((resolve) => { resolve(); });
+  if (screenshotId) {
+    screenshotPromise = Screenshot.findById(req.body.screenshotId).exec();
+  }
 
   const promises = [
-    Screenshot.findById(req.body.screenshotId).exec(),
+    screenshotPromise,
     Baseline.findById(req.params.baselineId).exec(),
   ];
   return Promise.all(promises).then((results) => {
     const screenshot = results[0];
     const baselineFound = results[1];
-    if (!screenshot) {
+    if (screenshotId && !screenshot) {
       return res.status(404).send({
         message: `Screenshot not found with id ${req.body.screenshotId}`,
       });
@@ -153,22 +158,24 @@ exports.update = (req, res) => {
         message: `Baseline not found with id ${req.params.baselineId}`,
       });
     }
-    if (screenshot.view !== baselineFound.view) {
+    if (screenshotId && screenshot.view !== baselineFound.view) {
       return res.status(400).send({
         message: `The screenshot with id ${req.body.screenshotId} has a different view to the baseline and therefore can not be used for the requested baseline. Expected [${screenshot.view}], Actual [${baselineFound.view}].`,
       });
     }
-    if (!validationUtils.doPlatformDetailsMatch(baselineFound, screenshot)) {
+    if (screenshotId && !validationUtils.doPlatformDetailsMatch(baselineFound, screenshot)) {
       return res.status(400).send({
         message: `The screenshot with id ${req.body.screenshotId} has a different platform details to the baseline. Please ensure either the deviceName matches or the browserName and screenWidth and screenHeight`,
       });
     }
-    baselineFound.screenshot = screenshot;
+    if (screenshotId) baselineFound.screenshot = screenshot;
     if (req.body.ignoreBoxes) {
       baselineFound.ignoreBoxes = req.body.ignoreBoxes;
     }
     return baselineFound.save();
-  }).then((savedBaseline) => res.status(200).send(savedBaseline))
+  })
+    .then((savedBaseline) => savedBaseline.populate('screenshot').execPopulate())
+    .then((savedBaselinedWithScreenshot) => res.status(200).send(savedBaselinedWithScreenshot))
     .catch((err) => res.status(500).send({
       message: `Error updating build with id ${req.params.baselineId} due to [${err}]`,
     }));

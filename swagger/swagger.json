@@ -1776,13 +1776,7 @@
           "items": {
             "type": "object",
             "properties":{
-              "name": { "type": "string" },
-              "features":  {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-              }
+              "name": { "type": "string" }
             }
           }
         }

@@ -9,11 +9,6 @@ const Component = new Schema({
     unique: false,
     lowercase: true,
   },
-  features: [{
-    type: String,
-    required: false,
-    lowercase: true,
-  }],
 });
 
 const TeamSchema = mongoose.Schema({

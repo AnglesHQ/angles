@@ -2,7 +2,6 @@ const { validationResult } = require('express-validator');
 const fs = require('fs');
 const debug = require('debug');
 const path = require('path');
-const resemble = require('resemblejs');
 const mongoose = require('mongoose');
 const { compare } = require('resemblejs');
 const sizeOf = require('image-size');
