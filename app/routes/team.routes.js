@@ -5,20 +5,17 @@ module.exports = (app, path) => {
   app.post(`${path}/team`, [
     check('name')
       .exists()
-      .isString()
-      .isLength({ max: 50 })
-      .withMessage('Max length for team name is 50 characters'),
+      .exists({ checkFalsy: true })
+      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .withMessage('Name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
     check('components')
       .exists()
       .custom((componentArray) => Array.isArray(componentArray) && componentArray.length > 0)
       .withMessage('At least one component is required'),
     check('components.*.name')
-      .exists()
-      .isAlphanumeric(),
-    check('components.*.features')
-      .optional()
-      .isArray()
-      .withMessage('Features field has to be an Array'),
+      .exists({ checkFalsy: true })
+      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .withMessage('Component name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.create);
 
   app.get(`${path}/team`, teamController.findAll);
@@ -30,10 +27,9 @@ module.exports = (app, path) => {
   app.put(`${path}/team/:teamId`, [
     param('teamId').isMongoId(),
     check('name')
-      .exists()
-      .isString()
-      .isLength({ max: 50 })
-      .withMessage('Max length for team name is 50 characters'),
+      .exists({ checkFalsy: true })
+      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .withMessage('Name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.update);
 
   app.put(`${path}/team/:teamId/components`, [
@@ -42,6 +38,10 @@ module.exports = (app, path) => {
       .exists()
       .custom((componentArray) => Array.isArray(componentArray) && componentArray.length > 0)
       .withMessage('At least one component is required'),
+    check('components.*')
+      .exists({ checkFalsy: true })
+      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .withMessage('Component name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.addComponents);
 
   app.delete(`${path}/team/:teamId`, [
