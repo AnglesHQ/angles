@@ -1797,11 +1797,15 @@
     },
     "Build": {
       "required": [
+        "name",
         "environment",
+        "component",
         "team"
       ],
       "properties": {
+        "name": { "type": "string" },
         "environment": { "type": "string" },
+        "component": { "type": "string" },
         "team": { "type": "string" },
         "artifacts": {
           "type": "array",
