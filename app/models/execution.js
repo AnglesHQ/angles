@@ -25,7 +25,7 @@ const Step = mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['INFO', 'PASS', 'ERROR', 'FAIL'],
+    enum: ['INFO', 'DEBUG', 'PASS', 'ERROR', 'FAIL'],
     required: true,
   },
   timestamp: {

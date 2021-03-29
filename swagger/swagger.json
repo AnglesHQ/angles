@@ -1873,7 +1873,7 @@
         "expected": { "type": "object" },
         "actual": { "type": "object" },
         "info": { "type": "string" },
-        "status": {"type": "string", "enum": ["INFO", "PASS", "ERROR", "FAIL"]},
+        "status": {"type": "string", "enum": ["INFO", "DEBUG", "PASS", "ERROR", "FAIL"]},
         "timestamp": { "type": "string", "format": "date-time" },
         "screenshot": { "type": "string" }
       }
