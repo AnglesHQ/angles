@@ -9,7 +9,6 @@ const Step = mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    lowercase: true,
   },
   expected: {
     type: String,
@@ -44,7 +43,6 @@ const Action = mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    lowercase: true,
   },
   steps: [{
     type: Step,
@@ -70,13 +68,11 @@ const TestExecutionSchema = mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    lowercase: true,
   },
   suite: {
     type: String,
     required: true,
     trim: true,
-    lowercase: true,
   },
   feature: {
     type: String,

@@ -1065,6 +1065,31 @@
             "in": "formData",
             "type": "file",
             "description": "Screenshot to upload"
+          },
+          {
+            "name": "platformName",
+            "in": "formData",
+            "type": "string"
+          },
+          {
+            "name": "platformVersion",
+            "in": "formData",
+            "type": "string"
+          },
+          {
+            "name": "browserName",
+            "in": "formData",
+            "type": "string"
+          },
+          {
+            "name": "browserVersion",
+            "in": "formData",
+            "type": "string"
+          },
+          {
+            "name": "deviceName",
+            "in": "formData",
+            "type": "string"
           }
         ],
         "consumes": [

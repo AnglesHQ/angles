@@ -56,6 +56,16 @@ exports.create = (req, res) => {
           path: req.file.path,
           view: req.headers.view,
         });
+        if (Object.keys(req.body).length > 0) {
+          const platform = {};
+          if (req.body.platformName) platform.platformName = req.body.platformName;
+          if (req.body.platformVersion) platform.platformVersion = req.body.platformVersion;
+          if (req.body.browserName) platform.browserName = req.body.browserName;
+          if (req.body.browserVersion) platform.browserVersion = req.body.browserVersion;
+          if (req.body.deviceName) platform.deviceName = req.body.deviceName;
+          screenshot.platform = platform;
+          screenshot.platformId = validationUtils.generatePlatformId(platform, screenshot);
+        }
         return screenshot.save();
       });
     })
