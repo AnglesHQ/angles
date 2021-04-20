@@ -62,6 +62,7 @@ exports.create = (req, res) => {
         name: req.body.name,
         component: matchComponent,
         suite: [],
+        start: new Date(),
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
       buildMetricsUtils.calculateBuildMetrics(build);

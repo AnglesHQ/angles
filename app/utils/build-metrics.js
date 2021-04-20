@@ -10,7 +10,8 @@ buildMetricsUtils.defaultResultMap = new Map([['PASS', 0], ['FAIL', 0], ['ERROR'
 const [defaultStatus] = buildMetricsUtils.executionStates;
 
 buildMetricsUtils.addExecutionToBuild = (build, execution) => {
-  const buildSuite = build.suites.find((suite) => suite.name === execution.suite);
+  const buildSuite = build.suites
+    .find((suite) => suite.name.toLowerCase() === execution.suite.toLowerCase());
   let query;
   let update;
   if (buildSuite === undefined) {
@@ -41,7 +42,6 @@ buildMetricsUtils.addExecutionToBuild = (build, execution) => {
 
 buildMetricsUtils.calculateBuildMetrics = (build) => {
   build.result = new Map(buildMetricsUtils.defaultResultMap);
-  build.start = undefined;
   build.end = undefined;
   build.status = defaultStatus;
   for (let i = 0, len = build.suites.length; i < len; i += 1) {

@@ -57,14 +57,27 @@ exports.create = (req, res) => {
           view: req.headers.view,
         });
         if (Object.keys(req.body).length > 0) {
-          const platform = {};
-          if (req.body.platformName) platform.platformName = req.body.platformName;
-          if (req.body.platformVersion) platform.platformVersion = req.body.platformVersion;
-          if (req.body.browserName) platform.browserName = req.body.browserName;
-          if (req.body.browserVersion) platform.browserVersion = req.body.browserVersion;
-          if (req.body.deviceName) platform.deviceName = req.body.deviceName;
-          screenshot.platform = platform;
-          screenshot.platformId = validationUtils.generatePlatformId(platform, screenshot);
+          const {
+            platformName,
+            platformVersion,
+            browserName,
+            browserVersion,
+            deviceName,
+            tags,
+          } = req.body;
+          let platform = {};
+          if (platformName) platform = { platformName, ...platform };
+          if (platformVersion) platform = { platformVersion, ...platform };
+          if (browserName) platform = { browserName, ...platform };
+          if (browserVersion) platform = { browserVersion, ...platform };
+          if (deviceName) platform = { deviceName, ...platform };
+          if (Object.entries(platform).length > 0) {
+            screenshot.platform = platform;
+            screenshot.platformId = validationUtils.generatePlatformId(platform, screenshot);
+          }
+          if (tags) {
+            screenshot.tags = tags;
+          }
         }
         return screenshot.save();
       });

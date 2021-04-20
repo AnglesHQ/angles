@@ -1322,9 +1322,9 @@
           {
             "name": "update",
             "in": "body",
-            "description": "Screenshot details to be added to the screenshot e.g. platform",
+            "description": "Screenshot details to be added to the screenshot e.g. platform, tags",
             "schema": {
-              "$ref": "#/definitions/Execution"
+              "$ref": "#/definitions/ScreenshotUpdate"
             }
           }
         ],
@@ -1919,6 +1919,12 @@
       "properties": {
           "platform": {
             "$ref": "#/definitions/Platform"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
       }
     },

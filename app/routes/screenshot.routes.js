@@ -4,6 +4,7 @@ const {
   param,
   header,
   oneOf,
+  checkSchema,
 } = require('express-validator');
 
 const multerConfig = require('../utils/multer-config-screenshots.js');
@@ -89,17 +90,21 @@ module.exports = (app, path) => {
 
   app.put(`${path}/screenshot/:screenshotId`, [
     param('screenshotId').isMongoId(),
-    check('platform').exists(),
-    check('platform.platformName').exists().isString(),
-    check('platform.platformVersion').optional().isString(),
-    check('platform.browserName').optional().isString(),
-    check('platform.browserVersion').optional().isString(),
-    check('platform.deviceName').optional().isString(),
-    check('platform.userAgent').optional().isString(),
-    check('platform.screenHeight').optional().isNumeric(),
-    check('platform.screenWidth').optional().isNumeric(),
-    check('platform.pixelRatio').optional(),
-    check('tags').optional().isArray(),
+    oneOf([
+      checkSchema({
+        platform: { optional: false },
+        'platform.platformName': { optional: false, isString: true},
+        'platform.platformVersion': { optional: true, isString: true },
+        'platform.browserName': { optional: true, isString: true },
+        'platform.browserVersion': { optional: true, isString: true },
+        'platform.deviceName': { optional: true, isString: true },
+        'platform.userAgent': { optional: true, isString: true },
+        'platform.screenHeight': { optional: true, isNumeric: true },
+        'platform.screenWidth': { optional: true, isNumeric: true },
+        'platform.pixelRatio': { optional: true },
+      }),
+      check('tags').exists().isArray(),
+    ]),
   ], screenshotController.update);
 
   app.delete(`${path}/screenshot/:screenshotId`, [
