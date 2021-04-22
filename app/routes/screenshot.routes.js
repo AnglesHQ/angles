@@ -2,29 +2,46 @@ const {
   check,
   query,
   param,
-  header,
   oneOf,
   checkSchema,
 } = require('express-validator');
-
 const multerConfig = require('../utils/multer-config-screenshots.js');
 const screenshotController = require('../controllers/screenshot.controller.js');
 
 module.exports = (app, path) => {
-  app.post(`${path}/screenshot`, [
-    header('buildId')
-      .exists()
-      .isMongoId(),
-    header('timestamp')
-      .exists()
-      .isISO8601(),
-    header('view')
-      .optional()
-      .isString(),
-  ],
-  multerConfig.single('screenshot'),
-  screenshotController.create,
-  screenshotController.createFail);
+  app.post(`${path}/screenshot`,
+    multerConfig.single('screenshot'),
+    [
+      check('buildId')
+        .exists()
+        .isMongoId(),
+      check('timestamp')
+        .exists()
+        .isISO8601(),
+      check('view')
+        .optional()
+        .isString(),
+      check('tags')
+        .optional()
+        .isString(),
+      check('platformName')
+        .optional()
+        .isString(),
+      check('platformVersion')
+        .optional()
+        .isString(),
+      check('browserName')
+        .optional()
+        .isString(),
+      check('browserVersion')
+        .optional()
+        .isString(),
+      check('deviceName')
+        .optional()
+        .isString(),
+    ],
+    screenshotController.create,
+    screenshotController.createFail);
 
   app.get(`${path}/screenshot`, [
     oneOf([
@@ -93,15 +110,11 @@ module.exports = (app, path) => {
     oneOf([
       checkSchema({
         platform: { optional: false },
-        'platform.platformName': { optional: false, isString: true},
+        'platform.platformName': { optional: false, isString: true },
         'platform.platformVersion': { optional: true, isString: true },
         'platform.browserName': { optional: true, isString: true },
         'platform.browserVersion': { optional: true, isString: true },
         'platform.deviceName': { optional: true, isString: true },
-        'platform.userAgent': { optional: true, isString: true },
-        'platform.screenHeight': { optional: true, isNumeric: true },
-        'platform.screenWidth': { optional: true, isNumeric: true },
-        'platform.pixelRatio': { optional: true },
       }),
       check('tags').exists().isArray(),
     ]),

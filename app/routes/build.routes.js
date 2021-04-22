@@ -20,6 +20,9 @@ module.exports = (app, path) => {
       .isString()
       .isLength({ max: 50 })
       .withMessage('Max length for component name is 50 characters'),
+    check('start')
+      .exists()
+      .isISO8601(),
   ], buildController.create);
 
   app.get(`${path}/build`, [

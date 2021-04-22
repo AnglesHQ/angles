@@ -14,17 +14,46 @@ const imageUtils = require('../utils/image-utils.js');
 
 const log = debug('screenshot:controller');
 
+/**
+ * There are only specific values we want to store for platform details.
+ * @param platformDetails
+ * @returns {{}}
+ */
+const extractPlatformDetails = (platformDetails) => {
+  const {
+    platformName,
+    platformVersion,
+    browserName,
+    browserVersion,
+    deviceName,
+  } = platformDetails;
+  let platformToStore = {};
+  if (platformName) platformToStore = { platformName, ...platformToStore };
+  if (platformVersion) platformToStore = { platformVersion, ...platformToStore };
+  if (browserName) platformToStore = { browserName, ...platformToStore };
+  if (browserVersion) platformToStore = { browserVersion, ...platformToStore };
+  if (deviceName) platformToStore = { deviceName, ...platformToStore };
+  return platformToStore;
+};
+
 exports.create = (req, res) => {
+  // run validation here.
   const errors = validationResult(req);
-  let build;
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Build.findById(req.headers.buildid)
+  let build;
+  const {
+    buildId,
+    timestamp,
+    view,
+    tags,
+  } = req.body;
+  return Build.findById(buildId)
     .then((foundBuild) => {
       if (!foundBuild) {
         return res.status(404).send({
-          message: `No build found with id ${req.headers.buildid}`,
+          message: `No build found with id ${buildId}`,
         });
       }
       build = foundBuild;
@@ -49,35 +78,20 @@ exports.create = (req, res) => {
         const thumbnail = thumbnailBuffer.toString('base64');
         const screenshot = new Screenshot({
           build: build._id,
-          timestamp: req.headers.timestamp,
+          timestamp,
           thumbnail,
           height: dimensions.height,
           width: dimensions.width,
           path: req.file.path,
-          view: req.headers.view,
+          view,
         });
-        if (Object.keys(req.body).length > 0) {
-          const {
-            platformName,
-            platformVersion,
-            browserName,
-            browserVersion,
-            deviceName,
-            tags,
-          } = req.body;
-          let platform = {};
-          if (platformName) platform = { platformName, ...platform };
-          if (platformVersion) platform = { platformVersion, ...platform };
-          if (browserName) platform = { browserName, ...platform };
-          if (browserVersion) platform = { browserVersion, ...platform };
-          if (deviceName) platform = { deviceName, ...platform };
-          if (Object.entries(platform).length > 0) {
-            screenshot.platform = platform;
-            screenshot.platformId = validationUtils.generatePlatformId(platform, screenshot);
-          }
-          if (tags) {
-            screenshot.tags = tags;
-          }
+        const platform = extractPlatformDetails(req.body);
+        if (Object.entries(platform).length > 0) {
+          screenshot.platform = platform;
+          screenshot.platformId = validationUtils.generatePlatformId(platform, screenshot);
+        }
+        if (tags) {
+          screenshot.tags = JSON.parse(tags);
         }
         return screenshot.save();
       });
@@ -448,8 +462,10 @@ exports.update = (req, res) => {
       const screenshotToModify = screenshot;
       if (tags) screenshotToModify.tags = tags;
       if (platform) {
-        screenshotToModify.platform = platform;
-        screenshotToModify.platformId = validationUtils.generatePlatformId(platform, screenshot);
+        const platformToStore = extractPlatformDetails(platform);
+        screenshotToModify.platform = platformToStore;
+        screenshotToModify.platformId = validationUtils
+          .generatePlatformId(platformToStore, screenshot);
       }
       return screenshotToModify.save();
     }).then((savedScreenshot) => res.status(200).send(savedScreenshot))

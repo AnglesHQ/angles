@@ -1042,29 +1042,22 @@
         "summary": "Create new screenshot for an execution",
         "parameters": [
           {
-            "in": "header",
-            "description": "id of the build this screenshot is for",
+            "in": "formData",
             "name": "buildId",
-            "type": "string"
+            "type": "string",
+            "required": true
           },
           {
-            "in": "header",
-            "description": "The view/page named for the screenshot",
-            "name": "view",
-            "type": "string"
-          },
-          {
-            "in": "header",
-            "description": "timestamp when the screenshot was taken",
+            "in": "formData",
             "name": "timestamp",
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "required": true
           },
           {
-            "name": "screenshot",
             "in": "formData",
-            "type": "file",
-            "description": "Screenshot to upload"
+            "name": "view",
+            "type": "string"
           },
           {
             "name": "platformName",
@@ -1090,6 +1083,21 @@
             "name": "deviceName",
             "in": "formData",
             "type": "string"
+          },
+          {
+            "name": "tags",
+            "in": "formData",
+            "description": "Tags should be provided as an array with double quotes in a string format (see example).",
+            "schema": {
+              "type": "string",
+              "example": "[\"tag1\",\"tag2\",\"tag3\"]"
+            }
+          },
+          {
+            "name": "screenshot",
+            "in": "formData",
+            "type": "file",
+            "description": "Screenshot to upload"
           }
         ],
         "consumes": [
@@ -1136,7 +1144,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "description": "Name of the view you want to finf screenshots for.",
+            "description": "Name of the view you want to find screenshots for.",
             "type": "string"
           },
           {
@@ -1825,7 +1833,8 @@
         "name",
         "environment",
         "component",
-        "team"
+        "team",
+        "start"
       ],
       "properties": {
         "name": { "type": "string" },
@@ -1838,6 +1847,7 @@
             "$ref": "#/definitions/Artifact"
           }
         },
+        "start": { "type": "string", "format": "date-time" },
         "suites": {
           "type": "array",
           "items": {

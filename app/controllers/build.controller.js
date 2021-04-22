@@ -20,10 +20,10 @@ exports.create = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-
+  const { team, environment } = req.body;
   const promises = [
-    Team.findOne({ name: req.body.team }).exec(),
-    Environment.findOne({ name: req.body.environment }).exec(),
+    Team.findOne({ name: team }).exec(),
+    Environment.findOne({ name: environment }).exec(),
   ];
 
   return Promise.all(promises)
@@ -56,13 +56,14 @@ exports.create = (req, res) => {
         });
       }
       // create and save build
+      const { name, start } = req.body;
       const build = new Build({
         environment: environmentFound,
         team: teamFound,
-        name: req.body.name,
+        name,
         component: matchComponent,
         suite: [],
-        start: new Date(),
+        start,
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
       buildMetricsUtils.calculateBuildMetrics(build);
