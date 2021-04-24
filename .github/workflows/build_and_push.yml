@@ -1,0 +1,65 @@
+name: Build and push
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+
+  bump-version:
+    name: "Bump Version on master"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout source code"
+        uses: "actions/checkout@v2"
+        with:
+          ref: ${{ github.ref }}
+      - name: "cat package.json"
+        run: cat ./package.json
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v1"
+        with:
+          node-version: 12
+      - name: "Automated Version Bump"
+        id: version-bump
+        uses: "phips28/gh-action-bump-version@master"
+        with:
+          tag-prefix: ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: "cat package.json"
+        run: cat ./package.json
+      - name: 'Output Step'
+        env:
+          NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
+        run: echo "new tag $NEW_TAG"
+
+  build:
+    name: "Build angles container and push to docker hub"
+    needs: bump-version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [ 12.x ]
+    steps:
+      - uses: actions/checkout@v1
+      - run: git pull origin master
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Grab AnglesUI version
+        id: extract_version
+        uses: Saionaro/extract-package-version@v1.0.6
+      # From now you can access the version
+      - name: Print version
+        run: echo ${{ steps.extract_version.outputs.version }}
+      - name: Login to Docker Hub
+        run: docker login --username "${{ secrets.DOCKER_USERNAME }}" --password "${{ secrets.DOCKER_PASSWORD }}"
+      - name: Build the Docker Image
+        run: docker build . --file Dockerfile -t angleshq/angles:${{ steps.extract_version.outputs.version }}  -t angleshq/angles:latest
+      - name: Push the Docker Image with version
+        run: docker push angleshq/angles:${{ steps.extract_version.outputs.version }}
+      - name: Push the Docker Image with latest
+        run: docker push angleshq/angles:latest
