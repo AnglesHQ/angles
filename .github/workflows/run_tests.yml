@@ -9,8 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSE_FILE: ./test/test-setup/docker-compose.yml
-#      DOCKER_USER: ${{ secrets.DOCKER_USER }}
-#      DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
 
     steps:
       - name: Checkout code
@@ -21,8 +19,6 @@ jobs:
         with:
           node-version: 12
 
-      # - name: Login to DockerHub
-      # run: docker login -u $DOCKER_USER -p $DOCKER_PASS
       - name: Setup Mongo Instance
         run: docker-compose up -d
 
@@ -31,9 +27,3 @@ jobs:
 
       - name: Trigger tests
         run: MONGO_URL='mongodb://angleshq:%40nglesPassword@127.0.0.1:27017/angles' npm test
-
-
-
-#
-#      - name: Run tests
-#        run: docker-compose run test
