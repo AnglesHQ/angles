@@ -22,5 +22,8 @@ jobs:
       - name: Setup Angles Mongo Instance
         run: docker-compose up -d
 
+      - name: Install mocha
+        run: npm install mocha
+
       - name: Trigger tests
         run: MONGO_URL='mongodb://angleshq:%40nglesPassword@127.0.0.1:27017/angles' npm test
