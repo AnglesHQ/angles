@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "mocha --exit"
+    "test": "mocha --exit",
+    "test-with-reporter": "mocha --reporter json > test-results.json --exit"
   },
   "repository": {
     "type": "git",
