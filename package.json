@@ -1,6 +1,6 @@
 {
   "name": "angles",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "angles test dashboard api",
   "main": "server.js",
   "scripts": {
