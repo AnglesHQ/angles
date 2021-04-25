@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 12
 
-      - name: Setup Angles Mongo Instance
+      - name: Setup Angles Mongo instance
         run: docker-compose up -d
 
       - name: Install mocha
@@ -28,10 +28,10 @@ jobs:
       - name: Trigger tests
         run: MONGO_URL='mongodb://angleshq:%40nglesPassword@127.0.0.1:27017/angles' npm run test-with-reporter
 
-      - name: Test Report
+      - name: Generate test report
         uses: dorny/test-reporter@v1
-        if: success() || failure()    # run this step even if previous step failed
+        if: success() || failure()
         with:
-          name: Mocha Tests            # Name of the check run which will be created
-          path: ./test-results.json    # Path to test results
+          name: Generate Mocha Tests results
+          path: test-results.json
           reporter: mocha-json
