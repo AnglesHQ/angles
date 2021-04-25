@@ -1,0 +1,28 @@
+version: "2.0"
+
+services:
+  mongodb:
+    container_name: "mongo-angles"
+    hostname: mongodb
+    image: mongo:4.2.0
+    restart: always
+    volumes:
+        - angles_mongo_db:/data/db
+        - angles_mongo_config:/data/configdb
+        - ../../setup/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+
+    ports:
+        - 27017:27017
+    environment:
+        - MONGO_INITDB_ROOT_USERNAME=admin
+        - MONGO_INITDB_ROOT_PASSWORD=@nglesPassword
+        - MONGO_INITDB_DATABASE=angles
+    command:
+        - --auth
+        - --bind_ip_all
+
+volumes:
+ angles_mongo_db:
+    name: angles_mongo_db
+ angles_mongo_config:
+     name: angles_mongo_config

@@ -10,6 +10,8 @@ const dbConfig = require('./config/database.config.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const expressLogger = expressPino({ logger });
+const mongoURL = process.env.MONGO_URL || dbConfig.url;
+
 
 // create express app
 const PORT = process.env.PORT || 3000;
@@ -29,7 +31,7 @@ app.use(expressLogger);
 mongoose.Promise = global.Promise;
 
 // Connecting to the database
-mongoose.connect(dbConfig.url, {
+mongoose.connect(mongoURL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useCreateIndex: true,

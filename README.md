@@ -24,10 +24,7 @@ Before you can install Angles you'll have to define the environment variable for
 If you're not running Angles locally (e.g. 127.0.0.1), you should also change the environment variable "REACT_APP_ANGLES_API_URL" in the docker-compose file to point to the url where the angles API is accessible (e.g. domain name or external ip address).
 
 ```shellscript
-# set the version you want to install
-export ANGLES_VERSION=1.0.0
-
-# run in same directory as docker-compose file
+# run in same directory as docker-compose file (and it will install the latest tag)
 docker-compose up --build -d  
 ```
 

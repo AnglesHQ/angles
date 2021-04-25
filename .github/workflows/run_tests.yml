@@ -1,0 +1,30 @@
+name: Test
+on:
+  pull_request:
+  push: { branches: master }
+
+jobs:
+  test:
+    name: Run test suite
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_FILE: ./test/test-setup/docker-compose.yml
+#      DOCKER_USER: ${{ secrets.DOCKER_USER }}
+#      DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Trigger tests
+        run: MONGO_URL='mongodb://angleshq:%40nglesPassword@127.0.0.1:27017/angles' npm test
+
+
+#      - name: Login to DockerHub
+#        run: docker login -u $DOCKER_USER -p $DOCKER_PASS
+#
+#      - name: Build docker images
+#        run: docker-compose build
+#
+#      - name: Run tests
+#        run: docker-compose run test

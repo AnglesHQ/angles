@@ -52,6 +52,7 @@ describe('Build API Tests', () => {
         team: team.name,
         name: 'build-unit-testing-build',
         component: team.components[0].name,
+        start: new Date(),
       };
       request(app)
         .post(`${baseUrl}build`)
@@ -98,6 +99,7 @@ describe('Build API Tests', () => {
         team: 'non-existent',
         name: 'unit-testing-build',
         component: '',
+        start: new Date(),
       };
       request(app)
         .post(`${baseUrl}build`)
@@ -113,6 +115,7 @@ describe('Build API Tests', () => {
         team: 'unit-testing-team',
         name: 'unit-testing-build',
         component: '',
+        start: new Date(),
       };
       request(app)
         .post(`${baseUrl}build`)
