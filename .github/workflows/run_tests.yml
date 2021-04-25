@@ -13,21 +13,21 @@ jobs:
 #      DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
 
     steps:
-      #      - name: Login to DockerHub
-      #        run: docker login -u $DOCKER_USER -p $DOCKER_PASS
-      - name: Setup Mongo Instance
-        run: docker-compose up -d
+      - name: Checkout code
+        uses: actions/checkout@v2
 
       - name: "Setup Node.js"
         uses: "actions/setup-node@v1"
         with:
           node-version: 12
 
+      # - name: Login to DockerHub
+      # run: docker login -u $DOCKER_USER -p $DOCKER_PASS
+      - name: Setup Mongo Instance
+        run: docker-compose up -d
+
       - name: Install mocha
         run: npm install mocha
-
-      - name: Checkout code
-        uses: actions/checkout@v2
 
       - name: Trigger tests
         run: MONGO_URL='mongodb://angleshq:%40nglesPassword@127.0.0.1:27017/angles' npm test
