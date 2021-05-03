@@ -32,7 +32,6 @@ services:
        - REACT_APP_SWAGGER_SCHEMES=http
        - PORT=3000
        - BUILD_CLEAN_UP_AGE_IN_DAYS=90
-       - MONGO_URL='mongodb://angleshq:%40nglesPassword@mongodb:27017/angles'
     depends_on:
       - mongodb
     volumes:

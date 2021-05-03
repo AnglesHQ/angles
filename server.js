@@ -49,6 +49,7 @@ require('./swagger/routes/routes.js')(app);
 // Add routes to server
 require('./app/routes/environment.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/team.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/phase.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/build.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/execution.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/screenshot.routes.js')(app, '/rest/api/v1.0');
