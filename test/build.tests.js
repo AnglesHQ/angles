@@ -42,7 +42,7 @@ describe('Build API Tests', () => {
     // teardown
     team.remove();
     environment.remove();
-    Build.remove({ _id: createdBuild._id });
+    Build.findOneAndRemove({ _id: createdBuild._id }).exec();
   });
 
   describe('POST /build', () => {
