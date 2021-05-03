@@ -4,12 +4,14 @@ const pino = require('pino');
 const app = require('../server.js');
 const Build = require('../app/models/build.js');
 const Environment = require('../app/models/environment.js');
+const Phase = require('../app/models/phase.js');
 const { Team } = require('../app/models/team.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let team;
 let environment;
+let phase;
 let createdBuild;
 
 describe('Build API Tests', () => {
@@ -17,6 +19,7 @@ describe('Build API Tests', () => {
     const clearingPromises = [
       Team.deleteMany({ name: 'build-unit-testing-team' }).exec(),
       Environment.deleteMany({ name: 'build-unit-testing-environment' }).exec(),
+      Phase.deleteMany({ name: 'build-unit-testing-phase' }).exec(),
     ];
     Promise.all(clearingPromises).then(() => {
       // instantiate a test team
@@ -28,12 +31,16 @@ describe('Build API Tests', () => {
       environment = new Environment({
         name: 'build-unit-testing-environment',
       });
+      phase = new Phase({
+        name: 'build-unit-testing-phase',
+      });
       const savePromises = [
         team.save(),
         environment.save(),
+        phase.save(),
       ];
       Promise.all(savePromises).then(() => {
-        logger.info('Created required environment and team for build tests.');
+        logger.info('Created required environment, team & phase for build tests.');
         done();
       });
     });
@@ -42,6 +49,7 @@ describe('Build API Tests', () => {
     // teardown
     team.remove();
     environment.remove();
+    phase.remove();
     Build.findOneAndRemove({ _id: createdBuild._id }).exec();
   });
 
@@ -50,6 +58,7 @@ describe('Build API Tests', () => {
       const createBuildRequest = {
         environment: environment.name,
         team: team.name,
+        phase: phase.name,
         name: 'build-unit-testing-build',
         component: team.components[0].name,
         start: new Date(),
@@ -114,6 +123,23 @@ describe('Build API Tests', () => {
         environment: 'non-existent',
         team: 'unit-testing-team',
         name: 'unit-testing-build',
+        component: '',
+        start: new Date(),
+      };
+      request(app)
+        .post(`${baseUrl}build`)
+        .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(404, done);
+    });
+
+    it('respond with 404 when trying to create a build with non-existent test phase', (done) => {
+      const createBuildRequest = {
+        environment: 'unit-testing-environment',
+        team: 'unit-testing-team',
+        name: 'unit-testing-build',
+        phase: 'non-existent',
         component: '',
         start: new Date(),
       };

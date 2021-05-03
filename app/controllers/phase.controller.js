@@ -39,7 +39,8 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Phase.find()
+  return Phase.find({})
+    .sort({ orderNumber: 1 })
     .then((phases) => res.send(phases))
     .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while retrieving phases.',
