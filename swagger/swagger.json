@@ -1257,11 +1257,8 @@
           {
             "name": "tags",
             "in": "formData",
-            "description": "Tags should be provided as an array with double quotes in a string format (see example).",
-            "schema": {
-              "type": "string",
-              "example": "[\"tag1\",\"tag2\",\"tag3\"]"
-            }
+            "description": "Tags should be provided as an array with double quotes in a string format e.g. \"[\"tag1\",\"tag2\",\"tag3\"]\".",
+            "type": "string"
           },
           {
             "name": "screenshot",
