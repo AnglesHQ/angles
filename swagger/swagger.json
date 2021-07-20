@@ -169,7 +169,7 @@
         }
       },
       "put": {
-        "summary": "Update team with give ID",
+        "summary": "Update team with given ID",
         "tags": [
           "Team"
         ],
@@ -377,7 +377,7 @@
         }
       },
       "put": {
-        "summary": "Update environment with give ID",
+        "summary": "Update environment with given ID",
         "tags": [
           "Environment"
         ],
@@ -540,7 +540,7 @@
         }
       },
       "put": {
-        "summary": "Update phase with give ID",
+        "summary": "Update phase with given ID",
         "tags": [
           "Phase"
         ],
@@ -806,7 +806,7 @@
         }
       },
       "put": {
-        "summary": "Update build with give ID",
+        "summary": "Update build with given ID",
         "tags": [
           "Build"
         ],
@@ -853,7 +853,7 @@
         }
       ],
       "put": {
-        "summary": "Update keep value for build with give ID",
+        "summary": "Update keep value for build with given ID",
         "tags": [
           "Build"
         ],
@@ -1860,7 +1860,7 @@
         }
       },
       "put": {
-        "summary": "Update baseline with give ID",
+        "summary": "Update baseline with given ID",
         "tags": [
           "Baseline"
         ],
