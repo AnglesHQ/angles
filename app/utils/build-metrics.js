@@ -90,6 +90,15 @@ buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
     const defaultState = buildMetricsUtils.executionStates[0];
     currentAction.status = defaultState;
     if (currentAction.steps) {
+      // check if the action contains steps, if no don't do anything
+      if (currentAction.steps.length === 0) {
+        currentAction.steps.push({
+          name: 'No Steps',
+          info: 'No steps provided',
+          status: 'INFO',
+          timestamp: new Date(),
+        });
+      }
       // set timestamp of action based on first and last step.
       currentAction.start = currentAction.steps[0].timestamp;
       currentAction.end = currentAction.steps[currentAction.steps.length - 1].timestamp;
