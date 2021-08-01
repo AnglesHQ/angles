@@ -1908,6 +1908,52 @@
           }
         }
       }
+    },
+    "/metrics/phase": {
+      "get": {
+        "tags": [
+          "Metrics"
+        ],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "description": "ID of team you want to retrieve metrics for",
+            "type": "string"
+          },
+          {
+            "name": "componentId",
+            "in": "path",
+            "required": false,
+            "description": "ID of component you want to retrieve metrics for",
+            "type": "string"
+          },
+          {
+            "name": "fromDate",
+            "in": "path",
+            "required": false,
+            "description": "Start of the date range [e.g. YYYY-MM-DD].",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "example": "YYYY-MM-DD",
+            "type": "string"
+          },
+          {
+            "name": "endDate",
+            "in": "path",
+            "required": false,
+            "description": "End of the date range [e.g. YYYY-MM-DD]",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "type": "string"
+          }
+        ],
+        "summary": "Gets metrics grouped by test phase",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "definitions": {

@@ -55,6 +55,9 @@ exports.retrieveMetricsPerPhase = (req, res) => {
   }
   const {
     teamId,
+    componentId,
+    fromDate,
+    toDate,
   } = req.query;
   let query = {};
   return Team.findById({ _id: teamId })
@@ -64,8 +67,27 @@ exports.retrieveMetricsPerPhase = (req, res) => {
           message: `No team found with name ${req.body.team}`,
         });
       }
+      const match = { team: teamFound._id };
+      if (componentId) {
+        // match componentId with name (and add it to query)
+        teamFound.components.forEach((component) => {
+          if (component.id === componentId) {
+            match.component = component._id;
+          }
+        });
+      }
+      if (fromDate) {
+        const fromDateJS = new Date(fromDate);
+        fromDateJS.setHours(0, 0, 0, 0);
+        match.start = { $gte: fromDateJS };
+      }
+      if (toDate) {
+        const toDateJS = new Date(toDate);
+        toDateJS.setHours(23, 59, 59, 0);
+        match.end = { $lt: toDateJS };
+      }
       query = [
-        { $match: { team: teamFound._id } },
+        { $match: match },
         {
           $lookup: {
             from: 'teams',
