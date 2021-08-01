@@ -6,7 +6,7 @@ module.exports = (app, path) => {
     check('name')
       .exists()
       .exists({ checkFalsy: true })
-      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .matches(/^[A-Za-z0-9-]{2,50}$/)
       .withMessage('Name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
     check('components')
       .exists()
@@ -14,7 +14,7 @@ module.exports = (app, path) => {
       .withMessage('At least one component is required'),
     check('components.*.name')
       .exists({ checkFalsy: true })
-      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .matches(/^[A-Za-z0-9-]{2,50}$/)
       .withMessage('Component name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.create);
 
@@ -28,7 +28,7 @@ module.exports = (app, path) => {
     param('teamId').isMongoId(),
     check('name')
       .exists({ checkFalsy: true })
-      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .matches(/^[A-Za-z0-9-]{2,50}$/)
       .withMessage('Name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.update);
 
@@ -40,7 +40,7 @@ module.exports = (app, path) => {
       .withMessage('At least one component is required'),
     check('components.*')
       .exists({ checkFalsy: true })
-      .matches(/^[A-Za-z0-9\-\s]{2,50}$/)
+      .matches(/^[A-Za-z0-9-]{2,50}$/)
       .withMessage('Component name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.addComponents);
 
