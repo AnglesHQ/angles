@@ -76,6 +76,15 @@ describe('Environment API Tests', () => {
         .expect(422, done);
     });
 
+    it('respond with 422 when trying to create an environment with spaces in the name', (done) => {
+      request(app)
+        .post(`${baseUrl}environment`)
+        .send({ name: 'unit testing environment' })
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
     it('respond with 409 when trying to create an environment that already exists', (done) => {
       request(app)
         .post(`${baseUrl}environment`)

@@ -14,10 +14,10 @@ describe('Team API Tests', () => {
     // clear lingering test environments
     Team.deleteMany({ name: /^unit-testing/ }, (err) => {
       if (err) {
-        logger.log('Error occured whilst clearing testing teams', err);
+        logger.log('Error occurred whilst clearing testing teams', err);
       } else {
         logger.info('Cleared any lingering test teams');
-        // setup the test enviroment
+        // setup the test environment
         team = new Team({
           name: 'unit-testing-team',
           components: [{ name: 'component1' }],
@@ -98,6 +98,15 @@ describe('Team API Tests', () => {
         .expect(422, done);
     });
 
+    it('respond with 422 when trying to create a team with an spaces in name', (done) => {
+      request(app)
+        .post(`${baseUrl}team`)
+        .send({ name: 'unit testing team new', components: [{ name: 'component' }] })
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
     it('respond with 409 when trying to create an team that already exists', (done) => {
       request(app)
         .post(`${baseUrl}team`)
@@ -105,6 +114,15 @@ describe('Team API Tests', () => {
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(409, done);
+    });
+
+    it('respond with 422 when adding an invalid component to an existing team', (done) => {
+      request(app)
+        .put(`${baseUrl}team/${team._id}/components`)
+        .send({ components: ['component with space'] })
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
     });
   });
 });
