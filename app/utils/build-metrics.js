@@ -90,31 +90,25 @@ buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
     const defaultState = buildMetricsUtils.executionStates[0];
     currentAction.status = defaultState;
     if (currentAction.steps) {
-      // check if the action contains steps, if no don't do anything
-      if (currentAction.steps.length === 0) {
-        currentAction.steps.push({
-          name: 'No Steps',
-          info: 'No steps provided',
-          status: 'INFO',
-          timestamp: new Date(),
-        });
-      }
-      // set timestamp of action based on first and last step.
-      currentAction.start = currentAction.steps[0].timestamp;
-      currentAction.end = currentAction.steps[currentAction.steps.length - 1].timestamp;
-      for (let j = 0, stepLen = currentAction.steps.length; j < stepLen; j += 1) {
-        const currentStep = currentAction.steps[j];
-        if (buildMetricsUtils.executionStates.indexOf(currentStep.status)
-          > buildMetricsUtils.executionStates.indexOf(currentAction.status)) {
-          // change the state as it's a 'higher' state.
-          currentAction.status = currentStep.status;
+      // check if the action contains steps, if not don't do anything
+      if (currentAction.steps.length > 0) {
+        // set timestamp of action based on first and last step.
+        currentAction.start = currentAction.steps[0].timestamp;
+        currentAction.end = currentAction.steps[currentAction.steps.length - 1].timestamp;
+        for (let j = 0, stepLen = currentAction.steps.length; j < stepLen; j += 1) {
+          const currentStep = currentAction.steps[j];
+          if (buildMetricsUtils.executionStates.indexOf(currentStep.status)
+            > buildMetricsUtils.executionStates.indexOf(currentAction.status)) {
+            // change the state as it's a 'higher' state.
+            currentAction.status = currentStep.status;
+          }
         }
-      }
-      if (testExecution.start === undefined || testExecution.start > currentAction.start) {
-        testExecution.start = currentAction.start;
-      }
-      if (testExecution.end === undefined || testExecution.end < currentAction.end) {
-        testExecution.end = currentAction.end;
+        if (testExecution.start === undefined || testExecution.start > currentAction.start) {
+          testExecution.start = currentAction.start;
+        }
+        if (testExecution.end === undefined || testExecution.end < currentAction.end) {
+          testExecution.end = currentAction.end;
+        }
       }
     }
     // update the test status based on the action states

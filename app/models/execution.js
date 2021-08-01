@@ -46,7 +46,7 @@ const Action = mongoose.Schema({
   },
   steps: [{
     type: Step,
-    required: true,
+    required: false,
   }],
   status: {
     type: String,
@@ -55,11 +55,11 @@ const Action = mongoose.Schema({
   },
   start: {
     type: Date,
-    required: true,
+    required: false,
   },
   end: {
     type: Date,
-    required: true,
+    required: false,
   },
 }, { _id: false });
 

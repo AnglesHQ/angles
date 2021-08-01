@@ -42,11 +42,11 @@ const Suite = mongoose.Schema({
   },
   start: {
     type: Date,
-    required: true,
+    required: false,
   },
   end: {
     type: Date,
-    required: true,
+    required: false,
   },
   executions: [{ type: Schema.Types.ObjectId, ref: 'TestExecution' }],
 }, { _id: false });
