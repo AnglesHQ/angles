@@ -22,7 +22,7 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // parse requests of content-type - application/json
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
 
 // use the pino logger
 app.use(expressLogger);
