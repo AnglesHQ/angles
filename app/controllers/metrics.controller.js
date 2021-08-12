@@ -1,12 +1,12 @@
 const { validationResult } = require('express-validator');
-const mongoose = require('mongoose');
 const debug = require('debug');
+const groupingUtils = require('../utils/grouping-utils');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
 // const Environment = require('../models/environment.js');
 // const Screenshot = require('../models/screenshot.js');
-// const Execution = require('../models/execution.js');
+const Execution = require('../models/execution.js');
 // const Baseline = require('../models/baseline.js');
 // const Phase = require('../models/phase.js');
 
@@ -47,33 +47,6 @@ const log = debug('metrics:controller');
  *            - Number of Executions
  *            - Execution Time
  */
-
-const groupBuildByPeriod = (builds, numberOfDays) => {
-  const buildsGroupedByPeriod = {};
-  const oneDay = 24 * 60 * 60 * 1000;
-  builds.forEach((build) => {
-    const date = new Date(build.start);
-    // determine the period key
-    const periodId = Math.floor(date.getTime() / (oneDay * numberOfDays));
-    if (!buildsGroupedByPeriod[periodId]) {
-      buildsGroupedByPeriod[periodId] = {};
-      buildsGroupedByPeriod[periodId].builds = [];
-      // set the start date of the period
-      const startDate = new Date(0);
-      startDate.setUTCSeconds(periodId * numberOfDays * 24 * 60 * 60);
-      buildsGroupedByPeriod[periodId].start = startDate;
-      // set the end date of the period
-      const endDate = new Date(0);
-      endDate.setUTCSeconds((((periodId + 1) * numberOfDays) - 1) * 24 * 60 * 60);
-      endDate.setHours(23, 59, 59, 0);
-      buildsGroupedByPeriod[periodId].end = endDate;
-    }
-    buildsGroupedByPeriod[periodId].builds.push(build);
-  });
-  return buildsGroupedByPeriod;
-};
-
-
 exports.retrieveMetricsPerPhase = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -95,96 +68,124 @@ exports.retrieveMetricsPerPhase = (req, res) => {
           message: `No team found with name ${req.body.team}`,
         });
       }
-      const match = { team: teamFound._id };
+      const buildQuery = { team: teamFound._id };
       if (componentId) {
         // match componentId with name (and add it to query)
         teamFound.components.forEach((component) => {
           if (component.id === componentId) {
-            match.component = component._id;
+            buildQuery.component = component._id;
           }
         });
       }
       let fromDateJS = new Date();
-      if (fromDate) {
-        fromDateJS = new Date(fromDate);
-      }
+      if (fromDate) { fromDateJS = new Date(fromDate); }
       fromDateJS.setHours(0, 0, 0, 0);
       metrics.fromDate = fromDateJS;
-      match.start = { $gte: fromDateJS };
+      buildQuery.start = { $gte: fromDateJS };
 
       // set toDate if provided or today if not
       let toDateJS = new Date();
-      if (toDate) {
-        toDateJS = new Date(toDate);
-      }
+      if (toDate) { toDateJS = new Date(toDate); }
       toDateJS.setHours(23, 59, 59, 0);
       metrics.toDate = toDateJS;
-      match.end = { $lt: toDateJS };
+      buildQuery.end = { $lt: toDateJS };
 
-      query = [
-        { $match: match },
-        // {
-        //   $lookup: {
-        //     from: 'teams',
-        //     localField: 'team',
-        //     foreignField: '_id',
-        //     as: 'team',
-        //   },
-        // },
-        // { $unwind: '$team' },
-        // {
-        //   $lookup: {
-        //     from: 'environments',
-        //     localField: 'environment',
-        //     foreignField: '_id',
-        //     as: 'environment',
-        //   },
-        // },
-        // { $unwind: '$environment' },
-        // {
-        //   $lookup: {
-        //     from: 'testexecutions',
-        //     localField: 'suites.executions',
-        //     foreignField: '_id',
-        //     as: 'suites.executions',
-        //   },
-        // },
-        // { $unset: 'suites.executions.actions' },
-        // { $unwind: '$suites.executions' },
-        // { $addFields: { execution: '$suites.executions' } },
-        // { $addFields: { phase: { $ifNull: ['$phase.name', 'default'] }, date: { $dateToString: { format: '%Y-%m-%d', date: '$execution.start' } } } },
-        // { $addFields: { 'execution.length': { $subtract: ['$execution.end', '$execution.start'] } } },
-        // { $addFields: { componentId: { $toString: '$component' } } },
-        // {
-        //   $addFields: {
-        //     component: {
-        //       $function: {
-        //         body: 'function(componentId, team){ return team.components.find((component) => component._id.str === componentId ) }',
-        //         args: ['$componentId', '$team'],
-        //         lang: 'js',
-        //       },
-        //     },
-        //   },
-        // },
-        // { $unset: ['suites', 'result', 'status', 'componentId', 'start', 'end'] },
-      ];
-      return Build.aggregate(query)
-        .then((aggregateResult) => {
-          metrics.groups = groupBuildByPeriod(aggregateResult, groupingPeriod);
-          // metrics.results = {};
-          // metrics.phase = {};
-          // metrics.tests = new Set();
-          // aggregateResult.forEach((aggregate) => {
-          //   const { execution } = aggregate;
-          //   log(execution);
-          //   if (metrics.results[execution.status] === undefined) {
-          //     metrics.results[execution.status] = 0;
-          //   }
-          //   metrics.results[execution.status] += 1;
-          //   metrics.tests.add(`${execution.suite}.${execution.title}`);
-          // });
-          // metrics.tests = Array.from(metrics.tests);
-          return res.status(200).send(metrics);
+      metrics.groupingPeriod = groupingPeriod;
+
+      return Build.find(buildQuery)
+        .then((builds) => {
+          const buildIds = builds.map((build) => build._id);
+          const match = { build: { $in: buildIds } };
+          log(`Query match ${match}n`);
+          query = [
+            { $match: match },
+            {
+              $lookup: {
+                from: 'builds',
+                localField: 'build',
+                foreignField: '_id',
+                as: 'build',
+              },
+            },
+            { $unwind: '$build' },
+            {
+              $lookup: {
+                from: 'environments',
+                localField: 'build.environment',
+                foreignField: '_id',
+                as: 'environment',
+              },
+            },
+            { $unwind: '$environment' },
+            {
+              $lookup: {
+                from: 'teams',
+                localField: 'build.team',
+                foreignField: '_id',
+                as: 'team',
+              },
+            },
+            { $unwind: '$team' },
+            { $addFields: { componentId: { $toString: '$build.component' } } },
+            { $addFields: { phase: { $ifNull: ['$build.phase.name', 'default'] } } },
+            { $addFields: { length: { $subtract: ['$end', '$start'] } } },
+            {
+              $addFields: {
+                component: {
+                  $function: {
+                    body: 'function(componentId, team){ return team.components.find((component) => component._id.str === componentId ) }',
+                    args: ['$componentId', '$team'],
+                    lang: 'js',
+                  },
+                },
+              },
+            },
+            { $unset: ['build.suites', 'actions', 'componentId', 'team.components'] },
+          ];
+          return Execution.aggregate(query)
+            .then((executionsDetails) => {
+              metrics.periods = groupingUtils.groupExecutionsByPeriod(metrics.fromDate,
+                metrics.toDate, groupingPeriod, executionsDetails, 'start');
+              metrics.periods.forEach((currentPeriod) => {
+                const period = currentPeriod;
+                period.result = {};
+                // todo: introduce phase into grouping.
+                period.tests = new Set();
+                period.buildIds = new Set();
+                const { items: executions } = period;
+                const phaseNames = [...new Set(executions.map((execution) => execution.phase))];
+                period.phases = [];
+                phaseNames.forEach((phaseName) => {
+                  period.phases.push({
+                    name: phaseName,
+                    tests: new Set(),
+                    buildIds: new Set(),
+                    result: {},
+                  });
+                });
+                executions.forEach((execution) => {
+                  if (period.result[execution.status] === undefined) {
+                    period.result[execution.status] = 0;
+                  }
+                  period.result[execution.status] += 1;
+
+                  const phaseGroup = period.phases.find((phase) => phase.name === execution.phase);
+                  if (phaseGroup.result[execution.status] === undefined) {
+                    phaseGroup.result[execution.status] = 0;
+                  }
+                  phaseGroup.result[execution.status] += 1;
+
+                  period.tests.add(`${execution.suite}.${execution.title}`);
+                  period.buildIds.add(execution.build._id.toString());
+                });
+                period.tests = Array.from(period.tests);
+                period.buildIds = Array.from(period.buildIds);
+                period.buildCount = period.buildIds.length;
+                delete period.items;
+                delete period.buildIds;
+              });
+              return res.status(200).send(metrics);
+            });
         });
     })
     .catch((err) => {

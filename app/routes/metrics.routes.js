@@ -13,7 +13,7 @@ module.exports = (app, path) => {
     query('fromDate')
       .optional()
       .isISO8601()
-      .isBefore(new Date().toISOString())
+      .isBefore(new Date(new Date().setDate(+1)).toISOString())
       .withMessage('The fromDate field has to be in the past.'),
     query('toDate')
       .optional()
@@ -32,8 +32,13 @@ module.exports = (app, path) => {
       .withMessage('The toDate has to be after the fromDate.'),
     query('groupingPeriod')
       .optional()
-      .isNumeric()
-      .custom((groupingPeriod) => (groupingPeriod > 0 && groupingPeriod <= 365))
-      .withMessage('The groupingPeriod has to be between 0 and 365'),
+      .custom((groupingPeriod) => {
+        // eslint-disable-next-line no-restricted-globals
+        if (!isNaN(groupingPeriod)) {
+          return (groupingPeriod > 0 && groupingPeriod <= 90);
+        }
+        return ['day', 'week', 'fortnight', 'month', 'year'].includes(groupingPeriod);
+      })
+      .withMessage('The groupingPeriod has to be a number between 1 and 90, or one of the following values [day, week, fortnight, month, year]'),
   ], buildController.retrieveMetricsPerPhase);
 };
