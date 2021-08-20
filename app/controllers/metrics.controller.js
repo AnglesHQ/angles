@@ -99,6 +99,7 @@ exports.retrieveMetricsPerPhase = (req, res) => {
           log(`Query match ${match}n`);
           query = [
             { $match: match },
+            { $addFields: { buildId: { $toString: '$build' } } },
             {
               $lookup: {
                 from: 'builds',
@@ -127,7 +128,16 @@ exports.retrieveMetricsPerPhase = (req, res) => {
             },
             { $unwind: '$team' },
             { $addFields: { componentId: { $toString: '$build.component' } } },
-            { $addFields: { phase: { $ifNull: ['$build.phase.name', 'default'] } } },
+            {
+              $lookup: {
+                from: 'phases',
+                localField: 'build.phase',
+                foreignField: '_id',
+                as: 'phase',
+              },
+            },
+            // { $addFields: { phase: { $ifNull: ['$phase', 'default'] } } },
+            // { $unwind: '$phase' },
             { $addFields: { length: { $subtract: ['$end', '$start'] } } },
             {
               $addFields: {
@@ -140,7 +150,7 @@ exports.retrieveMetricsPerPhase = (req, res) => {
                 },
               },
             },
-            { $unset: ['build.suites', 'actions', 'componentId', 'team.components'] },
+            { $unset: ['build', 'actions', 'componentId', 'team.components'] },
           ];
           return Execution.aggregate(query)
             .then((executionsDetails) => {
@@ -148,11 +158,19 @@ exports.retrieveMetricsPerPhase = (req, res) => {
                 metrics.toDate, groupingPeriod, executionsDetails, 'start');
               metrics.periods.forEach((currentPeriod) => {
                 const period = currentPeriod;
-                period.result = {};
-                // todo: introduce phase into grouping.
-                period.tests = new Set();
+                period.result = { TOTAL: 0 };
                 period.buildIds = new Set();
                 const { items: executions } = period;
+                executions.map((execution) => {
+                  if (execution.phase.length === 0) {
+                    // eslint-disable-next-line no-param-reassign
+                    execution.phase = 'default';
+                  } else {
+                    // eslint-disable-next-line no-param-reassign,prefer-destructuring
+                    execution.phase = execution.phase[0].name;
+                  }
+                  return execution;
+                });
                 const phaseNames = [...new Set(executions.map((execution) => execution.phase))];
                 period.phases = [];
                 phaseNames.forEach((phaseName) => {
@@ -160,7 +178,8 @@ exports.retrieveMetricsPerPhase = (req, res) => {
                     name: phaseName,
                     tests: new Set(),
                     buildIds: new Set(),
-                    result: {},
+                    result: { TOTAL: 0 },
+                    executions: [],
                   });
                 });
                 executions.forEach((execution) => {
@@ -168,19 +187,30 @@ exports.retrieveMetricsPerPhase = (req, res) => {
                     period.result[execution.status] = 0;
                   }
                   period.result[execution.status] += 1;
+                  period.result.TOTAL += 1;
 
                   const phaseGroup = period.phases.find((phase) => phase.name === execution.phase);
                   if (phaseGroup.result[execution.status] === undefined) {
                     phaseGroup.result[execution.status] = 0;
                   }
                   phaseGroup.result[execution.status] += 1;
+                  phaseGroup.result.TOTAL += 1;
+                  phaseGroup.executions.push(execution);
 
-                  period.tests.add(`${execution.suite}.${execution.title}`);
-                  period.buildIds.add(execution.build._id.toString());
+                  phaseGroup.tests.add(`${execution.suite}.${execution.title}`);
+                  period.buildIds.add(execution.buildId);
+                  phaseGroup.buildIds.add(execution.buildId);
                 });
-                period.tests = Array.from(period.tests);
                 period.buildIds = Array.from(period.buildIds);
                 period.buildCount = period.buildIds.length;
+
+                period.phases.forEach((phaseGroup) => {
+                  const currentPhase = phaseGroup;
+                  currentPhase.tests = Array.from(currentPhase.tests);
+                  currentPhase.buildIds = Array.from(currentPhase.buildIds);
+                  currentPhase.buildCount = currentPhase.buildIds.length;
+                  delete currentPhase.buildIds;
+                });
                 delete period.items;
                 delete period.buildIds;
               });

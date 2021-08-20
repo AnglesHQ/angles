@@ -19,7 +19,8 @@ groupingUtils.groupExecutionsByPeriod = (fromDate, toDate, period,
   let processingDate = new Date(fromDate);
   let periodInteger = 1;
 
-  if (!Number.isNaN(period)) {
+  // eslint-disable-next-line no-restricted-globals
+  if (!isNaN(period)) {
     periodInteger = parseInt(period, 10);
   } else if (period === 'day') {
     periodInteger = 1;

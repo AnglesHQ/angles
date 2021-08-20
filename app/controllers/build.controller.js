@@ -82,7 +82,7 @@ exports.create = (req, res) => {
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
       if (phase && phaseFound) {
-        build.phase = phaseFound;
+        build.phase = phaseFound._id;
       }
       buildMetricsUtils.calculateBuildMetrics(build);
       return build.save();
