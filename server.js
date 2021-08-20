@@ -54,6 +54,7 @@ require('./app/routes/build.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/execution.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/screenshot.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/baseline.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/metrics.routes.js')(app, '/rest/api/v1.0');
 
 // listen for requests
 module.exports = app.listen(PORT, () => {
