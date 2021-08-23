@@ -13,12 +13,12 @@ module.exports = (app, path) => {
     query('fromDate')
       .optional()
       .isISO8601()
-      .isBefore(new Date(new Date().setDate(+1)).toISOString())
+      .isBefore(new Date(new Date().setUTCDate(+1)).toISOString())
       .withMessage('The fromDate field has to be in the past.'),
     query('toDate')
       .optional()
       .isISO8601()
-      .isBefore(new Date().toISOString())
+      .isBefore(new Date(new Date().setUTCHours(23, 59, 59)).toISOString())
       .withMessage('The toDate field has to be in the past.')
       .custom((toDate, { req }) => {
         const { fromDate } = req.query;
