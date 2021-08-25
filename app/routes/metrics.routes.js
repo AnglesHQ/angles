@@ -18,8 +18,6 @@ module.exports = (app, path) => {
     query('toDate')
       .optional()
       .isISO8601()
-      .isBefore(new Date(new Date().setUTCHours(23, 59, 59)).toISOString())
-      .withMessage('The toDate field has to be in the past.')
       .custom((toDate, { req }) => {
         const { fromDate } = req.query;
         const from = new Date(fromDate);
