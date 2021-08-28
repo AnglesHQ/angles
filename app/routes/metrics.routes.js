@@ -13,20 +13,30 @@ module.exports = (app, path) => {
     query('fromDate')
       .optional()
       .isISO8601()
-      .isBefore(
-        moment()
+      .custom((fromDate) => {
+        const today = moment()
           .set({ hour: 23, minute: 59, second: 59 })
-          .toISOString(),
-      )
+          .toISOString();
+        const from = new Date(fromDate);
+        if (today > from) {
+          return false;
+        }
+        return true;
+      })
       .withMessage('The fromDate field has to be in the past.'),
     query('toDate')
       .optional()
       .isISO8601()
-      .isBefore(
-        moment()
+      .custom((toDate) => {
+        const today = moment()
           .set({ hour: 23, minute: 59, second: 59 })
-          .toISOString(),
-      )
+          .toISOString();
+        const to = new Date(toDate);
+        if (today > to) {
+          return false;
+        }
+        return true;
+      })
       .withMessage('The toDate field has to be in the past.')
       .custom((toDate, { req }) => {
         const { fromDate } = req.query;
