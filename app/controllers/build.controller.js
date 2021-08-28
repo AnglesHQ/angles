@@ -106,6 +106,8 @@ exports.findAll = (req, res) => {
     returnExecutionDetails,
     environmentIds,
     componentIds,
+    fromDate,
+    toDate,
   } = req.query;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
@@ -130,6 +132,16 @@ exports.findAll = (req, res) => {
       }
       if (environmentIds) query.environment = { $in: environmentIds.split(',') };
       if (componentIds) query.component = { $in: componentIds.split(',') };
+      if (fromDate) {
+        const fromDateJS = new Date(fromDate);
+        fromDateJS.setHours(0, 0, 0, 0);
+        query.start = { $gte: fromDateJS };
+      }
+      if (toDate) {
+        const toDateJS = new Date(toDate);
+        toDateJS.setHours(23, 59, 59, 0);
+        query.end = { $lt: toDateJS };
+      }
       log(JSON.stringify(query));
       const buildQuery = Build.find(query, null, { limit, skip })
         .populate('team')

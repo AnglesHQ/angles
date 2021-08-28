@@ -1,4 +1,5 @@
 const { check, param, query } = require('express-validator');
+const moment = require('moment');
 const buildController = require('../controllers/build.controller.js');
 
 module.exports = (app, path) => {
@@ -47,6 +48,44 @@ module.exports = (app, path) => {
     query('skip')
       .optional()
       .isNumeric(),
+    query('fromDate')
+      .optional()
+      .isISO8601()
+      .custom((fromDate) => {
+        const today = moment()
+          .set({ hour: 23, minute: 59, second: 59 })
+          .toISOString();
+        const from = new Date(fromDate);
+        if (today > from) {
+          return false;
+        }
+        return true;
+      })
+      .withMessage('The fromDate field has to be in the past.'),
+    query('toDate')
+      .optional()
+      .isISO8601()
+      .custom((toDate) => {
+        const today = moment()
+          .set({ hour: 23, minute: 59, second: 59 })
+          .toISOString();
+        const to = new Date(toDate);
+        if (today > to) {
+          return false;
+        }
+        return true;
+      })
+      .withMessage('The toDate field has to be in the past.')
+      .custom((toDate, { req }) => {
+        const { fromDate } = req.query;
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        if (from > to) {
+          return false;
+        }
+        return true;
+      })
+      .withMessage('The toDate has to be after the fromDate.'),
   ], buildController.findAll);
 
   app.get(`${path}/build/:buildId`, [
