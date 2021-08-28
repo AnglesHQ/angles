@@ -1,8 +1,8 @@
 const { query } = require('express-validator');
+const moment = require('moment');
 const buildController = require('../controllers/metrics.controller.js');
 
 module.exports = (app, path) => {
-
   app.get(`${path}/metrics/phase`, [
     query('teamId')
       .exists()
@@ -13,11 +13,21 @@ module.exports = (app, path) => {
     query('fromDate')
       .optional()
       .isISO8601()
-      .isBefore(new Date(new Date().setUTCDate(+1)).toISOString())
+      .isBefore(
+        moment()
+          .set({ hour: 23, minute: 59, second: 59 })
+          .toISOString(),
+      )
       .withMessage('The fromDate field has to be in the past.'),
     query('toDate')
       .optional()
       .isISO8601()
+      .isBefore(
+        moment()
+          .set({ hour: 23, minute: 59, second: 59 })
+          .toISOString(),
+      )
+      .withMessage('The toDate field has to be in the past.')
       .custom((toDate, { req }) => {
         const { fromDate } = req.query;
         const from = new Date(fromDate);
