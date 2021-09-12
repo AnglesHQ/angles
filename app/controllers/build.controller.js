@@ -146,6 +146,7 @@ exports.findAll = (req, res) => {
       const buildQuery = Build.find(query, null, { limit, skip })
         .populate('team')
         .populate('environment')
+        .populate('phase')
         .sort('-createdAt');
       if (returnExecutionDetails === 'true') {
         // if asking for addExecutionDetails
@@ -179,6 +180,7 @@ exports.findOne = (req, res) => {
   return Build.findById(req.params.buildId)
     .populate('team')
     .populate('environment')
+    .populate('phase')
     .populate('suites.executions')
     .then((build) => {
       if (!build) {
@@ -246,6 +248,7 @@ exports.setArtifacts = (req, res) => {
   }, { new: true })
     .populate('team')
     .populate('environment')
+    .populate('phase')
     .then((build) => {
       if (!build) {
         return res.status(404).send({

@@ -118,8 +118,11 @@ exports.findAll = (req, res) => {
     platformId,
     screenshotIds,
   } = req.query;
-  const limit = parseInt(req.query.limit, 10) || 10;
+
+  const limit = parseInt(req.query.limit, 10) || 0;
   const skip = parseInt(req.query.skip, 10) || 0;
+  const options = { skip };
+  if (limit > 0) { options.limit = limit; }
 
   // use buildId
   if (buildId) {
@@ -133,7 +136,7 @@ exports.findAll = (req, res) => {
         const query = { build: mongoose.Types.ObjectId(buildId) };
         if (view) { query.view = view; }
         if (platformId) { query.platformId = platformId; }
-        return Screenshot.find(query, null, { limit, skip });
+        return Screenshot.find(query, null, options);
       })
       .then((screenshots) => res.send(screenshots))
       .catch((err) => res.status(500).send({
@@ -146,7 +149,7 @@ exports.findAll = (req, res) => {
     const query = { _id: { $in: screenshotIds.split(',') } };
     if (view) { query.view = view; }
     if (platformId) { query.platformId = platformId; }
-    return Screenshot.find(query, null, { limit, skip })
+    return Screenshot.find(query, null, options)
       .then((screenshots) => res.send(screenshots))
       .catch((err) => res.status(500).send({
         message: err.message || 'Some error occurred while retrieving screenshots.',
@@ -157,7 +160,8 @@ exports.findAll = (req, res) => {
   const query = {};
   if (view) { query.view = view; }
   if (platformId) { query.platformId = platformId; }
-  return Screenshot.find(query, null, { sort: { _id: -1 }, limit, skip })
+  options.sort = { _id: -1 };
+  return Screenshot.find(query, null, options)
     .then((screenshots) => res.send(screenshots))
     .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while retrieving screenshots.',

@@ -5,7 +5,7 @@ const multerConfig = multer({
   limits: { fileSize: 10485760 },
   storage: multer.diskStorage({
     destination(req, file, next) {
-      const directory = `screenshots/${req.headers.buildid}`;
+      const directory = `screenshots/${req.body.buildId}`;
       if (!fs.existsSync(directory)) {
         fs.mkdirSync(directory);
       }
