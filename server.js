@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const bodyParser = require('body-parser');
 const pino = require('pino');
 const expressPino = require('express-pino-logger');
@@ -17,6 +18,7 @@ const mongoURL = process.env.MONGO_URL || dbConfig.url;
 const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
+app.use(compression());
 
 // parse requests of content-type - application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
