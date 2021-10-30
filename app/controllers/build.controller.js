@@ -87,6 +87,11 @@ exports.create = (req, res) => {
       buildMetricsUtils.calculateBuildMetrics(build);
       return build.save();
     })
+    .then((savedBuild) => savedBuild
+      .populate('team')
+      .populate('environment')
+      .populate('phase')
+      .execPopulate())
     .then((savedBuild) => {
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
       return res.status(201).send(savedBuild);
