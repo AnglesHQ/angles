@@ -1,11 +1,11 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
-const groupingUtils = require('../utils/grouping-utils');
+const groupingUtils = require('../utils/grouping-utils.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
 // const Environment = require('../models/environment.js');
-// const Screenshot = require('../models/screenshot.js');
+const Screenshot = require('../models/screenshot.js');
 const Execution = require('../models/execution.js');
 // const Baseline = require('../models/baseline.js');
 // const Phase = require('../models/phase.js');
@@ -225,6 +225,110 @@ exports.retrieveMetricsPerPhase = (req, res) => {
     });
 };
 
+const convertAndSort = (objectWithKeys) => {
+  const sortable = [];
+  Object.keys(objectWithKeys).forEach((keyName) => {
+    const object = {
+      id: keyName,
+      value: objectWithKeys[keyName],
+    };
+    sortable.push(object);
+  });
+  return sortable.sort((a, b) => b.value - a.value);
+};
+
+exports.retrieveScreenshotMetrics = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const screenshotMetrics = {
+    count: 0,
+    views: {},
+    tags: {},
+    platforms: { undefined: 0 },
+    resolutions: {},
+  };
+  const {
+    fromDate,
+    toDate,
+  } = req.query;
+  let { topNumber } = req.query;
+  if (!topNumber) { topNumber = 30; }
+  const screenshotQuery = {};
+  let fromDateJS = new Date();
+  if (fromDate) { fromDateJS = new Date(fromDate); }
+  fromDateJS.setHours(0, 0, 0, 0);
+  screenshotMetrics.fromDate = fromDateJS;
+
+  // set toDate if provided or today if not
+  let toDateJS = new Date();
+  if (toDate) { toDateJS = new Date(toDate); }
+  toDateJS.setHours(23, 59, 59, 0);
+  screenshotMetrics.toDate = toDateJS;
+
+  screenshotQuery.timestamp = { $gte: fromDateJS, $lt: toDateJS };
+
+  return Screenshot.find(screenshotQuery)
+    .select(['-thumnail', '-build', '-path'])
+    .then((screenshotsArray) => {
+      screenshotsArray.forEach((screenshot) => {
+        if (screenshot) {
+          screenshotMetrics.count += 1;
+          // capture metrics for views
+          if (!screenshotMetrics.views[screenshot.view]) {
+            screenshotMetrics.views[screenshot.view] = 0;
+          }
+          screenshotMetrics.views[screenshot.view] += 1;
+          // capture metrics for the various tags
+          if (screenshot.tags && screenshot.tags.length > 0) {
+            screenshot.tags.forEach((tag) => {
+              if (!screenshotMetrics.tags[tag]) {
+                screenshotMetrics.tags[tag] = 0;
+              }
+              screenshotMetrics.tags[tag] += 1;
+            });
+          }
+          // resolutions
+          const resolution = `${screenshot.height}x${screenshot.width}`;
+          if (!screenshotMetrics.resolutions[resolution]) {
+            screenshotMetrics.resolutions[resolution] = 0;
+          }
+          screenshotMetrics.resolutions[resolution] += 1;
+          // capture metrics for platforms
+          if (screenshot.platform) {
+            const { platformName, platformVersion } = screenshot.platform;
+            let platformIdentifier = platformName;
+            if (platformVersion) { platformIdentifier += `_${platformVersion}`; }
+            if (!screenshotMetrics.platforms[platformIdentifier]) {
+              screenshotMetrics.platforms[platformIdentifier] = { count: 0 };
+            }
+            screenshotMetrics.platforms[platformIdentifier].count += 1;
+          } else {
+            screenshotMetrics.platforms.undefined += 1;
+          }
+        }
+      });
+      const {
+        resolutions,
+        views,
+        tags,
+        platforms,
+      } = screenshotMetrics;
+      // order and return top 10 only.
+      screenshotMetrics.resolutions = convertAndSort(resolutions).slice(0, topNumber);
+      screenshotMetrics.views = convertAndSort(views).slice(0, topNumber);
+      screenshotMetrics.tags = convertAndSort(tags).slice(0, topNumber);
+      screenshotMetrics.platforms = convertAndSort(platforms).slice(0, topNumber);
+      return res.status(200).send(screenshotMetrics);
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message: err.message || 'Unable to retrieve screenshot details.',
+      });
+    });
+};
+
 /**
  * Platform Metrics
  *    - Criteria: teamId & component (optional)
@@ -240,7 +344,6 @@ exports.retrieveMetricsPerPhase = (req, res) => {
  *           - Number of Executions
  *           - Execution Time
  */
-
 
 /**
  * Device Metrics
