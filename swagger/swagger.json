@@ -1917,30 +1917,29 @@
         "parameters": [
           {
             "name": "teamId",
-            "in": "path",
+            "in": "query",
             "required": true,
             "description": "ID of team you want to retrieve metrics for",
             "type": "string"
           },
           {
             "name": "componentId",
-            "in": "path",
+            "in": "query",
             "required": false,
             "description": "ID of component you want to retrieve metrics for",
             "type": "string"
           },
           {
             "name": "fromDate",
-            "in": "path",
+            "in": "query",
             "required": false,
             "description": "Start of the date range [e.g. YYYY-MM-DD].",
             "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-            "example": "YYYY-MM-DD",
             "type": "string"
           },
           {
             "name": "endDate",
-            "in": "path",
+            "in": "query",
             "required": false,
             "description": "End of the date range [e.g. YYYY-MM-DD]",
             "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
@@ -1996,17 +1995,17 @@
       }
     },
     "StoredEnvironment": {
-        "allOf": [
-          {"$ref": "#/definitions/Environment"},
-          {
-            "properties": {
-              "_id": {
-                "type": "string",
-                "uniqueItems": true
-              }
+      "allOf": [
+        {"$ref": "#/definitions/Environment"},
+        {
+          "properties": {
+            "_id": {
+              "type": "string",
+              "uniqueItems": true
             }
           }
-        ]
+        }
+      ]
     },
     "Team": {
       "required": [
@@ -2029,17 +2028,17 @@
       }
     },
     "StoredTeam": {
-        "allOf": [
-          {"$ref": "#/definitions/Team"},
-          {
-            "properties": {
-              "_id": {
-                "type": "string",
-                "uniqueItems": true
-              }
+      "allOf": [
+        {"$ref": "#/definitions/Team"},
+        {
+          "properties": {
+            "_id": {
+              "type": "string",
+              "uniqueItems": true
             }
           }
-        ]
+        }
+      ]
     },
     "Phase": {
       "required": [
@@ -2098,17 +2097,17 @@
       }
     },
     "StoredBuild": {
-        "allOf": [
-          {"$ref": "#/definitions/Build"},
-          {
-            "properties": {
-              "_id": {
-                "type": "string",
-                "uniqueItems": true
-              }
+      "allOf": [
+        {"$ref": "#/definitions/Build"},
+        {
+          "properties": {
+            "_id": {
+              "type": "string",
+              "uniqueItems": true
             }
           }
-        ]
+        }
+      ]
     },
     "Artifact": {
       "required": [
@@ -2168,15 +2167,15 @@
     },
     "ScreenshotUpdate": {
       "properties": {
-          "platform": {
-            "$ref": "#/definitions/Platform"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+        "platform": {
+          "$ref": "#/definitions/Platform"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
+        }
       }
     },
     "Action": {
@@ -2254,7 +2253,7 @@
             "actions": {
               "type": "array",
               "items": {
-                  "$ref": "#/definitions/StoredAction"
+                "$ref": "#/definitions/StoredAction"
               }
             },
             "start": { "type": "string", "format": "date-time" },
