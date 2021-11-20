@@ -270,7 +270,7 @@ exports.retrieveScreenshotMetrics = (req, res) => {
   screenshotQuery.timestamp = { $gte: fromDateJS, $lt: toDateJS };
 
   return Screenshot.find(screenshotQuery)
-    .select(['-thumnail', '-build', '-path'])
+    .select(['-thumbnail', '-build', '-path'])
     .then((screenshotsArray) => {
       screenshotsArray.forEach((screenshot) => {
         if (screenshot) {
@@ -301,9 +301,9 @@ exports.retrieveScreenshotMetrics = (req, res) => {
             let platformIdentifier = platformName;
             if (platformVersion) { platformIdentifier += `_${platformVersion}`; }
             if (!screenshotMetrics.platforms[platformIdentifier]) {
-              screenshotMetrics.platforms[platformIdentifier] = { count: 0 };
+              screenshotMetrics.platforms[platformIdentifier] = 0;
             }
-            screenshotMetrics.platforms[platformIdentifier].count += 1;
+            screenshotMetrics.platforms[platformIdentifier] += 1;
           } else {
             screenshotMetrics.platforms.undefined += 1;
           }
