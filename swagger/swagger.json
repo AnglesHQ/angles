@@ -1953,6 +1953,32 @@
           }
         }
       }
+    },
+    "/angles/versions": {
+      "get": {
+        "tags": [
+          "Info"
+        ],
+        "summary": "Get versions for current Angles instance",
+        "responses": {
+          "200": {
+            "description": "Returns the versions of the Angles backend components",
+            "schema": {
+              "properties": {
+                "node": {
+                  "type": "string"
+                },
+                "mongo": {
+                  "type": "string"
+                },
+                "angles": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {

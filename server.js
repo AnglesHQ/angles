@@ -8,11 +8,9 @@ const expressPino = require('express-pino-logger');
 const mongoose = require('mongoose');
 const dbConfig = require('./config/database.config.js');
 
-
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const expressLogger = expressPino({ logger });
 const mongoURL = process.env.MONGO_URL || dbConfig.url;
-
 
 // create express app
 const PORT = process.env.PORT || 3000;
@@ -57,6 +55,7 @@ require('./app/routes/execution.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/screenshot.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/baseline.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/metrics.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/angles.routes.js')(app, '/rest/api/v1.0');
 
 // listen for requests
 module.exports = app.listen(PORT, () => {
