@@ -40,7 +40,10 @@ jobs:
         env:
           NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
         run: echo "new tag $NEW_TAG"
-
+      - name: "publish release notes"
+        uses: fregante/release-with-changelog@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
   build:
     name: "Build angles container and push to docker hub"
     needs: bump-version
