@@ -48,6 +48,8 @@ const Suite = mongoose.Schema({
     type: Date,
     required: false,
   },
+  setup: { type: Schema.Types.ObjectId, ref: 'TestExecution' },
+  teardown: { type: Schema.Types.ObjectId, ref: 'TestExecution' },
   executions: [{ type: Schema.Types.ObjectId, ref: 'TestExecution' }],
 }, { _id: false });
 

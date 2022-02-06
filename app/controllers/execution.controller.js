@@ -22,7 +22,7 @@ exports.create = (req, res) => {
           message: `No build found with id ${req.body.build}`,
         });
       }
-      testExecution = buildMetricsUtils.createExecution(req, buildFound);
+      testExecution = buildMetricsUtils.createExecution(req.body, buildFound);
       return testExecution.save();
     })
     .then((savedExecution) => {

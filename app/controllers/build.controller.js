@@ -14,7 +14,6 @@ const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
 const Phase = require('../models/phase.js');
 
-
 const log = debug('build:controller');
 
 exports.create = (req, res) => {
@@ -22,7 +21,13 @@ exports.create = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { team, environment, phase } = req.body;
+  const {
+    team,
+    environment,
+    phase,
+    artifacts,
+    suites,
+  } = req.body;
   let phasePromise = Promise.resolve(true);
   if (phase) {
     phasePromise = Phase.findOne({ name: phase }).exec();
@@ -77,6 +82,7 @@ exports.create = (req, res) => {
         team: teamFound,
         name,
         component: matchComponent,
+        artifacts,
         suite: [],
         start,
         result: new Map(buildMetricsUtils.defaultResultMap),
@@ -93,9 +99,30 @@ exports.create = (req, res) => {
       .populate('phase')
       .execPopulate())
     .then((savedBuild) => {
+      // now save the test cases.
+      const executionPromises = [];
+      suites.forEach((suite) => {
+        suite.executions.forEach((createExecution) => {
+          const testExecution = buildMetricsUtils.createExecution(createExecution, savedBuild);
+          executionPromises.push(testExecution.save());
+        });
+      });
+      return Promise.all(executionPromises);
+    })
+    .then((executionResults) => {
+      const addExecutionPromises = [];
+      executionResults.forEach((savedExecution) => {
+        addExecutionPromises
+          .push(buildMetricsUtils.addExecutionToBuild(savedExecution.build, savedExecution));
+      });
+      return Promise.all(addExecutionPromises);
+    })
+    .then((savedBuildsResults) => {
+      const savedBuild = savedBuildsResults[savedBuildsResults.length - 1];
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
       return res.status(201).send(savedBuild);
-    }).catch((err) => res.status(500).send({
+    })
+    .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while creating the build.',
     }));
 };
@@ -266,7 +293,6 @@ exports.setArtifacts = (req, res) => {
       message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
     }));
 };
-
 
 /*
  TODO: when deleting a build we need to consider removing:
