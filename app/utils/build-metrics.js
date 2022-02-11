@@ -40,6 +40,40 @@ buildMetricsUtils.addExecutionToBuild = (build, execution) => {
     .then((savedBuildWithMetrics) => savedBuildWithMetrics);
 };
 
+/**
+ * we
+ * @param build
+ * @param executions
+ * @returns {*}
+ */
+buildMetricsUtils.addExecutionsToBuild = (buildId, executions) => Build.findById(buildId)
+  .populate('suites.executions')
+  .then((build) => {
+    if (executions && executions.length > 0) {
+      executions.forEach((execution) => {
+        // check if suite exists.
+        const buildSuite = build.suites
+          .find((suite) => suite.name.toLowerCase() === execution.suite.toLowerCase());
+        if (buildSuite === undefined) {
+          log(`Creating suite ${execution.suite} for build ${build._id} and adding test ${execution._id}`);
+          const newSuite = {
+            name: execution.suite,
+            executions: [],
+          };
+          newSuite.executions.push(execution);
+          build.suites.push(newSuite);
+        } else {
+          log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
+          // if build suite exists add the test to it.
+          buildSuite.push(execution);
+        }
+      });
+      const buildWithMetrics = buildMetricsUtils.calculateBuildMetrics(build);
+      return buildWithMetrics.save();
+    }
+    return build;
+  });
+
 buildMetricsUtils.calculateBuildMetrics = (build) => {
   build.result = new Map(buildMetricsUtils.defaultResultMap);
   build.end = undefined;

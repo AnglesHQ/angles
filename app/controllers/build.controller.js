@@ -5,6 +5,7 @@ const rimraf = require('rimraf');
 const path = require('path');
 
 const buildMetricsUtils = require('../utils/build-metrics.js');
+const executionUtils = require('../utils/execution-utils.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
@@ -17,6 +18,8 @@ const Phase = require('../models/phase.js');
 const log = debug('build:controller');
 
 exports.create = (req, res) => {
+
+  let buildId;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
@@ -93,32 +96,18 @@ exports.create = (req, res) => {
       buildMetricsUtils.calculateBuildMetrics(build);
       return build.save();
     })
+    .then((savedBuild) => {
+      buildId = savedBuild.id;
+      return executionUtils.saveExecutions(suites, savedBuild);
+    })
+    .then((savedExecutions) => buildMetricsUtils
+      .addExecutionsToBuild(buildId, savedExecutions))
     .then((savedBuild) => savedBuild
       .populate('team')
       .populate('environment')
       .populate('phase')
       .execPopulate())
     .then((savedBuild) => {
-      // now save the test cases.
-      const executionPromises = [];
-      suites.forEach((suite) => {
-        suite.executions.forEach((createExecution) => {
-          const testExecution = buildMetricsUtils.createExecution(createExecution, savedBuild);
-          executionPromises.push(testExecution.save());
-        });
-      });
-      return Promise.all(executionPromises);
-    })
-    .then((executionResults) => {
-      const addExecutionPromises = [];
-      executionResults.forEach((savedExecution) => {
-        addExecutionPromises
-          .push(buildMetricsUtils.addExecutionToBuild(savedExecution.build, savedExecution));
-      });
-      return Promise.all(addExecutionPromises);
-    })
-    .then((savedBuildsResults) => {
-      const savedBuild = savedBuildsResults[savedBuildsResults.length - 1];
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
       return res.status(201).send(savedBuild);
     })
