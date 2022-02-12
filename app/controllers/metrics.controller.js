@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
-const groupingUtils = require('../utils/grouping-utils');
+const groupingUtils = require('../utils/grouping-utils.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
@@ -240,7 +240,6 @@ exports.retrieveMetricsPerPhase = (req, res) => {
  *           - Number of Executions
  *           - Execution Time
  */
-
 
 /**
  * Device Metrics

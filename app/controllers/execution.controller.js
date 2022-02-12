@@ -2,7 +2,7 @@ const { validationResult } = require('express-validator');
 const debug = require('debug');
 const TestExecution = require('../models/execution.js');
 const Build = require('../models/build.js');
-const buildMetricsUtils = require('../utils/build-metrics.js');
+const buildUtils = require('../utils/build-utils.js');
 
 const log = debug('execution:controller');
 
@@ -22,12 +22,12 @@ exports.create = (req, res) => {
           message: `No build found with id ${req.body.build}`,
         });
       }
-      testExecution = buildMetricsUtils.createExecution(req.body, buildFound);
+      testExecution = buildUtils.createExecution(req.body, buildFound);
       return testExecution.save();
     })
     .then((savedExecution) => {
       testExecution = savedExecution;
-      return buildMetricsUtils.addExecutionToBuild(testExecution.build, testExecution);
+      return buildUtils.addExecutionToBuild(testExecution.build, testExecution);
     })
     .then((savedBuild) => {
       testExecution.build = savedBuild._id;

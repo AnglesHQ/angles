@@ -13,6 +13,7 @@ let team;
 let environment;
 let phase;
 let createdBuild;
+let createdBuildWithTests;
 
 describe('Build API Tests', () => {
   before((done) => {
@@ -51,6 +52,7 @@ describe('Build API Tests', () => {
     environment.remove();
     phase.remove();
     Build.findOneAndRemove({ _id: createdBuild._id }).exec();
+    Build.findOneAndRemove({ _id: createdBuildWithTests._id }).exec();
   });
 
   describe('POST /build', () => {
@@ -73,6 +75,92 @@ describe('Build API Tests', () => {
           if (err) return done(err);
           res.body._id.should.match(/[a-f\d]{24}/);
           createdBuild = res.body;
+          return done();
+        });
+    });
+
+    it('successfully create delayed build (containing a test) with valid details', (done) => {
+      const createBuildRequest = {
+        environment: environment.name,
+        team: team.name,
+        phase: phase.name,
+        name: 'build-unit-testing-build',
+        component: team.components[0].name,
+        start: new Date(),
+        suites: [
+          {
+            name: 'example suite',
+            executions: [
+              {
+                tags: [],
+                title: 'example test',
+                suite: 'example suite',
+                actions: [
+                  {
+                    name: 'Setup Steps',
+                    steps: [
+                      {
+                        name: 'info',
+                        info: 'Setting up',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:20:51.688Z',
+                      },
+                      {
+                        name: 'info',
+                        info: 'Nore setup.',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:20:55.786Z',
+                      },
+                    ],
+                  },
+                  {
+                    name: 'Test Steps',
+                    steps: [
+                      {
+                        name: 'Assert',
+                        expected: 'value',
+                        actual: 'value',
+                        status: 'PASS',
+                        timestamp: '2022-02-05T10:21:02.673Z',
+                      },
+                      {
+                        name: 'info',
+                        info: 'Doing some more stuff.',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:21:04.449Z',
+                      },
+                    ],
+                    status: 'PASS',
+                  },
+                  {
+                    name: 'Teardown Steps',
+                    steps: [
+                      {
+                        name: 'info',
+                        info: 'Tearing down',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:21:04.480Z',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      request(app)
+        .post(`${baseUrl}build`)
+        .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          createdBuildWithTests = res.body;
+          createdBuildWithTests.suites.should.length(1);
+          createdBuildWithTests.suites[0].executions.should.length(1);
           return done();
         });
     });

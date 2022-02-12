@@ -4,7 +4,7 @@ const debug = require('debug');
 const rimraf = require('rimraf');
 const path = require('path');
 
-const buildMetricsUtils = require('../utils/build-metrics.js');
+const buildUtils = require('../utils/build-utils.js');
 const executionUtils = require('../utils/execution-utils.js');
 
 const Build = require('../models/build.js');
@@ -18,7 +18,6 @@ const Phase = require('../models/phase.js');
 const log = debug('build:controller');
 
 exports.create = (req, res) => {
-
   let buildId;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -80,27 +79,19 @@ exports.create = (req, res) => {
       }
       // create and save build
       const { name, start } = req.body;
-      const build = new Build({
-        environment: environmentFound,
-        team: teamFound,
-        name,
-        component: matchComponent,
-        artifacts,
-        suite: [],
-        start,
-        result: new Map(buildMetricsUtils.defaultResultMap),
-      });
+      let phaseId;
       if (phase && phaseFound) {
-        build.phase = phaseFound._id;
+        phaseId = phaseFound._id;
       }
-      buildMetricsUtils.calculateBuildMetrics(build);
+      const build = buildUtils.createBuild(name,
+        matchComponent, start, environmentFound, teamFound, artifacts, phaseId);
       return build.save();
     })
     .then((savedBuild) => {
       buildId = savedBuild.id;
       return executionUtils.saveExecutions(suites, savedBuild);
     })
-    .then((savedExecutions) => buildMetricsUtils
+    .then((savedExecutions) => buildUtils
       .addExecutionsToBuild(buildId, savedExecutions))
     .then((savedBuild) => savedBuild
       .populate('team')

@@ -1,4 +1,3 @@
-
 const groupingUtils = {};
 
 groupingUtils.getNestedProperty = (obj, key) => {
@@ -79,6 +78,5 @@ groupingUtils.groupExecutionsByPeriod = (fromDate, toDate, period,
   });
   return periods;
 };
-
 
 module.exports = groupingUtils;
