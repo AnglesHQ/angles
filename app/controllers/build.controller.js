@@ -248,8 +248,14 @@ exports.update = (req, res) => {
       }
       // handle adding suites to build.
       if (suites) {
+        // filter executions that already have an id,
+        // as they have been added using the executions API
         const executions = suites.map((a) => a.executions);
-        return buildUtils.addExecutionsToBuild(build.id, executions);
+        const executionsToBeCreated = executions.filter((execution) => execution.id === undefined);
+        // store the executions without any id's
+        executionUtils.saveExecutions(executionsToBeCreated)
+          // add the saved executions to the build
+          .then((savedExecutions) => buildUtils.addExecutionsToBuild(build.id, savedExecutions));
       }
       return Promise.resolve(build);
     })
