@@ -207,24 +207,54 @@ exports.findOne = (req, res) => {
     }));
 };
 
-// TODO: We should be able to update more than just team and/or environment.
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Build.findByIdAndUpdate(req.params.buildId, {
-    team: req.body.team,
-    environment: req.body.environment,
-  }, { new: true })
-    .then((build) => {
-      if (!build) {
+  const {
+    name,
+    phase,
+    artifacts,
+    keep,
+    suites,
+  } = req.body;
+  let update = {};
+  if (name) { update = { ...update, name }; }
+  if (artifacts) { update = { ...update, artifacts }; }
+  if (keep) { update = { ...update, keep }; }
+  let phasePromise = Promise.resolve(null);
+  if (phase) {
+    phasePromise = Phase.findOne({ name: phase }).exec();
+  }
+  return phasePromise
+    .then((phaseFound) => {
+      if (phase && (phaseFound === null || phaseFound === undefined)) {
         return res.status(404).send({
-          message: `Build not found with id ${req.params.buildId}`,
+          message: `No phase found with name ${phase}`,
         });
       }
-      return res.status(200).send(build);
-    }).catch((err) => res.status(500).send({
+      if (phase && phaseFound) {
+        update = { ...update, phase: phaseFound.id };
+      }
+      return Build.findByIdAndUpdate(req.params.buildId, update, { new: true });
+    })
+    .then((build) => {
+      if (!build) {
+        return res.status(404)
+          .send({
+            message: `Build not found with id ${req.params.buildId}`,
+          });
+      }
+      // handle adding suites to build.
+      if (suites) {
+        const executions = suites.map((a) => a.executions);
+        return buildUtils.addExecutionsToBuild(build.id, executions);
+      }
+      return Promise.resolve(build);
+    })
+    .then((build) => res.status(200).send(build))
+    .catch((err) => res.status(500).send({
       message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
     }));
 };

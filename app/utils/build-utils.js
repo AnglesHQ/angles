@@ -58,9 +58,22 @@ buildUtils.addExecutionsToBuild = (buildId, executions) => Build.findById(buildI
           newSuite.executions.push(execution);
           build.suites.push(newSuite);
         } else {
-          log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
-          // if build suite exists add the test to it.
-          buildSuite.push(execution);
+          // check if execution exists in suite.
+          let executionAlreadyAdded = false;
+          if (execution.id) {
+            const existingExecution = buildSuite
+              .find((suiteExecution) => suiteExecution.id === execution.id);
+            if (existingExecution) {
+              executionAlreadyAdded = true;
+            }
+          }
+          if (!executionAlreadyAdded) {
+            log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
+            // if build suite exists add the test to it.
+            buildSuite.push(execution);
+          } else {
+            log(`Test ${execution._id} already exists in suite ${execution.suite} for build ${build._id}, so not updating.`);
+          }
         }
       });
       const buildWithMetrics = buildUtils.calculateBuildMetrics(build);

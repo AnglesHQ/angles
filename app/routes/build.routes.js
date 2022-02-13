@@ -98,12 +98,31 @@ module.exports = (app, path) => {
     param('buildId')
       .exists()
       .isMongoId(),
-    check('environment')
-      .exists()
+    check('name')
+      .optional()
       .isString(),
-    check('team')
-      .exists()
+    check('keep')
+      .optional()
+      .isBoolean(),
+    check('phase')
+      .optional()
       .isString(),
+    check('artifacts')
+      .optional()
+      .custom((artifactsArray) => Array.isArray(artifactsArray) && artifactsArray.length > 0)
+      .withMessage('At least one artifact is required'),
+    check('artifacts.*.groupId')
+      .optional()
+      .isString()
+      .trim(),
+    check('artifacts.*.artifactId')
+      .optional()
+      .isString()
+      .trim(),
+    check('artifacts.*.version')
+      .optional()
+      .isString()
+      .trim(),
   ], buildController.update);
 
   app.put(`${path}/build/:buildId/keep`, [
