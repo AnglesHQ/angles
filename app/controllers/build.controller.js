@@ -4,7 +4,8 @@ const debug = require('debug');
 const rimraf = require('rimraf');
 const path = require('path');
 
-const buildMetricsUtils = require('../utils/build-metrics.js');
+const buildUtils = require('../utils/build-utils.js');
+const executionUtils = require('../utils/execution-utils.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
@@ -14,15 +15,21 @@ const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
 const Phase = require('../models/phase.js');
 
-
 const log = debug('build:controller');
 
 exports.create = (req, res) => {
+  let buildId;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { team, environment, phase } = req.body;
+  const {
+    team,
+    environment,
+    phase,
+    artifacts,
+    suites,
+  } = req.body;
   let phasePromise = Promise.resolve(true);
   if (phase) {
     phasePromise = Phase.findOne({ name: phase }).exec();
@@ -72,21 +79,20 @@ exports.create = (req, res) => {
       }
       // create and save build
       const { name, start } = req.body;
-      const build = new Build({
-        environment: environmentFound,
-        team: teamFound,
-        name,
-        component: matchComponent,
-        suite: [],
-        start,
-        result: new Map(buildMetricsUtils.defaultResultMap),
-      });
+      let phaseId;
       if (phase && phaseFound) {
-        build.phase = phaseFound._id;
+        phaseId = phaseFound._id;
       }
-      buildMetricsUtils.calculateBuildMetrics(build);
+      const build = buildUtils.createBuild(name,
+        matchComponent, start, environmentFound, teamFound, artifacts, phaseId);
       return build.save();
     })
+    .then((savedBuild) => {
+      buildId = savedBuild.id;
+      return executionUtils.saveExecutions(suites, savedBuild);
+    })
+    .then((savedExecutions) => buildUtils
+      .addExecutionsToBuild(buildId, savedExecutions))
     .then((savedBuild) => savedBuild
       .populate('team')
       .populate('environment')
@@ -95,7 +101,8 @@ exports.create = (req, res) => {
     .then((savedBuild) => {
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
       return res.status(201).send(savedBuild);
-    }).catch((err) => res.status(500).send({
+    })
+    .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while creating the build.',
     }));
 };
@@ -200,24 +207,60 @@ exports.findOne = (req, res) => {
     }));
 };
 
-// TODO: We should be able to update more than just team and/or environment.
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Build.findByIdAndUpdate(req.params.buildId, {
-    team: req.body.team,
-    environment: req.body.environment,
-  }, { new: true })
-    .then((build) => {
-      if (!build) {
+  const {
+    name,
+    phase,
+    artifacts,
+    keep,
+    suites,
+  } = req.body;
+  let update = {};
+  if (name) { update = { ...update, name }; }
+  if (artifacts) { update = { ...update, artifacts }; }
+  if (keep) { update = { ...update, keep }; }
+  let phasePromise = Promise.resolve(null);
+  if (phase) {
+    phasePromise = Phase.findOne({ name: phase }).exec();
+  }
+  return phasePromise
+    .then((phaseFound) => {
+      if (phase && (phaseFound === null || phaseFound === undefined)) {
         return res.status(404).send({
-          message: `Build not found with id ${req.params.buildId}`,
+          message: `No phase found with name ${phase}`,
         });
       }
-      return res.status(200).send(build);
-    }).catch((err) => res.status(500).send({
+      if (phase && phaseFound) {
+        update = { ...update, phase: phaseFound.id };
+      }
+      return Build.findByIdAndUpdate(req.params.buildId, update, { new: true });
+    })
+    .then((build) => {
+      if (!build) {
+        return res.status(404)
+          .send({
+            message: `Build not found with id ${req.params.buildId}`,
+          });
+      }
+      // handle adding suites to build.
+      if (suites) {
+        // filter executions that already have an id,
+        // as they have been added using the executions API
+        const executions = suites.map((a) => a.executions);
+        const executionsToBeCreated = executions.filter((execution) => execution.id === undefined);
+        // store the executions without any id's
+        executionUtils.saveExecutions(executionsToBeCreated)
+          // add the saved executions to the build
+          .then((savedExecutions) => buildUtils.addExecutionsToBuild(build.id, savedExecutions));
+      }
+      return Promise.resolve(build);
+    })
+    .then((build) => res.status(200).send(build))
+    .catch((err) => res.status(500).send({
       message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
     }));
 };
@@ -266,7 +309,6 @@ exports.setArtifacts = (req, res) => {
       message: `Error updating build with id ${req.params.buildId} due to [${err}]`,
     }));
 };
-
 
 /*
  TODO: when deleting a build we need to consider removing:

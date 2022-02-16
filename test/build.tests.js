@@ -12,7 +12,9 @@ const baseUrl = '/rest/api/v1.0/';
 let team;
 let environment;
 let phase;
+let verificationPhase;
 let createdBuild;
+let createdBuildWithTests;
 
 describe('Build API Tests', () => {
   before((done) => {
@@ -34,10 +36,14 @@ describe('Build API Tests', () => {
       phase = new Phase({
         name: 'build-unit-testing-phase',
       });
+      verificationPhase = new Phase({
+        name: 'build-verification-testing-phase',
+      });
       const savePromises = [
         team.save(),
         environment.save(),
         phase.save(),
+        verificationPhase.save(),
       ];
       Promise.all(savePromises).then(() => {
         logger.info('Created required environment, team & phase for build tests.');
@@ -45,12 +51,15 @@ describe('Build API Tests', () => {
       });
     });
   });
+
   after(() => {
     // teardown
     team.remove();
     environment.remove();
     phase.remove();
+    verificationPhase.remove();
     Build.findOneAndRemove({ _id: createdBuild._id }).exec();
+    Build.findOneAndRemove({ _id: createdBuildWithTests._id }).exec();
   });
 
   describe('POST /build', () => {
@@ -73,6 +82,92 @@ describe('Build API Tests', () => {
           if (err) return done(err);
           res.body._id.should.match(/[a-f\d]{24}/);
           createdBuild = res.body;
+          return done();
+        });
+    });
+
+    it('successfully create delayed build (containing a test) with valid details', (done) => {
+      const createBuildRequest = {
+        environment: environment.name,
+        team: team.name,
+        phase: phase.name,
+        name: 'build-unit-testing-build',
+        component: team.components[0].name,
+        start: new Date(),
+        suites: [
+          {
+            name: 'example suite',
+            executions: [
+              {
+                tags: [],
+                title: 'example test',
+                suite: 'example suite',
+                actions: [
+                  {
+                    name: 'Setup Steps',
+                    steps: [
+                      {
+                        name: 'info',
+                        info: 'Setting up',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:20:51.688Z',
+                      },
+                      {
+                        name: 'info',
+                        info: 'Nore setup.',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:20:55.786Z',
+                      },
+                    ],
+                  },
+                  {
+                    name: 'Test Steps',
+                    steps: [
+                      {
+                        name: 'Assert',
+                        expected: 'value',
+                        actual: 'value',
+                        status: 'PASS',
+                        timestamp: '2022-02-05T10:21:02.673Z',
+                      },
+                      {
+                        name: 'info',
+                        info: 'Doing some more stuff.',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:21:04.449Z',
+                      },
+                    ],
+                    status: 'PASS',
+                  },
+                  {
+                    name: 'Teardown Steps',
+                    steps: [
+                      {
+                        name: 'info',
+                        info: 'Tearing down',
+                        status: 'INFO',
+                        timestamp: '2022-02-05T10:21:04.480Z',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      request(app)
+        .post(`${baseUrl}build`)
+        .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          createdBuildWithTests = res.body;
+          createdBuildWithTests.suites.should.length(1);
+          createdBuildWithTests.suites[0].executions.should.length(1);
           return done();
         });
     });
@@ -146,6 +241,101 @@ describe('Build API Tests', () => {
       request(app)
         .post(`${baseUrl}build`)
         .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(404, done);
+    });
+  });
+
+  describe('PUT /build', () => {
+    it('successfully update build with new keep value', (done) => {
+      const updateBuildRequest = {
+        keep: true,
+      };
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send(updateBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          res.body.keep.should.be.equal(true);
+          return done();
+        });
+    });
+
+    it('successfully update build with new artifacts', (done) => {
+      const updateBuildRequest = {
+        artifacts: [
+          {
+            groupId: 'com.github.anghleshq',
+            artifactId: 'angles-testng-example',
+            version: '1.0.1',
+          },
+        ],
+      };
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send(updateBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          res.body.artifacts.length.should.be.equal(1);
+          return done();
+        });
+    });
+
+    it('successfully update build with new phase', (done) => {
+      const updateBuildRequest = {
+        phase: verificationPhase.name,
+      };
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send(updateBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          res.body.phase.should.be.equal(verificationPhase.id);
+          return done();
+        });
+    });
+  });
+
+  describe('PUT /build - negative tests', () => {
+    it('respond with 422 when trying to update a build with empty body', (done) => {
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send({})
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
+    it('respond with 422 when trying to update a build with a name greater than max characters', (done) => {
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send({
+          name: 'this is more than the max number of characters, so should fail',
+        })
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
+    it('respond with 404 when trying to update a build with a non existent phase', (done) => {
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send({
+          phase: 'non-existent-phase',
+        })
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(404, done);

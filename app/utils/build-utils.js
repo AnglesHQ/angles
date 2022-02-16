@@ -3,13 +3,13 @@ const Build = require('../models/build.js');
 const TestExecution = require('../models/execution.js');
 
 const log = debug('metrics');
-const buildMetricsUtils = {};
+const buildUtils = {};
 
-buildMetricsUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
-buildMetricsUtils.defaultResultMap = new Map([['PASS', 0], ['FAIL', 0], ['ERROR', 0], ['SKIPPED', 0]]);
-const [defaultStatus] = buildMetricsUtils.executionStates;
+buildUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
+buildUtils.defaultResultMap = new Map([['PASS', 0], ['FAIL', 0], ['ERROR', 0], ['SKIPPED', 0]]);
+const [defaultStatus] = buildUtils.executionStates;
 
-buildMetricsUtils.addExecutionToBuild = (build, execution) => {
+buildUtils.addExecutionToBuild = (build, execution) => {
   const buildSuite = build.suites
     .find((suite) => suite.name.toLowerCase() === execution.suite.toLowerCase());
   let query;
@@ -33,20 +33,62 @@ buildMetricsUtils.addExecutionToBuild = (build, execution) => {
     .populate('suites.executions')
     .then((updatedBuild) => {
       // once updated we update the build metrics
-      const buildWithMetrics = buildMetricsUtils.calculateBuildMetrics(updatedBuild);
+      const buildWithMetrics = buildUtils.calculateBuildMetrics(updatedBuild);
       log(`Update build: ${JSON.stringify(buildWithMetrics)}`);
       return buildWithMetrics.save();
     })
     .then((savedBuildWithMetrics) => savedBuildWithMetrics);
 };
 
-buildMetricsUtils.calculateBuildMetrics = (build) => {
-  build.result = new Map(buildMetricsUtils.defaultResultMap);
+buildUtils.addExecutionsToBuild = (buildId, executions) => Build.findById(buildId)
+  .populate('suites.executions')
+  .then((build) => {
+    if (executions && executions.length > 0) {
+      executions.forEach((execution) => {
+        execution.build = buildId;
+        // check if suite exists.
+        const buildSuite = build.suites
+          .find((suite) => suite.name.toLowerCase() === execution.suite.toLowerCase());
+        if (buildSuite === undefined) {
+          log(`Creating suite ${execution.suite} for build ${build._id} and adding test ${execution._id}`);
+          const newSuite = {
+            name: execution.suite,
+            executions: [],
+          };
+          newSuite.executions.push(execution);
+          build.suites.push(newSuite);
+        } else {
+          // check if execution exists in suite.
+          let executionAlreadyAdded = false;
+          if (execution.id) {
+            const existingExecution = buildSuite
+              .find((suiteExecution) => suiteExecution.id === execution.id);
+            if (existingExecution) {
+              executionAlreadyAdded = true;
+            }
+          }
+          if (!executionAlreadyAdded) {
+            log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
+            // if build suite exists add the test to it.
+            buildSuite.push(execution);
+          } else {
+            log(`Test ${execution._id} already exists in suite ${execution.suite} for build ${build._id}, so not updating.`);
+          }
+        }
+      });
+      const buildWithMetrics = buildUtils.calculateBuildMetrics(build);
+      return buildWithMetrics.save();
+    }
+    return build;
+  });
+
+buildUtils.calculateBuildMetrics = (build) => {
+  build.result = new Map(buildUtils.defaultResultMap);
   build.end = undefined;
   build.status = defaultStatus;
   for (let i = 0, len = build.suites.length; i < len; i += 1) {
     let suite = build.suites[i];
-    suite = buildMetricsUtils.calculateSuiteMetrics(suite);
+    suite = buildUtils.calculateSuiteMetrics(suite);
     suite.result.forEach((value, key) => {
       build.result.set(key, build.result.get(key) + value);
     });
@@ -57,13 +99,13 @@ buildMetricsUtils.calculateBuildMetrics = (build) => {
     if (build.start === undefined || build.start > suite.start) {
       build.start = suite.start;
     }
-    build.status = buildMetricsUtils.determineNewState(build.status, suite.status);
+    build.status = buildUtils.determineNewState(build.status, suite.status);
   }
   return build;
 };
 
-buildMetricsUtils.calculateSuiteMetrics = (suite) => {
-  suite.result = new Map(buildMetricsUtils.defaultResultMap);
+buildUtils.calculateSuiteMetrics = (suite) => {
+  suite.result = new Map(buildUtils.defaultResultMap);
   suite.start = undefined;
   suite.end = undefined;
   suite.status = defaultStatus;
@@ -76,18 +118,18 @@ buildMetricsUtils.calculateSuiteMetrics = (suite) => {
     if (suite.start === undefined || suite.start > execution.start) {
       suite.start = execution.start;
     }
-    suite.status = buildMetricsUtils.determineNewState(suite.status, execution.status);
+    suite.status = buildUtils.determineNewState(suite.status, execution.status);
   }
   return suite;
 };
 
-buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
+buildUtils.calculateExecutionMetrics = (testExecution) => {
   /* eslint no-param-reassign: ["error", { "props": false }] */
   testExecution.start = undefined;
   testExecution.end = undefined;
   for (let i = 0, len = testExecution.actions.length; i < len; i += 1) {
     const currentAction = testExecution.actions[i];
-    const defaultState = buildMetricsUtils.executionStates[0];
+    const defaultState = buildUtils.executionStates[0];
     currentAction.status = defaultState;
     if (currentAction.steps) {
       // check if the action contains steps, if not don't do anything
@@ -97,8 +139,8 @@ buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
         currentAction.end = currentAction.steps[currentAction.steps.length - 1].timestamp;
         for (let j = 0, stepLen = currentAction.steps.length; j < stepLen; j += 1) {
           const currentStep = currentAction.steps[j];
-          if (buildMetricsUtils.executionStates.indexOf(currentStep.status)
-            > buildMetricsUtils.executionStates.indexOf(currentAction.status)) {
+          if (buildUtils.executionStates.indexOf(currentStep.status)
+            > buildUtils.executionStates.indexOf(currentAction.status)) {
             // change the state as it's a 'higher' state.
             currentAction.status = currentStep.status;
           }
@@ -112,26 +154,26 @@ buildMetricsUtils.calculateExecutionMetrics = (testExecution) => {
       }
     }
     // update the test status based on the action states
-    if (buildMetricsUtils.executionStates.indexOf(currentAction.status)
-      > buildMetricsUtils.executionStates.indexOf(testExecution.status)) {
+    if (buildUtils.executionStates.indexOf(currentAction.status)
+      > buildUtils.executionStates.indexOf(testExecution.status)) {
       // change the state as it's a 'higher' state.
       testExecution.status = currentAction.status;
     }
   }
 };
 
-buildMetricsUtils.determineNewState = (existingState, newState) => {
-  if (buildMetricsUtils.executionStates.indexOf(existingState)
-    > buildMetricsUtils.executionStates.indexOf(newState)) {
+buildUtils.determineNewState = (existingState, newState) => {
+  if (buildUtils.executionStates.indexOf(existingState)
+    > buildUtils.executionStates.indexOf(newState)) {
     return existingState;
   }
   return newState;
 };
 
-buildMetricsUtils.createExecution = (req, build) => {
+buildUtils.createExecution = (createExecution, build) => {
   const {
     title, suite, start, end, platforms, tags, meta, actions, feature,
-  } = req.body;
+  } = createExecution;
 
   const testExecution = new TestExecution({
     title,
@@ -144,12 +186,30 @@ buildMetricsUtils.createExecution = (req, build) => {
     tags,
     meta,
     actions,
-    status: buildMetricsUtils.executionStates[0],
+    status: buildUtils.executionStates[0],
   });
   if (actions) {
-    buildMetricsUtils.calculateExecutionMetrics(testExecution);
+    buildUtils.calculateExecutionMetrics(testExecution);
   }
   return testExecution;
 };
 
-module.exports = buildMetricsUtils;
+buildUtils.createBuild = (name, component, start, environment, team, artifacts, phase) => {
+  const build = new Build({
+    environment,
+    team,
+    name,
+    component,
+    artifacts,
+    suite: [],
+    start,
+    result: new Map(buildUtils.defaultResultMap),
+  });
+  if (phase) {
+    build.phase = phase;
+  }
+  buildUtils.calculateBuildMetrics(build);
+  return build;
+};
+
+module.exports = buildUtils;

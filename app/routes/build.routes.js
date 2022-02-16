@@ -1,4 +1,4 @@
-const { check, param, query } = require('express-validator');
+const { check, param, query, oneOf } = require('express-validator');
 const moment = require('moment');
 const buildController = require('../controllers/build.controller.js');
 
@@ -98,12 +98,37 @@ module.exports = (app, path) => {
     param('buildId')
       .exists()
       .isMongoId(),
-    check('environment')
-      .exists()
-      .isString(),
-    check('team')
-      .exists()
-      .isString(),
+    oneOf(
+      [
+        check('name')
+          .exists()
+          .isString()
+          .isLength({ max: 50 })
+          .withMessage('Max length for build name is 50 characters'),
+        check('keep')
+          .exists()
+          .isBoolean(),
+        check('phase')
+          .exists()
+          .isString(),
+        check('artifacts')
+          .exists()
+          .custom((artifactsArray) => Array.isArray(artifactsArray) && artifactsArray.length > 0)
+          .withMessage('At least one artifact is required'),
+      ],
+    ),
+    check('artifacts.*.groupId')
+      .optional()
+      .isString()
+      .trim(),
+    check('artifacts.*.artifactId')
+      .optional()
+      .isString()
+      .trim(),
+    check('artifacts.*.version')
+      .optional()
+      .isString()
+      .trim(),
   ], buildController.update);
 
   app.put(`${path}/build/:buildId/keep`, [
