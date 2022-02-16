@@ -12,6 +12,7 @@ const baseUrl = '/rest/api/v1.0/';
 let team;
 let environment;
 let phase;
+let verificationPhase;
 let createdBuild;
 let createdBuildWithTests;
 
@@ -35,10 +36,14 @@ describe('Build API Tests', () => {
       phase = new Phase({
         name: 'build-unit-testing-phase',
       });
+      verificationPhase = new Phase({
+        name: 'build-verification-testing-phase',
+      });
       const savePromises = [
         team.save(),
         environment.save(),
         phase.save(),
+        verificationPhase.save(),
       ];
       Promise.all(savePromises).then(() => {
         logger.info('Created required environment, team & phase for build tests.');
@@ -46,11 +51,13 @@ describe('Build API Tests', () => {
       });
     });
   });
+
   after(() => {
     // teardown
     team.remove();
     environment.remove();
     phase.remove();
+    verificationPhase.remove();
     Build.findOneAndRemove({ _id: createdBuild._id }).exec();
     Build.findOneAndRemove({ _id: createdBuildWithTests._id }).exec();
   });
@@ -234,6 +241,101 @@ describe('Build API Tests', () => {
       request(app)
         .post(`${baseUrl}build`)
         .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(404, done);
+    });
+  });
+
+  describe('PUT /build', () => {
+    it('successfully update build with new keep value', (done) => {
+      const updateBuildRequest = {
+        keep: true,
+      };
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send(updateBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          res.body.keep.should.be.equal(true);
+          return done();
+        });
+    });
+
+    it('successfully update build with new artifacts', (done) => {
+      const updateBuildRequest = {
+        artifacts: [
+          {
+            groupId: 'com.github.anghleshq',
+            artifactId: 'angles-testng-example',
+            version: '1.0.1',
+          },
+        ],
+      };
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send(updateBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          res.body.artifacts.length.should.be.equal(1);
+          return done();
+        });
+    });
+
+    it('successfully update build with new phase', (done) => {
+      const updateBuildRequest = {
+        phase: verificationPhase.name,
+      };
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send(updateBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body._id.should.match(/[a-f\d]{24}/);
+          res.body.phase.should.be.equal(verificationPhase.id);
+          return done();
+        });
+    });
+  });
+
+  describe('PUT /build - negative tests', () => {
+    it('respond with 422 when trying to update a build with empty body', (done) => {
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send({})
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
+    it('respond with 422 when trying to update a build with a name greater than max characters', (done) => {
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send({
+          name: 'this is more than the max number of characters, so should fail',
+        })
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
+    it('respond with 404 when trying to update a build with a non existent phase', (done) => {
+      request(app)
+        .put(`${baseUrl}build/${createdBuild._id}`)
+        .send({
+          phase: 'non-existent-phase',
+        })
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(404, done);
