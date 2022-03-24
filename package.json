@@ -60,7 +60,7 @@
     "eslint-plugin-jsx-a11y": "^6.2.3",
     "eslint-plugin-react": "^7.16.0",
     "eslint-plugin-react-hooks": "^1.7.0",
-    "minimist": ">=0.2.1",
+    "minimist": ">=1.2.6",
     "mocha": "^9.1.4",
     "pino-pretty": "^4.7.1",
     "should": "^13.2.3",
