@@ -33,7 +33,7 @@
     "express-pino-logger": "^6.0.0",
     "express-validator": "^6.2.0",
     "image-size": "^0.8.3",
-    "moment": "^2.29.1",
+    "moment": "^2.29.2",
     "mongoose": "^5.7.5",
     "mpath": ">=0.8.4",
     "mquery": ">=3.2.3",
