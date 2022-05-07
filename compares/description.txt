@@ -1,0 +1,1 @@
+This folder will be a cache for all the screenshot compares.
