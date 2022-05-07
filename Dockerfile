@@ -1,5 +1,5 @@
 # pull official base image
-FROM node:13.12.0
+FROM node:16.15.0
 
 # set working directory
 WORKDIR /app
@@ -16,6 +16,7 @@ VOLUME /app/compares
 # required to setup the clean-up crontab
 RUN apt-get update
 RUN apt-get -y install cron vim jq
+RUN apt-get -y --fix-missing install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
 # crontab
 COPY cleanup /cleanup

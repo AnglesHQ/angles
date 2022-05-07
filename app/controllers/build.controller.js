@@ -4,7 +4,7 @@ const debug = require('debug');
 const rimraf = require('rimraf');
 const path = require('path');
 
-const buildMetricsUtils = require('../utils/build-metrics.js');
+const buildMetricsUtils = require('../utils/build-utils.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
@@ -13,7 +13,6 @@ const Screenshot = require('../models/screenshot.js');
 const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
 const Phase = require('../models/phase.js');
-
 
 const log = debug('build:controller');
 
@@ -87,11 +86,12 @@ exports.create = (req, res) => {
       buildMetricsUtils.calculateBuildMetrics(build);
       return build.save();
     })
-    .then((savedBuild) => savedBuild
+    .then((savedBuild) => Build
+      .findOne({ _id: savedBuild._id })
       .populate('team')
       .populate('environment')
       .populate('phase')
-      .execPopulate())
+      .exec())
     .then((savedBuild) => {
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
       return res.status(201).send(savedBuild);

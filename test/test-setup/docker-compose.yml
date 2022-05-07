@@ -4,7 +4,7 @@ services:
   mongodb:
     container_name: "mongo-angles"
     hostname: mongodb
-    image: mongo:4.2.0
+    image: mongo:4.4.13
     restart: always
     volumes:
         - angles_mongo_db:/data/db

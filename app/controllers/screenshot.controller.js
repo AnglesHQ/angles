@@ -5,7 +5,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const { compare } = require('resemblejs');
 const sizeOf = require('image-size');
-const sharp = require('sharp');
+const jimp = require('jimp');
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
@@ -58,24 +58,17 @@ exports.create = (req, res) => {
       }
       build = foundBuild;
       const promises = [
-        sharp(req.file.path).resize(300, 300, {
-          xres: 72,
-          yres: 72,
-          fit: 'contain',
-          position: 'centre',
-          background: {
-            r: 0,
-            g: 0,
-            b: 0,
-            alpha: 1.0,
-          },
-        }).toBuffer(),
+        jimp.read(req.file.path)
+          .then((image) => image
+            .scaleToFit(300, 300)
+            .quality(72)
+            .getBase64Async(image.getMIME())),
         sizeOf(req.file.path),
       ];
       return Promise.all(promises).then((results) => {
         const thumbnailBuffer = results[0];
         const dimensions = results[1];
-        const thumbnail = thumbnailBuffer.toString('base64');
+        const thumbnail = thumbnailBuffer;
         const screenshot = new Screenshot({
           build: build._id,
           timestamp,
