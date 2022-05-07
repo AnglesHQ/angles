@@ -14,7 +14,6 @@ const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
 const Phase = require('../models/phase.js');
 
-
 const log = debug('build:controller');
 
 exports.create = (req, res) => {
@@ -87,11 +86,12 @@ exports.create = (req, res) => {
       buildMetricsUtils.calculateBuildMetrics(build);
       return build.save();
     })
-    .then((savedBuild) => savedBuild
+    .then((savedBuild) => Build
+      .findOne({ _id: savedBuild._id })
       .populate('team')
       .populate('environment')
       .populate('phase')
-      .execPopulate())
+      .exec())
     .then((savedBuild) => {
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
       return res.status(201).send(savedBuild);

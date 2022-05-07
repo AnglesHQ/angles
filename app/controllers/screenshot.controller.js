@@ -60,9 +60,8 @@ exports.create = (req, res) => {
       const promises = [
         jimp.read(req.file.path)
           .then((image) => image
-            .resize(300, 300)
+            .scaleToFit(300, 300)
             .quality(72)
-            .greyscale()
             .getBase64Async(image.getMIME())),
         sizeOf(req.file.path),
       ];
