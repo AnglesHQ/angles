@@ -53,7 +53,6 @@ describe('Phase API Tests', () => {
           if (err) return done(err);
           res.body._id.should.match(/[a-f\d]{24}/);
           createdPhase = res.body;
-          if (err) throw err;
           return done();
         });
     });

@@ -2,7 +2,7 @@ const { validationResult } = require('express-validator');
 const debug = require('debug');
 const TestExecution = require('../models/execution.js');
 const Build = require('../models/build.js');
-const buildMetricsUtils = require('../utils/build-metrics.js');
+const buildMetricsUtils = require('../utils/build-utils.js');
 
 const log = debug('execution:controller');
 

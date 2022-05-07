@@ -4,7 +4,7 @@ const debug = require('debug');
 const rimraf = require('rimraf');
 const path = require('path');
 
-const buildMetricsUtils = require('../utils/build-metrics.js');
+const buildMetricsUtils = require('../utils/build-utils.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
