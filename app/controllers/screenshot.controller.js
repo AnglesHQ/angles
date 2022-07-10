@@ -328,7 +328,7 @@ exports.generateDynamicBaselineImage = async (req, res) => {
         });
       }
 
-      const queryHistory = parseInt(req.query.limit, numberOfImagesToCompare) || 5;
+      const queryHistory = numberOfImagesToCompare || 5;
       const options = { skip: 0 };
       if (queryHistory > 0) { options.limit = queryHistory; }
       const { view, platformId } = screenshot;

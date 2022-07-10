@@ -1562,6 +1562,56 @@
         }
       }
     },
+    "/screenshot/{screenshotId}/dynamic-baseline": {
+      "parameters": [
+        {
+          "name": "screenshotId",
+          "in": "path",
+          "required": true,
+          "description": "ID of screenshot you want to generate the dynamic baseline for",
+          "type": "string"
+        },
+        {
+          "name": "numberOfImagesToCompare",
+          "in": "query",
+          "required": false,
+          "description": "The number of images historically you want to use to generate the dynamic baseline",
+          "type": "number"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Will generate a baseline image by comparing the last n number of images dependent on the numberOfImagesToCompare value",
+        "responses": {
+          "201": {
+            "description": "Successfully created the dynamic baseline image",
+            "schema": {
+              "$ref": "#/definitions/Screenshot"
+            }
+          },
+          "404": {
+            "description": "Screenshots not found",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/ExpressValidatorError"
+            }
+          },
+          "500": {
+            "description": "Any error, e.g. not enough images to generate dynamic baseline",
+            "schema": {
+              "$ref": "#/definitions/DefaultResponse"
+            }
+          }
+        }
+      }
+    },
     "/screenshot/{screenshotId}/compare/{screenshotCompareId}": {
       "parameters": [
         {
