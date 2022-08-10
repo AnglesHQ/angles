@@ -8,7 +8,6 @@ const baseUrl = '/rest/api/v1.0/';
 let team;
 let createdTeam;
 
-
 describe('Team API Tests', () => {
   before((done) => {
     // clear lingering test environments

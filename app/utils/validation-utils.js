@@ -1,4 +1,3 @@
-
 const validationUtils = {};
 
 /*
@@ -45,6 +44,11 @@ validationUtils.generatePlatformId = (platform, screenshot) => {
     return `${platform.platformName}_${platform.browserName}_${screenshot.width}x${screenshot.height}`.toLowerCase();
   }
   return undefined;
+};
+
+validationUtils.returnUniqueDocumentIds = (documents) => {
+  const documentIds = documents.map((document) => document._id.toString());
+  return Array.from(new Set(documentIds));
 };
 
 module.exports = validationUtils;

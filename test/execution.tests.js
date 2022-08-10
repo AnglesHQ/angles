@@ -76,7 +76,7 @@ describe('Execution API Tests', () => {
   });
 
   // describe('POST /execution', () => {
-  //   it('succesfully create execution with valid details', (done) => {
+  //   it('successfully create execution with valid details', (done) => {
   //     const createTestExecutionRequest = {
   //       title: 'unit-testing-execution-test',
   //       description: 'unit-testing-description',

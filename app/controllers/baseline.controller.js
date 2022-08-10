@@ -3,6 +3,7 @@ const debug = require('debug');
 const Baseline = require('../models/baseline.js');
 const Screenshot = require('../models/screenshot.js');
 const validationUtils = require('../utils/validation-utils.js');
+const baselineUtils = require('../utils/baseline-utils.js');
 
 const log = debug('baseline:controller');
 
@@ -13,73 +14,57 @@ exports.create = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
+
+  const { screenshotId, view: requestView, ignoreBoxes } = req.body;
+  // determine if type is defined, otherwise set it to IMAGE (and handle default).
   const promises = [
-    Screenshot.findById(req.body.screenshotId).exec(),
-    Baseline.find({ view: req.body.view }).exec(),
+    Screenshot.findById(screenshotId).exec(),
+    Baseline.find({ requestView }).exec(),
   ];
   return Promise.all(promises).then((results) => {
     const screenshot = results[0];
     const baselinesFound = results[1];
+
     if (!screenshot) {
       return res.status(404).send({
-        message: `No screenshot found with id ${req.body.screenshotId}`,
+        message: `No screenshot found with id ${screenshotId}`,
       });
     }
-    if (screenshot.view !== req.body.view) {
+    const { view: screenshotView, platform } = screenshot;
+    if (screenshotView !== requestView) {
       return res.status(400).send({
-        message: `The screenshot with id ${req.body.screenshotId} is not for the same view. Expected [${screenshot.view}], Actual [${req.body.view}]`,
+        message: `The screenshot with id ${screenshotId} is not for the same view. Expected [${screenshotView}], Actual [${requestView}]`,
       });
     }
-    if (screenshot.platform === undefined) {
+    if (platform === undefined) {
       return res.status(400).send({
-        message: `The screenshot with id ${req.body.screenshotId} does not have platform details set. Platform details are required when setting a baseline image.`,
+        message: `The screenshot with id ${screenshotId} does not have platform details set. Platform details are required when setting a baseline image.`,
       });
     }
     if (!validationUtils.screenshotHasValidPlatformDetails(screenshot)) {
       return res.status(400).send({
-        message: `The screenshot with id ${req.body.screenshotId} does not have valid platform details set. Please ensure that platform is set for the screenshot (with device name or browserName set)`,
+        message: `The screenshot with id ${screenshotId} does not have valid platform details set. Please ensure that platform is set for the screenshot (with device name or browserName set)`,
       });
     }
+    const matchingBaselines = baselineUtils
+      .checkIfBaselineAlreadyExists(requestView, baselinesFound, screenshot);
 
-    if (screenshot.platform.deviceName) {
-      const matchingBaselines = baselinesFound.filter((baseline) => baseline
-        .platform.platformName === screenshot.platform.platformName
-        && baseline.platform.deviceName === screenshot.platform.deviceName);
-      if (matchingBaselines.length > 0) {
+    const {
+      platform: { deviceName, platformName, browserName },
+      height,
+      width,
+    } = screenshot;
+    if (matchingBaselines.length > 0) {
+      if (deviceName) {
         return res.status(409).send({
-          message: `Baseline for view [${screenshot.view}], platform [${screenshot.platform.platformName}] and device [${screenshot.platform.deviceName}] already exists`,
+          message: `Baseline for view [${requestView}], platform [${platformName}] and device [${deviceName}] already exists`,
         });
       }
+      return res.status(409).send({
+        message: `Baseline for view [${requestView}], platform [${platformName}] and browser [${browserName}] with resolution [${width} x ${height}] already exists`,
+      });
     }
-
-    if (!screenshot.platform.deviceName) {
-      const matchingBaselines = baselinesFound.filter((baseline) => baseline
-        .platform.platformName === screenshot.platform.platformName
-        && baseline.platform.browserName === screenshot.platform.browserName
-        && baseline.screenHeight === screenshot.height
-        && baseline.screenWidth === screenshot.width);
-      if (matchingBaselines.length > 0) {
-        return res.status(409).send({
-          message: `Baseline for view [${screenshot.view}], platform [${screenshot.platform.platformName}] and browser [${screenshot.platform.browserName}] with resolution [${screenshot.width} x ${screenshot.height}] already exists`,
-        });
-      }
-    }
-
-    // create the baseline.
-    const baseline = new Baseline({
-      screenshot,
-      view: req.body.view,
-      platform: {
-        platformName: screenshot.platform.platformName,
-        deviceName: screenshot.platform.deviceName,
-        browserName: screenshot.platform.browserName,
-      },
-      screenHeight: screenshot.height,
-      screenWidth: screenshot.width,
-    });
-    if (req.body.ignoreBoxes) {
-      baseline.ignoreBoxes = req.body.ignoreBoxes;
-    }
+    const baseline = baselineUtils.createBaseline(requestView, screenshot, ignoreBoxes);
     return baseline.save();
   }).then((savedBaseline) => {
     log(`Created baseline with id "${savedBaseline._id}" for view "${savedBaseline.view}" and platorm "${savedBaseline.platformName}"`);

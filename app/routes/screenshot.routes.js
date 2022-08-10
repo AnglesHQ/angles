@@ -9,7 +9,8 @@ const multerConfig = require('../utils/multer-config-screenshots.js');
 const screenshotController = require('../controllers/screenshot.controller.js');
 
 module.exports = (app, path) => {
-  app.post(`${path}/screenshot`,
+  app.post(
+    `${path}/screenshot`,
     multerConfig.single('screenshot'),
     [
       check('buildId')
@@ -41,7 +42,8 @@ module.exports = (app, path) => {
         .isString(),
     ],
     screenshotController.create,
-    screenshotController.createFail);
+    screenshotController.createFail,
+  );
 
   app.get(`${path}/screenshot`, [
     oneOf([
@@ -85,6 +87,11 @@ module.exports = (app, path) => {
   app.get(`${path}/screenshot/:screenshotId/image`, [
     param('screenshotId').isMongoId(),
   ], screenshotController.findOneImage);
+
+  app.get(`${path}/screenshot/:screenshotId/dynamic-baseline`, [
+    param('screenshotId').isMongoId(),
+    query('numberOfImagesToCompare').optional().isNumeric(),
+  ], screenshotController.generateDynamicBaselineImage);
 
   app.get(`${path}/screenshot/:screenshotId/compare/:screenshotCompareId`, [
     param('screenshotId').exists().isMongoId(),

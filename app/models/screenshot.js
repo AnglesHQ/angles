@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Platform = require('./platform.js');
 
 const { Schema } = mongoose;
+const imageTypes = ['DEFAULT', 'DYNAMIC'];
 
 const ScreenshotSchema = mongoose.Schema({
   build: {
@@ -45,6 +46,11 @@ const ScreenshotSchema = mongoose.Schema({
     type: String,
     required: false,
   }],
+  type: {
+    type: String,
+    enum: imageTypes,
+    required: false,
+  },
 }, {
   timestamps: true,
 }, { collection: 'screenshots' });

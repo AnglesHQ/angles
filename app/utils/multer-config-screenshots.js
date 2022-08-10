@@ -7,7 +7,7 @@ const multerConfig = multer({
     destination(req, file, next) {
       const directory = `screenshots/${req.body.buildId}`;
       if (!fs.existsSync(directory)) {
-        fs.mkdirSync(directory);
+        fs.mkdirSync(directory, { recursive: true });
       }
       next(null, directory);
     },
