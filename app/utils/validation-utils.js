@@ -46,4 +46,9 @@ validationUtils.generatePlatformId = (platform, screenshot) => {
   return undefined;
 };
 
+validationUtils.returnUniqueDocumentIds = (documents) => {
+  const documentIds = documents.map((document) => document._id.toString());
+  return Array.from(new Set(documentIds));
+};
+
 module.exports = validationUtils;

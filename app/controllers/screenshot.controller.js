@@ -76,6 +76,7 @@ exports.create = (req, res) => {
           height: dimensions.height,
           width: dimensions.width,
           path: req.file.path,
+          type: 'DEFAULT',
           view,
         });
         const platform = extractPlatformDetails(req.body);
@@ -260,6 +261,8 @@ exports.compareImages = (req, res) => {
     const options = {
       // if there is more than 50% difference then just return it.
       returnEarlyThreshold: 50,
+      ignoreAreasColoredWith: { r: 255, g: 0, b: 255 },
+      ignore: 'less',
     };
     compare(screenshot.path, screenshotCompare.path, options, (err, data) => {
       if (err) {
@@ -301,6 +304,54 @@ exports.compareImagesAndReturnImage = (req, res) => {
     .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while comparing the images.',
     }));
+};
+
+exports.generateDynamicBaselineImage = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  // 1. request should contain image, you want to generate baseline
+  // 2. retrieve the image and ensure it has a view and platform set.
+  // 3. based on this retrieve its history (ensure we have as many images as requested)
+  // 4. loop through images and generate dynamic image (and store as image for the same build)
+  // 5. ensure type is set as dynamic.
+
+  const { screenshotId } = req.params;
+  const { numberOfImagesToCompare } = req.query;
+  return Screenshot.findById(screenshotId)
+    .then((screenshot) => {
+      if (!screenshot) {
+        return res.status(404).send({
+          message: 'Unable to retrieve one or both images',
+        });
+      }
+
+      const queryHistory = numberOfImagesToCompare || 5;
+      const options = { skip: 0 };
+      if (queryHistory > 0) { options.limit = queryHistory; }
+      const { view, platformId } = screenshot;
+      const query = {
+        view,
+        platformId,
+        _id: { $ne: screenshot.id },
+      };
+      options.sort = { _id: -1 };
+      return Screenshot.find(query, null, options)
+        .then(async (screenshots) => {
+          // check if there are enough images to generate dynamic history
+          if (!screenshots || screenshots.length < queryHistory) {
+            throw new Error('Unable to generate dynamic history as there aren\'t enough images to generate a dynamic image');
+          }
+          return imageUtils.generateDynamicBaseline(screenshot, screenshots);
+        })
+        .then((baselineScreenshot) => baselineScreenshot.save())
+        .then((savedBaselineScreenshot) => res.status(201).send(savedBaselineScreenshot))
+        .catch((err) => res.status(500).send({
+          message: err.message || `Some error occurred while generating dynamic baseline [${err}].`,
+        }));
+    });
 };
 
 exports.compareImageAgainstBaseline = (req, res) => {
@@ -361,9 +412,17 @@ exports.compareImageAgainstBaseline = (req, res) => {
         ignoredBoxes.push(ignoreBox);
       });
       const options = {
-        output: { eturnEarlyThreshold: 50, ignoredBoxes },
+        output: {
+          returnEarlyThreshold: 50,
+          ignoredBoxes,
+          ignoreAreasColoredWith: { r: 255, g: 0, b: 255 },
+          ignore: 'less',
+        },
       };
-      return compare(screenshot.path, baseline.screenshot.path, options,
+      return compare(
+        screenshot.path,
+        baseline.screenshot.path,
+        options,
         (err, data) => {
           if (err) {
             return res.status(500).send({
@@ -371,7 +430,8 @@ exports.compareImageAgainstBaseline = (req, res) => {
             });
           }
           return res.status(200).send(data);
-        });
+        },
+      );
     })
     .catch((error) => res.status(500).send({
       message: `Error creating execution [${error}]`,

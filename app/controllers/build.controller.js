@@ -5,6 +5,8 @@ const rimraf = require('rimraf');
 const path = require('path');
 
 const buildMetricsUtils = require('../utils/build-utils.js');
+const imageUtils = require('../utils/image-utils.js');
+const validationUtils = require('../utils/validation-utils.js');
 
 const Build = require('../models/build.js');
 const { Team } = require('../models/team.js');
@@ -95,7 +97,8 @@ exports.create = (req, res) => {
     .then((savedBuild) => {
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
       return res.status(201).send(savedBuild);
-    }).catch((err) => res.status(500).send({
+    })
+    .catch((err) => res.status(500).send({
       message: err.message || 'Some error occurred while creating the build.',
     }));
 };
@@ -267,7 +270,6 @@ exports.setArtifacts = (req, res) => {
     }));
 };
 
-
 /*
  TODO: when deleting a build we need to consider removing:
   - associated execution
@@ -290,26 +292,6 @@ exports.delete = (req, res) => {
     }).catch((err) => res.status(500).send({
       message: `Could not delete build with id ${req.params.buildId} due to [${err}]`,
     }));
-};
-
-const removeScreenshotDirectories = (buildsToDelete) => {
-  const buildIds = buildsToDelete.map((build) => build._id.toString());
-  log(`Deleting screenshots for builds with ids ${buildIds}`);
-  return new Promise((resolve) => {
-    // do a thing, possibly async, then…
-    buildIds.forEach((buildId) => {
-      const directoryToRemove = path.join(__dirname, `../../screenshots/${buildId}`);
-      rimraf(directoryToRemove, () => {
-        log(`Removed directory ${directoryToRemove}`);
-      });
-    });
-    resolve({ deleted: buildIds.length });
-  });
-};
-
-const returnUniqueDocumentIds = (documents) => {
-  const documentIds = documents.map((document) => document._id.toString());
-  return Array.from(new Set(documentIds));
 };
 
 exports.deleteMany = (req, res) => {
@@ -347,12 +329,12 @@ exports.deleteMany = (req, res) => {
           // We keep the builds that contain any baseline screenshots
           const baselineScreenshots = baseLines.map((baseline) => baseline.screenshot);
           const baselineBuilds = baselineScreenshots.map((screenshot) => screenshot.build);
-          const uniqueBaselineBuildIds = returnUniqueDocumentIds(baselineBuilds);
+          const uniqueBaselineBuildIds = validationUtils.returnUniqueDocumentIds(baselineBuilds);
           const buildsToDelete = allBuildsToDelete
             .filter((build) => !uniqueBaselineBuildIds.includes(build._id.toString()));
-          const buildsToDeleteIds = returnUniqueDocumentIds(buildsToDelete);
+          const buildsToDeleteIds = validationUtils.returnUniqueDocumentIds(buildsToDelete);
           const promises = [
-            removeScreenshotDirectories(buildsToDelete),
+            imageUtils.removeScreenshotDirectories(buildsToDelete),
             Screenshot.remove({ build: { $in: buildsToDelete } }).exec(),
             Execution.remove({ build: { $in: buildsToDelete } }).exec(),
             Build.deleteMany({ _id: { $in: buildsToDeleteIds } }).exec(),
