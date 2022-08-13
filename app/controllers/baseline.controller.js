@@ -159,8 +159,8 @@ exports.update = (req, res) => {
     }
     return baselineFound.save();
   })
-    .then((savedBaseline) => savedBaseline.populate('screenshot').execPopulate())
-    .then((savedBaselinedWithScreenshot) => res.status(200).send(savedBaselinedWithScreenshot))
+    .then((savedBaseline) => savedBaseline.populate('screenshot'))
+    .then((savedBaselineWithScreenshot) => res.status(200).send(savedBaselineWithScreenshot))
     .catch((err) => res.status(500).send({
       message: `Error updating build with id ${req.params.baselineId} due to [${err}]`,
     }));
