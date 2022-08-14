@@ -1,0 +1,20 @@
+/* style.css */
+.caps {
+    text-transform: capitalize;
+}
+
+.container-div {
+    max-width: 80%;
+    margin: auto;
+    padding: 30px 0px;
+}
+
+#suite-result-PASS {
+    font-weight: bold;
+    color: #98dc79;
+}
+
+#suite-result-FAIL {
+    font-weight: bold;
+    color: #c61410;
+}
