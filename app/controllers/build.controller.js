@@ -219,8 +219,8 @@ exports.getReport = (req, res) => {
           message: `Build not found with id ${req.params.buildId}`,
         });
       }
-      const { name: buildName } = build;
-      return res.render('index', { title: 'Hey What Is Happening', reportHeader: buildName });
+      // eslint-disable-next-line global-require
+      return res.render('index', { build, moment: require('moment') });
     })
     .catch((err) => res.status(500).send({
       message: `Error retrieving build with id ${req.params.buildId} due to [${err}]`,

@@ -1,5 +1,63 @@
 html
   head
-    title= title
+    title= build['name']
+    link(rel='stylesheet', type='text/css', href='https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css', integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO", crossorigin="anonymous")
+    script(type = "text/javascript").
+      window.onload = function() {
+        function setComponentName() {
+          let components = !{JSON.stringify(build.team.components)};
+          let foundComponent = components.find(component => component._id);
+          document.getElementById("component-name").innerHTML = foundComponent.name;
+        }
+        setComponentName();
+      }
   body
-    h1= reportHeader
+  div(style="width: 80%;")
+      // table containing build details
+      table(class="table")
+        thead(class="thead-dark")
+          tr
+            th(scope="col" colspan="100%") Build Summary
+        tbody
+         tr
+            th(scope="row") Name
+            td= build.name
+            th(scope="row") Pass
+            td=Object.fromEntries(build.result).PASS
+        tr
+            th(scope="row") Component
+            td(id="component-name")
+            th(scope="row") Fail
+            td=Object.fromEntries(build.result).FAIL
+        tr
+            th(scope="row") Environment
+            td= build.environment.name
+            th(scope="row") Error
+            td=Object.fromEntries(build.result).ERROR
+        tr
+            th(scope="row") Start
+            td=moment(build.start).format('DD-MM-YYYY HH:MM:SS')
+            th(scope="row") Skipped
+            td=Object.fromEntries(build.result).SKIPPED
+        tr
+            th(scope="row") Finish
+            td=moment(build.end).format('DD-MM-YYYY HH:MM:SS')
+            th(scope="row") Screenshots
+            td= 0
+        tr
+            th(scope="row") Team
+            td= build.team.name
+            th(scope="row") Duration (HH:mm:ss)
+            td=moment.utc(moment(build.end).diff(moment(build.start))).format("HH:mm:ss")
+
+        // tables containing suite details
+        each suite, index in build.suites
+          table(class="table")
+            thead(class="thead-dark")
+              tr
+                th(scope="col" colspan="100%")= suite.name
+            tbody
+              each execution, index in suite.executions
+                tr
+                  td= execution.title
+

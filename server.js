@@ -45,6 +45,7 @@ mongoose.connect(mongoURL, {
 // needed for reporting
 app.set('views', path.join(__dirname, 'app/assets/report'));
 app.set('view engine', 'pug');
+app.locals.moment = require('moment');
 
 // Add swagger routes
 require('./swagger/routes/routes.js')(app);
