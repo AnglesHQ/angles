@@ -20,6 +20,16 @@ html
 
             setComponentName();
           }
+        script(type = "text/javascript").
+          function toggleElement(identifier) {
+            let x = document.getElementById(identifier);
+            // x.classList.toggle("active")
+            if (x.style.display === "none") {
+              x.style.display = "contents";
+            } else {
+              x.style.display = "none";
+            }
+          }
     body
     div(class="container-div")
 
@@ -74,7 +84,7 @@ html
 
         // tables containing suite details
         each suite, index in build.suites
-            table(class="table")
+            table(class="table suite-table")
                 thead(class="thead-dark")
                     tr
                         th(scope="col" class="caps")= `Suite: ${suite.name}`
@@ -87,6 +97,16 @@ html
                         th(scope="col")= `Skipped: ${Object.fromEntries(suite.result).SKIPPED}`
                 tbody
                     each execution, index in suite.executions
-                        tr
-                            td= execution.title
+                        tr(class="test-row")
+                            td(class=`${execution.status} caps` colspan="100%" onclick='toggleElement("' + execution._id + '"); this.classList.toggle("opened");')= `Test: ${execution.title}`
+                        tr(class="actions-row" id=`${execution._id}` style={ display: "none" })
+                            td(colspan="100%")
+                                table(class="actions-table")
+                                    tbody
+                                        each action, index in execution.actions
+                                            tr(class="action-description")
+                                                td(class=`${action.status}` colspan="100%" onclick=`toggleElement("${ execution._id}_action_${index}"); this.classList.toggle("opened");`)= action.name
+                                            tr(class="action-steps" id=`${execution._id}_action_${index}` style={ display: "none" })
+                                                td(colspan="100%") "Steps Table will go here"
+
 
