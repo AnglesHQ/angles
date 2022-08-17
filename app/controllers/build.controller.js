@@ -203,6 +203,35 @@ exports.findOne = (req, res) => {
     }));
 };
 
+exports.getReport = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  return Build.findById(req.params.buildId)
+    .populate('team')
+    .populate('environment')
+    .populate('phase')
+    .populate('suites.executions')
+    .then((build) => {
+      if (!build) {
+        return res.status(404).send({
+          message: `Build not found with id ${req.params.buildId}`,
+        });
+      }
+      // retrieve all screenshots by buildId
+      const query = { build: mongoose.Types.ObjectId(build._id) };
+      return Screenshot.find(query)
+        .then((screenshots) => {
+          // eslint-disable-next-line global-require
+          return res.render('index', { build, screenshots, moment: require('moment') });
+        });
+    })
+    .catch((err) => res.status(500).send({
+      message: `Error retrieving build with id ${req.params.buildId} due to [${err}]`,
+    }));
+};
+
 // TODO: We should be able to update more than just team and/or environment.
 exports.update = (req, res) => {
   const errors = validationResult(req);

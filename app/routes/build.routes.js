@@ -94,6 +94,12 @@ module.exports = (app, path) => {
       .isMongoId(),
   ], buildController.findOne);
 
+  app.get(`${path}/build/:buildId/report`, [
+    param('buildId')
+      .exists()
+      .isMongoId(),
+  ], buildController.getReport);
+
   app.put(`${path}/build/:buildId`, [
     param('buildId')
       .exists()

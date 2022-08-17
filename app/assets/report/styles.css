@@ -1,0 +1,137 @@
+/* style.css */
+.caps {
+    text-transform: capitalize;
+}
+
+.container-div {
+    max-width: 80%;
+    margin: auto;
+    padding: 30px 0px;
+}
+.suite-table > tbody:before {
+    line-height: 1em;
+    content: "_";
+    color: white;
+    display: block;
+}
+
+#suite-result-PASS {
+    font-weight: bold;
+    color: #98dc79;
+}
+
+#suite-result-FAIL {
+    font-weight: bold;
+    color: #c61410;
+}
+
+.test-row {
+    font-weight: bold;
+    line-height: 1.5em;
+    border-bottom: solid white 5px;
+    cursor: pointer;
+}
+
+.test-row td {
+    padding-bottom: 5px;
+    padding-top: 5px;
+    padding-left: 10px;
+}
+
+.test-row .PASS {
+    color: white;
+    background-color: #98dc79;
+}
+
+.test-row .FAIL {
+    color: white;
+    background-color: #c61410;
+}
+
+.actions-table {
+    width: 100%;
+}
+
+.actions-table td {
+    border-top: none !important;
+}
+
+#steps-table tbody{
+    background-color: #e8edff;
+    font-weight: 500;
+}
+
+#steps-table > thead {
+    background-color: #b9c9fe;
+}
+
+#steps-table th:first-child {
+    border-top-left-radius: 10px;
+}
+
+#steps-table th:last-child {
+    border-top-right-radius: 10px;
+}
+
+#steps-table tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+}
+
+#steps-table tr:last-child td:last-child {
+    border-bottom-right-radius: 10px;
+}
+
+.step-PASS {
+    font-weight: bold;
+    color: #98dc79;
+}
+
+.step-FAIL {
+    font-weight: bold;
+    color: #c61410;
+}
+
+.action-description {
+    font-weight: bold;
+    background: white;
+    cursor: pointer;
+}
+
+.actions-row {
+    width: 100%;
+}
+
+.test-row > td:after {
+    content: '\02795'; /* Unicode character for "minus" sign (-) */
+    font-size: 13px;
+    color: white;
+    float: right;
+    margin-left: 5px;
+}
+
+.test-row > .opened:after {
+    content: '\2796';
+}
+
+.action-description > td:after {
+    content: '\02795'; /* Unicode character for "minus" sign (-) */
+    font-size: 13px;
+    color: white;
+    float: right;
+    margin-left: 5px;
+}
+
+.action-description > .opened:after {
+    content: '\2796';
+}
+
+.angles-link {
+    font-size: 13px;
+    color: #c38541;
+    font-weight: 500;
+}
+
+.angles-link:hover {
+    color: #ee8308;
+    text-decoration: none;
+}

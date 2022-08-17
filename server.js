@@ -6,6 +6,7 @@ const pino = require('pino');
 const expressPino = require('express-pino-logger');
 // mongo db config
 const mongoose = require('mongoose');
+const path = require('path');
 const dbConfig = require('./config/database.config.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
@@ -40,6 +41,11 @@ mongoose.connect(mongoURL, {
   logger.error('Could not connect to the database. Exiting now...', err);
   process.exit();
 });
+
+// needed for reporting
+app.set('views', path.join(__dirname, 'app/assets/report'));
+app.set('view engine', 'pug');
+app.locals.moment = require('moment');
 
 // Add swagger routes
 require('./swagger/routes/routes.js')(app);
