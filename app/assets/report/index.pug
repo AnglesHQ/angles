@@ -76,6 +76,12 @@ html
                     td=moment(build.end).format('DD-MMM-YYYY HH:MM:SS')
                     th(scope="row") Duration (hh:mm:ss)
                     td=moment.utc(moment(build.end).diff(moment(build.start))).format("HH:mm:ss")
+                if (build.phase)
+                    tr
+                        th(scope="row") Phase
+                        td= build.phase.name
+                        th(scope="row")
+                        td
 
         // add artifacts
         if build.artifacts !== undefined
