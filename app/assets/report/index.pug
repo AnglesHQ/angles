@@ -1,0 +1,160 @@
+html
+    head
+        title= "Angles Report"
+        link(
+            rel='stylesheet',
+            type='text/css',
+            href='https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css',
+            integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO",
+            crossorigin="anonymous"
+        )
+        style
+            include styles.css
+
+        script(type = "text/javascript").
+            window.onload = function () {
+                function setComponentName() {
+                    let components = !{JSON.stringify(build.team.components)};
+                    let buildComponent = !{JSON.stringify(build.component)};
+                    let foundComponent = components.find(component => component._id === buildComponent);
+                    document.getElementById("component-name").innerHTML = foundComponent.name;
+                }
+                setComponentName();
+
+                function loadScreenshots() {
+                    let screenshots = !{JSON.stringify(screenshots)};
+                    screenshots.forEach((screenshot) => {
+                      let img = document.getElementById(`screenshot_${screenshot._id}`);
+                      if (img != undefined) {
+                        img.src = screenshot.thumbnail;
+                      }
+                    });
+                }
+                loadScreenshots();
+            }
+            function toggleElement(identifier) {
+                let x = document.getElementById(identifier);
+                // x.classList.toggle("active")
+                if (x.style.display === 'none') {
+                    x.style.display = 'contents';
+                } else {
+                    x.style.display = 'none';
+                }
+            }
+
+    body
+    div(class="container-div")
+
+        // table containing build details
+        table(class="table")
+            thead(class="thead-dark")
+                tr
+                    th(scope="col" colspan="100%" class="caps")= `Build Summary - ${build.name}`
+            tbody
+                tr
+                    th(scope="row" ) Team
+                    td(class="caps")= build.team.name
+                    th(scope="row") Pass
+                    td=Object.fromEntries(build.result).PASS
+                tr
+                    th(scope="row") Component
+                    td(id="component-name")
+                    th(scope="row") Fail
+                    td=Object.fromEntries(build.result).FAIL
+                tr
+                    th(scope="row") Environment
+                    td= build.environment.name
+                    th(scope="row") Error
+                    td=Object.fromEntries(build.result).ERROR
+                tr
+                    th(scope="row") Start
+                    td=moment(build.start).format('DD-MMM-YYYY HH:MM:SS')
+                    th(scope="row") Skipped
+                    td=Object.fromEntries(build.result).SKIPPED
+                tr
+                    th(scope="row") Finish
+                    td=moment(build.end).format('DD-MMM-YYYY HH:MM:SS')
+                    th(scope="row") Duration (hh:mm:ss)
+                    td=moment.utc(moment(build.end).diff(moment(build.start))).format("HH:mm:ss")
+                if (build.phase)
+                    tr
+                        th(scope="row") Phase
+                        td= build.phase.name
+                        th(scope="row")
+                        td
+
+        // add artifacts
+        if build.artifacts !== undefined
+            table(class="table")
+                thead(class="thead-dark")
+                    tr
+                        th(scope="col" colspan="100%")= `Build Artifacts (${build.artifacts.length})`
+                tbody
+                    tr
+                        th(scope="row") GroupId
+                        th(scope="row") ArtifactId
+                        th(scope="row") Version
+                    each artifact, index in build.artifacts
+                        tr
+                            td= artifact.groupId
+                            td= artifact.artifactId
+                            td= artifact.version
+
+        // tables containing suite details
+        each suite, index in build.suites
+            table(class="table suite-table")
+                thead(class="thead-dark")
+                    tr
+                        th(scope="col" class="caps")= `Suite: ${suite.name}`
+                        th(scope="col" id=`suite-result-` + build.status)= build.status
+                        th(scope="col" class="caps")= `Duration: ${moment.utc(moment(suite.end).diff(moment(suite.start))).format("HH:mm:ss")}`
+                        th(scope="col")= `Total: ${suite.executions.length}`
+                        th(scope="col")= `Pass: ${Object.fromEntries(suite.result).PASS}`
+                        th(scope="col")= `Fail: ${Object.fromEntries(suite.result).FAIL}`
+                        th(scope="col")= `Error: ${Object.fromEntries(suite.result).ERROR}`
+                        th(scope="col")= `Skipped: ${Object.fromEntries(suite.result).SKIPPED}`
+                tbody
+                    each execution, index in suite.executions
+                        tr(class="test-row")
+                            td(class=`${execution.status} caps` colspan="100%" onclick='toggleElement("' + execution._id + '"); this.classList.toggle("opened");')= `Test: ${execution.title}`
+                        tr(class="actions-row" id=`${execution._id}` style={ display: "none" })
+                            td(colspan="100%")
+                                table(class="actions-table")
+                                    tbody
+                                        each action, index in execution.actions
+                                            tr(class="action-description")
+                                                td(class=`${action.status}` colspan="100%" onclick=`toggleElement("${ execution._id}_action_${index}"); this.classList.toggle("opened");`)= action.name
+                                            tr(class="action-steps" id=`${execution._id}_action_${index}` style={ display: "none" })
+                                                td(colspan="100%")
+                                                    // add table now
+                                                    table(id="steps-table" class="table")
+                                                        thead
+                                                            tr
+                                                                th(scope="col")= "#"
+                                                                th(scope="col")= "Time"
+                                                                th(scope="col")= "Status"
+                                                                th(scope="col")= "Step"
+                                                                th(scope="col")= "Expected"
+                                                                th(scope="col")= "Actual"
+                                                                th(scope="col")= "Info"
+                                                                th(scope="col")= "Screenshot"
+                                                        tbody
+                                                            each step, index in action.steps
+                                                                tr
+                                                                    td= index + 1
+                                                                    td= moment(step.timestamp).format("HH:mm:ss")
+                                                                    td(class=`step-${step.status}`)= step.status
+                                                                    if (step.status === 'INFO' || step.status === 'ERROR')
+                                                                        td(colspan="4")= step.info
+                                                                    else
+                                                                        td= step.name
+                                                                        td= step.expected
+                                                                        td= step.actual
+                                                                        td= step.info
+                                                                    if (step.screenshot)
+                                                                        td
+                                                                            img(id=`screenshot_${step.screenshot}`)
+                                                                    else
+                                                                        td
+
+        a(class="angles-link" href="https://angleshq.github.io/" target="_blank")= "* This report was generated using the Angles dashboard."
