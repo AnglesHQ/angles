@@ -219,8 +219,13 @@ exports.getReport = (req, res) => {
           message: `Build not found with id ${req.params.buildId}`,
         });
       }
-      // eslint-disable-next-line global-require
-      return res.render('index', { build, moment: require('moment') });
+      // retrieve all screenshots by buildId
+      const query = { build: mongoose.Types.ObjectId(build._id) };
+      return Screenshot.find(query)
+        .then((screenshots) => {
+          // eslint-disable-next-line global-require
+          return res.render('index', { build, screenshots, moment: require('moment') });
+        });
     })
     .catch((err) => res.status(500).send({
       message: `Error retrieving build with id ${req.params.buildId} due to [${err}]`,

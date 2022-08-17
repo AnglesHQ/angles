@@ -1,6 +1,6 @@
 html
     head
-        title= build['name']
+        title= "Angles Report"
         link(
             rel='stylesheet',
             type='text/css',
@@ -10,26 +10,38 @@ html
         )
         style
             include styles.css
+
         script(type = "text/javascript").
-          window.onload = function () {
-            function setComponentName() {
-              let components = !{JSON.stringify(build.team.components)};
-              let foundComponent = components.find(component => component._id);
-              document.getElementById("component-name").innerHTML = foundComponent.name;
+            window.onload = function () {
+                function setComponentName() {
+                    let components = !{JSON.stringify(build.team.components)};
+                    let buildComponent = !{JSON.stringify(build.component)};
+                    let foundComponent = components.find(component => component._id === buildComponent);
+                    document.getElementById("component-name").innerHTML = foundComponent.name;
+                }
+                setComponentName();
+
+                function loadScreenshots() {
+                    let screenshots = !{JSON.stringify(screenshots)};
+                    screenshots.forEach((screenshot) => {
+                      let img = document.getElementById(`screenshot_${screenshot._id}`);
+                      if (img != undefined) {
+                        img.src = screenshot.thumbnail;
+                      }
+                    });
+                }
+                loadScreenshots();
+            }
+            function toggleElement(identifier) {
+                let x = document.getElementById(identifier);
+                // x.classList.toggle("active")
+                if (x.style.display === 'none') {
+                    x.style.display = 'contents';
+                } else {
+                    x.style.display = 'none';
+                }
             }
 
-            setComponentName();
-          }
-        script(type = "text/javascript").
-          function toggleElement(identifier) {
-            let x = document.getElementById(identifier);
-            // x.classList.toggle("active")
-            if (x.style.display === "none") {
-              x.style.display = "contents";
-            } else {
-              x.style.display = "none";
-            }
-          }
     body
     div(class="container-div")
 
@@ -107,6 +119,36 @@ html
                                             tr(class="action-description")
                                                 td(class=`${action.status}` colspan="100%" onclick=`toggleElement("${ execution._id}_action_${index}"); this.classList.toggle("opened");`)= action.name
                                             tr(class="action-steps" id=`${execution._id}_action_${index}` style={ display: "none" })
-                                                td(colspan="100%") "Steps Table will go here"
+                                                td(colspan="100%")
+                                                    // add table now
+                                                    table(id="steps-table" class="table")
+                                                        thead
+                                                            tr
+                                                                th(scope="col")= "#"
+                                                                th(scope="col")= "Time"
+                                                                th(scope="col")= "Status"
+                                                                th(scope="col")= "Step"
+                                                                th(scope="col")= "Expected"
+                                                                th(scope="col")= "Actual"
+                                                                th(scope="col")= "Info"
+                                                                th(scope="col")= "Screenshot"
+                                                        tbody
+                                                            each step, index in action.steps
+                                                                tr
+                                                                    td= index + 1
+                                                                    td= moment(step.timestamp).format("HH:mm:ss")
+                                                                    td(class=`step-${step.status}`)= step.status
+                                                                    if (step.status === 'INFO' || step.status === 'ERROR')
+                                                                        td(colspan="4")= step.info
+                                                                    else
+                                                                        td= step.name
+                                                                        td= step.expected
+                                                                        td= step.actual
+                                                                        td= step.info
+                                                                    if (step.screenshot)
+                                                                        td
+                                                                            img(id=`screenshot_${step.screenshot}`)
+                                                                    else
+                                                                        td
 
-
+        a(class="angles-link" href="https://angleshq.github.io/" target="_blank")= "* This report was generated using the Angles dashboard."

@@ -56,6 +56,41 @@
     border-top: none !important;
 }
 
+#steps-table tbody{
+    background-color: #e8edff;
+    font-weight: 500;
+}
+
+#steps-table > thead {
+    background-color: #b9c9fe;
+}
+
+#steps-table th:first-child {
+    border-top-left-radius: 10px;
+}
+
+#steps-table th:last-child {
+    border-top-right-radius: 10px;
+}
+
+#steps-table tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+}
+
+#steps-table tr:last-child td:last-child {
+    border-bottom-right-radius: 10px;
+}
+
+.step-PASS {
+    font-weight: bold;
+    color: #98dc79;
+}
+
+.step-FAIL {
+    font-weight: bold;
+    color: #c61410;
+}
+
 .action-description {
     font-weight: bold;
     background: white;
@@ -88,4 +123,15 @@
 
 .action-description > .opened:after {
     content: '\2796';
+}
+
+.angles-link {
+    font-size: 13px;
+    color: #c38541;
+    font-weight: 500;
+}
+
+.angles-link:hover {
+    color: #ee8308;
+    text-decoration: none;
 }
