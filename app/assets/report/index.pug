@@ -26,7 +26,11 @@ html
                     screenshots.forEach((screenshot) => {
                       let img = document.getElementById(`screenshot_${screenshot._id}`);
                       if (img != undefined) {
-                        img.src = screenshot.thumbnail;
+                        let thumbnail = screenshot.thumbnail;
+                        if (!thumbnail.startsWith('data:image')) {
+                          thumbnail = `data:image/png;base64,${thumbnail}`
+                        }
+                        img.src = thumbnail;
                       }
                     });
                 }
