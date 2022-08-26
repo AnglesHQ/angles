@@ -91,8 +91,13 @@ imageUtils.removeScreenshotDirectories = (buildsToDelete) => {
 };
 
 imageUtils.generateDynamicBaseline = async (screenshot, screenshots) => {
+  // ensure path exists due to an old bug
+  const buildPath = `screenshots/${screenshot.build}`;
+  if (!fs.existsSync(buildPath)) {
+    fs.mkdirSync(buildPath);
+  }
   // file name we'll be overriding it a few times.
-  const fileName = `screenshots/${screenshot.build}/${screenshot.id}-${Date.now()}-dynamic-baseline.png`;
+  const fileName = `${buildPath}/${screenshot.id}-${Date.now()}-dynamic-baseline.png`;
   const currentScreenshotObject = screenshot.toObject();
   delete currentScreenshotObject._id;
   const currentScreenshot = new Screenshot(currentScreenshotObject);
