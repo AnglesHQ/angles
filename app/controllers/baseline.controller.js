@@ -19,7 +19,7 @@ exports.create = (req, res) => {
   // determine if type is defined, otherwise set it to IMAGE (and handle default).
   const promises = [
     Screenshot.findById(screenshotId).exec(),
-    Baseline.find({ requestView }).exec(),
+    Baseline.find({ view: requestView }).exec(),
   ];
   return Promise.all(promises).then((results) => {
     const screenshot = results[0];
