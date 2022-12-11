@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: angles-mongo-database
+  namespace: angles
+  labels:
+    app.kubernetes.io/name: angles-mongo-database
+spec:
+  containers:
+  - name: angles-mongo
+    image: mongo:4.4.13
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: '1500m'
+        memory: '1000Mi'
+      requests:
+        cpu: '1000m'
+        memory: '800Mi'
+    ports:
+      - containerPort: 27017
+        hostPort: 27017
+    envFrom:
+      - configMapRef:
+          name: angles-mongo-config
+    volumeMounts:
+      - mountPath: /data/db
+        name: angles-mongo-db
+      - mountPath: /data/configdb
+        name: angles-mongo-config
+      - name: mongo-init
+        mountPath: /docker-entrypoint-initdb.d/mongo-init.js
+        subPath: mongo-init.js
+  volumes:
+    - name: angles-mongo-db
+    - name: angles-mongo-config
+    - name: mongo-init
+      configMap:
+        name: mongo-init
+

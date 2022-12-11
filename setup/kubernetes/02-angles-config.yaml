@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: angles-backend-config
+  namespace: angles
+data:
+  REACT_APP_SWAGGER_ANGLES_API_URL: "127.0.0.1:3000"
+  REACT_APP_SWAGGER_SCHEMES: "http"
+  PORT: "3000"
+  BUILD_CLEAN_UP_AGE_IN_DAYS: "90"
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: angles-ui-config
+  namespace: angles
+data:
+  PORT: "3001"
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: angles-mongo-config
+  namespace: angles
+data:
+  MONGO_INITDB_ROOT_USERNAME: "admin"
+  MONGO_INITDB_ROOT_PASSWORD: "@nglesPassword"
+  MONGO_INITDB_DATABASE: "angles"
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init
+  namespace: angles
+data:
+  mongo-init.js: |
+    // Change the pwd value
+    db.createUser({ user: 'angleshq', pwd: '@nglesPassword', roles: ['readWrite'] });
+    db.auth('angleshq', '@nglesPassword');
+    
+    // create collections (which don't require setup)
+    db.createCollection('builds');
+    db.createCollection('testexecutions');
+    db.createCollection('teams');
+    db.createCollection('phase');
+    db.createCollection('environments');
+    db.createCollection('baselines');
+    db.createCollection('screenshots');
+  
+    db.testexecutions.createIndex({ build: 1 });
+    db.testexecutions.createIndex({ suite: 1, title: 1 });
+    db.build.createIndex({ team: 1 });
+    db.team.createIndex({ name: 1 });
+    db.phase.createIndex({ name: 1 });
+    db.environment.createIndex({ name: 1 });
+    db.screenshots.createIndex({ build: 1 });
+    db.screenshots.createIndex({ view: 1 });
+
+---

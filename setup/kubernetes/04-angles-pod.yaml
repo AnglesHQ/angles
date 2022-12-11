@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: angles-dashboard-backend
+  namespace: angles
+  labels:
+    app.kubernetes.io/name: angles-dashboard-backend
+spec:
+  containers:
+    - name: angles
+      image: angleshq/angles:latest
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: '1500m'
+          memory: '1000Mi'
+        requests:
+          cpu: '1000m'
+          memory: '800Mi'
+      ports:
+        - containerPort: 3000
+          hostPort: 3000
+      env:
+        - name: MONGO_URL
+          value: "mongodb://angleshq:%40nglesPassword@$(ANGLES_DATABASE_SERVICE_SERVICE_HOST):$(ANGLES_DATABASE_SERVICE_SERVICE_PORT)/angles"
+      envFrom:
+        - configMapRef:
+            name: angles-backend-config
+      volumeMounts:
+        - mountPath: /app/screenshots
+          name: angles-screenshots
+        - mountPath: /app/compares
+          name: angles-screenshot-compares
+  volumes:
+    - name: angles-screenshots
+    - name: angles-screenshot-compares
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: angles-dashboard-frontend
+  namespace: angles
+  labels:
+    app.kubernetes.io/name: angles-dashboard-frontend
+spec:
+  containers:
+    - name: angles-ui
+      image: angleshq/angles-ui:latest
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: '1000m'
+          memory: '600Mi'
+        requests:
+          cpu: '750m'
+          memory: '400Mi'
+      ports:
+        - containerPort: 3001
+          hostPort: 3001
+      env:
+        - name: REACT_APP_ANGLES_API_URL
+          value: "http://$(ANGLES_BACKEND_SERVICE_SERVICE_HOST):$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
+      envFrom:
+        - configMapRef:
+            name: angles-ui-config
