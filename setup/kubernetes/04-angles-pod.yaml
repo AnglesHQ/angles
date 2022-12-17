@@ -18,8 +18,8 @@ spec:
           cpu: '1000m'
           memory: '800Mi'
       ports:
-        - containerPort: 3000
-          hostPort: 3000
+        - containerPort: 3002
+          hostPort: 3002
       env:
         - name: MONGO_URL
           value: "mongodb://angleshq:%40nglesPassword@$(ANGLES_DATABASE_SERVICE_SERVICE_HOST):$(ANGLES_DATABASE_SERVICE_SERVICE_PORT)/angles"
@@ -57,11 +57,10 @@ spec:
           cpu: '750m'
           memory: '400Mi'
       ports:
-        - containerPort: 3001
-          hostPort: 3001
+        - containerPort: 3003
+          hostPort: 3003
       env:
         - name: REACT_APP_ANGLES_API_URL
           value: "http://$(ANGLES_BACKEND_SERVICE_SERVICE_HOST):$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
-      envFrom:
-        - configMapRef:
-            name: angles-ui-config
+        - name: PORT
+          value: "3003"
