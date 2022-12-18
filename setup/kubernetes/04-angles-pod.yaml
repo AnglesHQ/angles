@@ -13,10 +13,10 @@ spec:
       resources:
         limits:
           cpu: '1500m'
-          memory: '1000Mi'
+          memory: '1500Mi'
         requests:
           cpu: '1000m'
-          memory: '800Mi'
+          memory: '1000Mi'
       ports:
         - containerPort: 3002
           hostPort: 3002
@@ -27,13 +27,16 @@ spec:
         - configMapRef:
             name: angles-backend-config
       volumeMounts:
-        - mountPath: /app/screenshots
-          name: angles-screenshots
-        - mountPath: /app/compares
-          name: angles-screenshot-compares
+        - mountPath: "/app/screenshots"
+          subPath: "./screenshots"
+          name: angles-persistent-volume
+        - mountPath: "/app/compares"
+          subPath: "./compares"
+          name: angles-persistent-volume
   volumes:
-    - name: angles-screenshots
-    - name: angles-screenshot-compares
+    - name: angles-persistent-volume
+      persistentVolumeClaim:
+        claimName: angles-persistent-volume-claim
 
 ---
 
@@ -51,16 +54,18 @@ spec:
       imagePullPolicy: IfNotPresent
       resources:
         limits:
-          cpu: '1000m'
-          memory: '600Mi'
+          cpu: '2000m'
+          memory: '1500Mi'
         requests:
-          cpu: '750m'
-          memory: '400Mi'
+          cpu: '1500m'
+          memory: '1000Mi'
       ports:
         - containerPort: 3003
           hostPort: 3003
       env:
         - name: REACT_APP_ANGLES_API_URL
-          value: "http://$(ANGLES_BACKEND_SERVICE_SERVICE_HOST):$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
+          # this url is what the front-end app should call.
+          # value: "http://$(ANGLES_BACKEND_SERVICE_SERVICE_HOST):$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
+          value: "http://127.0.0.1:$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
         - name: PORT
           value: "3003"

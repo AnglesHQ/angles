@@ -24,17 +24,20 @@ spec:
       - configMapRef:
           name: angles-mongo-config
     volumeMounts:
-      - mountPath: /data/db
-        name: angles-mongo-db
-      - mountPath: /data/configdb
-        name: angles-mongo-config
       - name: mongo-init
         mountPath: /docker-entrypoint-initdb.d/mongo-init.js
         subPath: mongo-init.js
+      - mountPath: "/data/db"
+        subPath: "./db"
+        name: angles-persistent-volume
+      - mountPath: "/data/config"
+        subPath: "./config"
+        name: angles-persistent-volume
   volumes:
-    - name: angles-mongo-db
-    - name: angles-mongo-config
     - name: mongo-init
       configMap:
         name: mongo-init
+    - name: angles-persistent-volume
+      persistentVolumeClaim:
+        claimName: angles-persistent-volume-claim
 
