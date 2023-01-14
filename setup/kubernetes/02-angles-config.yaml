@@ -8,6 +8,8 @@ data:
   REACT_APP_SWAGGER_SCHEMES: "http"
   PORT: "3002"
   BUILD_CLEAN_UP_AGE_IN_DAYS: "90"
+  MONGO_ANGLES_USERNAME: "angleshq"
+  MONGO_ANGLES_PASSWORD: "Password123"
 
 ---
 
@@ -31,8 +33,8 @@ metadata:
 data:
   mongo-init.js: |
     // Change the pwd value
-    db.createUser({ user: 'angleshq', pwd: '@nglesPassword', roles: ['readWrite'] });
-    db.auth('angleshq', '@nglesPassword');
+    db.createUser({ user: 'angleshq', pwd: 'Password123', roles: ['readWrite'] });
+    db.auth('angleshq', 'Password123');
     
     // create collections (which don't require setup)
     db.createCollection('builds');

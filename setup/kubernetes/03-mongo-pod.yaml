@@ -23,6 +23,17 @@ spec:
     envFrom:
       - configMapRef:
           name: angles-mongo-config
+    env:
+      - name: MONGO_ANGLES_PASSWORD
+        valueFrom:
+          configMapKeyRef:
+            name: angles-backend-config
+            key: MONGO_ANGLES_PASSWORD
+      - name: MONGO_ANGLES_USERNAME
+        valueFrom:
+          configMapKeyRef:
+            name: angles-backend-config
+            key: MONGO_ANGLES_USERNAME
     volumeMounts:
       - name: mongo-init
         mountPath: /docker-entrypoint-initdb.d/mongo-init.js
