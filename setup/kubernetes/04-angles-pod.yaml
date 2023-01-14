@@ -24,16 +24,6 @@ spec:
         - configMapRef:
             name: angles-backend-config
       env:
-#        - name: MONGO_PASSWORD
-#          valueFrom:
-#            configMapKeyRef:
-#              name: angles-mongo-config
-#              key: MONGO_ANGLES_PASSWORD
-#        - name: MONGO_USERNAME
-#          valueFrom:
-#            configMapKeyRef:
-#              name: angles-mongo-config
-#              key: MONGO_ANGLES_USERNAME
         - name: MONGO_URL
           value: "mongodb://$(MONGO_ANGLES_USERNAME):$(MONGO_ANGLES_PASSWORD)@$(ANGLES_DATABASE_SERVICE_SERVICE_HOST):$(ANGLES_DATABASE_SERVICE_SERVICE_PORT)/angles"
 
