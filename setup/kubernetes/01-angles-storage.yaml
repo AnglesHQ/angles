@@ -1,0 +1,66 @@
+# before creating a persistent volume have to create the disk.
+# e.g. gcloud beta compute disks create --size=100GB angles-data-disk --region <region> --replica-zones <zones>
+
+#apiVersion: v1
+#kind: PersistentVolume
+#metadata:
+#  name: angles-persistent-volume
+#  namespace: angles
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  persistentVolumeReclaimPolicy: Retain
+#  capacity:
+#    storage: 100Gi
+#  gcePersistentDisk:
+#    fsType: ext4
+#    pdName: angles-data-disk
+#  storageClassName: gcp-disk
+#
+#---
+#
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: angles-persistent-volume-claim
+#  namespace: angles
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 100Gi
+#  storageClassName: gcp-disk
+
+---
+# storage for local cluster e.g. k3d
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: angles-persistent-volume
+  namespace: angles
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/tmp/k3dvol"
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: angles-persistent-volume-claim
+  namespace: angles
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

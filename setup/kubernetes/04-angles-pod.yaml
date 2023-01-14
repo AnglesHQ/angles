@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: angles-dashboard-backend
+  namespace: angles
+  labels:
+    app.kubernetes.io/name: angles-dashboard-backend
+spec:
+  containers:
+    - name: angles
+      image: angleshq/angles:latest
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: '1500m'
+          memory: '1500Mi'
+        requests:
+          cpu: '1000m'
+          memory: '1000Mi'
+      ports:
+        - containerPort: 3002
+          hostPort: 3002
+      envFrom:
+        - configMapRef:
+            name: angles-backend-config
+      env:
+        - name: MONGO_URL
+          value: "mongodb://$(MONGO_ANGLES_USERNAME):$(MONGO_ANGLES_PASSWORD)@$(ANGLES_DATABASE_SERVICE_SERVICE_HOST):$(ANGLES_DATABASE_SERVICE_SERVICE_PORT)/angles"
+
+      volumeMounts:
+        - mountPath: "/app/screenshots"
+          subPath: "./screenshots"
+          name: angles-persistent-volume
+        - mountPath: "/app/compares"
+          subPath: "./compares"
+          name: angles-persistent-volume
+  volumes:
+    - name: angles-persistent-volume
+      persistentVolumeClaim:
+        claimName: angles-persistent-volume-claim
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: angles-dashboard-frontend
+  namespace: angles
+  labels:
+    app.kubernetes.io/name: angles-dashboard-frontend
+spec:
+  containers:
+    - name: angles-ui
+      image: angleshq/angles-ui:latest
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: '2000m'
+          memory: '1500Mi'
+        requests:
+          cpu: '1500m'
+          memory: '1000Mi'
+      ports:
+        - containerPort: 3003
+          hostPort: 3003
+      env:
+        - name: REACT_APP_ANGLES_API_URL
+          # this url is what the front-end app should call.
+          # value: "http://$(ANGLES_BACKEND_SERVICE_SERVICE_HOST):$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
+          value: "http://127.0.0.1:$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
+        - name: PORT
+          value: "3003"
