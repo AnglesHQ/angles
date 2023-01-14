@@ -36,8 +36,8 @@ spec:
             key: MONGO_ANGLES_USERNAME
     volumeMounts:
       - name: mongo-init
-        mountPath: /docker-entrypoint-initdb.d/mongo-init.js
-        subPath: mongo-init.js
+        mountPath: /docker-entrypoint-initdb.d/mongo-init.sh
+        subPath: mongo-init.sh
       - mountPath: "/data/db"
         subPath: "./db"
         name: angles-persistent-volume
