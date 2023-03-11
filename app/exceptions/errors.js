@@ -26,6 +26,15 @@ class ConflictError extends Error {
   }
 }
 
+class ServerError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ServerError';
+    this.message = message;
+    this.statusCode = 500;
+  }
+}
+
 const handleError = (error, res) => {
   if (error.name) {
     const { statusCode, message } = error;
@@ -39,5 +48,6 @@ module.exports = {
   InvalidRequestError,
   NotFoundError,
   ConflictError,
+  ServerError,
   handleError,
 };

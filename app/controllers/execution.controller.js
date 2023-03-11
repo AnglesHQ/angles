@@ -3,6 +3,7 @@ const debug = require('debug');
 const TestExecution = require('../models/execution.js');
 const Build = require('../models/build.js');
 const buildMetricsUtils = require('../utils/build-utils.js');
+const { handleError, NotFoundError } = require('../exceptions/errors.js');
 
 const log = debug('execution:controller');
 
@@ -11,16 +12,15 @@ exports.create = (req, res) => {
   // check the request is valid
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
   let testExecution;
-  return Build.findById(req.body.build)
+  const { build: buildId } = req.body;
+  Build.findById(buildId)
     .populate('suites.executions')
     .then((buildFound) => {
       if (!buildFound) {
-        return res.status(404).send({
-          message: `No build found with id ${req.body.build}`,
-        });
+        throw new NotFoundError(`No build found with id ${buildId}`);
       }
       testExecution = buildMetricsUtils.createExecution(req, buildFound);
       return testExecution.save();
@@ -32,27 +32,25 @@ exports.create = (req, res) => {
     .then((savedBuild) => {
       testExecution.build = savedBuild._id;
       log(`Created test "${testExecution.title}", suite "${testExecution.suite}" build "${testExecution.build}", with id: "${testExecution._id}"`);
-      return res.status(201).send(testExecution);
+      res.status(201).send(testExecution);
     })
-    .catch((error) => res.status(500).send({
-      message: `Error creating execution [${error}]`,
-    }));
+    .catch((error) => {
+      handleError(error, res);
+    });
 };
 
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
   const { buildId, executionIds } = req.query;
   if (buildId) {
-    return Build.findById(buildId)
+    Build.findById(buildId)
       // .populate('suites.executions')
       .then((buildFound) => {
         if (!buildFound) {
-          return res.status(404).send({
-            message: `No build found with id ${req.body.build}`,
-          });
+          throw new NotFoundError(`No build found with id ${buildId}`);
         }
         const query = { build: buildFound };
         if (executionIds) {
@@ -61,127 +59,138 @@ exports.findAll = (req, res) => {
         }
         return TestExecution.find(query);
       })
-      .then((executionsFound) => res.status(200).send(executionsFound))
-      .catch((err) => res.status(500).send({
-        message: err.message || 'Some error occurred while retrieving test executions.',
-      }));
+      .then((executionsFound) => {
+        res.status(200).send(executionsFound);
+      })
+      .catch((err) => {
+        handleError(err, res);
+      });
+  } else {
+    // if no buildId provided
+    const executionIdArray = executionIds.split(',');
+    TestExecution.find({ _id: { $in: executionIdArray } })
+      .then((testExecutions) => {
+        res.status(200).send(testExecutions);
+      })
+      .catch((err) => {
+        handleError(err, res);
+      });
   }
-  // if no buildId provided
-  const executionIdArray = executionIds.split(',');
-  return TestExecution.find({ _id: { $in: executionIdArray } })
-    .then((testExecutions) => res.status(200).send(testExecutions))
-    .catch((err) => res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving test executions.',
-    }));
 };
 
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  return TestExecution.findById(req.params.executionId)
+  const { executionId } = req.params;
+  TestExecution.findById(executionId)
     .then((testExecution) => {
       if (!testExecution) {
-        return res.status(404).send({
-          message: `Execution not found with id ${req.params.executionId}`,
-        });
+        throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      return res.status(200).send(testExecution);
-    }).catch((err) => res.status(500).send({
-      message: `Error retrieving team with id ${req.params.executionId} due to [${err}]`,
-    }));
+      res.status(200).send(testExecution);
+    }).catch((err) => {
+      handleError(err, res);
+    });
 };
 
 exports.findHistory = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  log(req.params.executionId);
-  return TestExecution.findById(req.params.executionId)
+  const { executionId } = req.params;
+  TestExecution.findById(executionId)
     .populate('build')
     .then((testExecution) => {
       if (!testExecution) {
-        return res.status(404).send({
-          message: `Execution not found with id ${req.params.executionId}`,
-        });
+        throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
       const limit = parseInt(req.query.limit, 10) || 20;
       const skip = parseInt(req.query.skip, 10) || 0;
-      const query = { 'build.team': testExecution.team, title: testExecution.title, suite: testExecution.suite };
+      const query = {
+        'build.team': testExecution.team,
+        title: testExecution.title,
+        suite: testExecution.suite,
+      };
 
       const promises = [
-        TestExecution.find(query, null, { sort: { _id: -1 }, limit, skip }).populate('build'),
-        TestExecution.countDocuments(query).exec(),
+        TestExecution.find(query, null, {
+          sort: { _id: -1 },
+          limit,
+          skip,
+        })
+          .populate('build'),
+        TestExecution.countDocuments(query)
+          .exec(),
       ];
-      return Promise.all(promises).then((results) => {
-        const executions = results[0];
-        const count = results[1];
-        const response = { executions, count };
-        return res.status(200).send(response);
-      });
+      return Promise.all(promises);
     })
-    .catch((err) => res.status(500).send({
-      message: `Error retrieving team with id ${req.params.executionId} due to [${err}]`,
-    }));
+    .then((results) => {
+      const executions = results[0];
+      const count = results[1];
+      const response = { executions, count };
+      res.status(200).send(response);
+    })
+    .catch((err) => {
+      handleError(err, res);
+    });
 };
 
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  return TestExecution.findByIdAndUpdate(req.params.executionId, {
-    name: req.body.name,
+  const { executionId } = req.params;
+  const { name } = req.body;
+  TestExecution.findByIdAndUpdate(executionId, {
+    name,
   }, { new: true })
     .then((testExecution) => {
       if (!testExecution) {
-        return res.status(404).send({
-          message: `Test execution not found with id ${req.params.executionId}`,
-        });
+        throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      return res.status(200).send(testExecution);
-    }).catch((err) => res.status(500).send({
-      message: `Error updating test execution with id ${req.params.executionId} due to [${err}]`,
-    }));
+      res.status(200).send(testExecution);
+    }).catch((err) => {
+      handleError(err, res);
+    });
 };
 
 exports.setPlatform = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  // Find execution and update it with the request body
-  return TestExecution.findByIdAndUpdate(req.params.executionId, {
-    platforms: req.body.platforms,
+  const { executionId } = req.params;
+  const { platforms } = req.body;
+  TestExecution.findByIdAndUpdate(executionId, {
+    platforms,
   }, { new: true })
     .then((execution) => {
       if (!execution) {
-        return res.status(404).send({
-          message: `Execution not found with id ${req.params.executionId}`,
-        });
+        throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      return res.status(200).send(execution);
-    }).catch((err) => res.status(500).send({
-      message: `Error updating execution with id ${req.params.executionId} due to [${err}]`,
-    }));
+      res.status(200).send(execution);
+    }).catch((err) => {
+      handleError(err, res);
+    });
 };
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  return TestExecution.findByIdAndRemove(req.params.executionId)
+  const { executionId } = req.params;
+  TestExecution.findByIdAndRemove(executionId)
     .then((testExecution) => {
       if (!testExecution) {
-        return res.status(404).send({
-          message: `Test execution not found with id ${req.params.executionId}`,
-        });
+        throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      return res.status(200).send({ message: 'Test execution deleted successfully!' });
-    }).catch((err) => res.status(500).send({
-      message: `Could not delete test execution with id ${req.params.executionId} due to [${err}]`,
-    }));
+      res.status(200).send({ message: 'Test execution deleted successfully!' });
+    }).catch((err) => {
+      handleError(err, res);
+    });
 };

@@ -91,7 +91,8 @@ exports.addComponents = (req, res) => {
   if (!errors.isEmpty()) {
     res.status(422).json({ errors: errors.array() });
   }
-  const { teamId, components } = req.params;
+  const { teamId } = req.params;
+  const { components } = req.body;
   Team.findById(teamId)
     .then((team) => {
       if (!team) {
