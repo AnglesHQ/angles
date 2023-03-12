@@ -24,7 +24,7 @@ exports.create = (req, res) => {
       return environment.save();
     })
     .then((data) => {
-      log(`Created environment "${data.name}" with id: "${data._id}"`);
+      log(`Created environment "${data.name}" with id: "${data._id}".`);
       res.status(201).send(data);
     })
     .catch((err) => {
