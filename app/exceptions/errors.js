@@ -36,11 +36,12 @@ class ServerError extends Error {
 }
 
 const handleError = (error, res) => {
-  if (error.name) {
+  if (error.statusCode) {
     const { statusCode, message } = error;
     res.status(statusCode).send({ message });
   } else {
-    res.status(500).send(error);
+    const message = error.message || 'Server Error';
+    res.status(500).send({ message });
   }
 };
 
