@@ -1,124 +1,120 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
 const Phase = require('../models/phase.js');
+const { handleError, NotFoundError, ConflictError } = require('../exceptions/errors.js');
 
 const log = debug('phase:controller');
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-
-  return Phase.where({ name: req.body.name })
-    .findOne((searchErr, existingPhase) => {
+  const { name, orderNumber } = req.body;
+  Phase
+    .findOne({ name })
+    .then((existingPhase) => {
       if (existingPhase) {
-        return res.status(409).send({
-          message: `Phase with name ${req.body.name} already exists.`,
-        });
+        throw new ConflictError(`Phase with name ${name} already exists.`);
       }
-      const { name, orderNumber } = req.body;
       const phase = new Phase({
         name,
         orderNumber,
       });
 
       // save the phase
-      return phase.save()
-        .then((data) => {
-          log(`Created phase "${data.name}" with id: "${data._id}"`);
-          return res.status(201).send(data);
-        }).catch((err) => res.status(500).send({
-          message: err.message || 'Some error occurred while creating the phase.',
-        }));
+      return phase.save();
+    })
+    .then((data) => {
+      log(`Created phase "${name}" with id: "${data._id}"`);
+      res.status(201).send(data);
+    }).catch((err) => {
+      handleError(err, res);
     });
 };
 
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  return Phase.find({})
+  Phase.find({})
     .sort({ orderNumber: 1 })
-    .then((phases) => res.send(phases))
-    .catch((err) => res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving phases.',
-    }));
+    .then((phases) => {
+      res.status(200).send(phases);
+    })
+    .catch((err) => {
+      handleError(err, res);
+    });
 };
 
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  return Phase.findById(req.params.phaseId)
+  const { phaseId } = req.params;
+  Phase.findById(phaseId)
     .then((phase) => {
       if (!phase) {
-        return res.status(404).send({
-          message: `Phase not found with id ${req.params.phaseId}`,
-        });
+        throw new NotFoundError(`Phase not found with id ${phaseId}`);
       }
-      return res.send(phase);
-    }).catch((err) => res.status(500).send({
-      message: `Error retrieving phase with id ${req.params.phaseId} due to [${err}]`,
-    }));
+      res.status(200).send(phase);
+    }).catch((err) => {
+      handleError(err, res);
+    });
 };
 
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
   const { name, orderNumber } = req.body;
+  const { phaseId } = req.params;
   let promise;
   let updateRequest = {};
   if (name) {
     updateRequest = { name };
-    promise = Phase.where({ name }).findOne()
+    promise = Phase.findOne({ name })
       .then((existingPhase) => {
         if (existingPhase) {
-          return res.status(409).send({
-            message: `Phase with name ${req.body.name} already exists.`,
-          });
+          throw new ConflictError(`Phase with name ${name} already exists.`);
         }
         return true;
       });
   } else {
     promise = Promise.resolve(true);
   }
-  return promise
+  promise
     .then(() => {
       if (orderNumber) updateRequest.orderNumber = orderNumber;
-      return Phase.findByIdAndUpdate(req.params.phaseId, updateRequest, { new: true });
+      return Phase.findByIdAndUpdate(phaseId, updateRequest, { new: true });
     })
     .then((phase) => {
       if (!phase) {
-        return res.status(404).send({
-          message: `Phase not found with id ${req.params.phaseId}`,
-        });
+        throw new NotFoundError(`Phase not found with id ${req.params.phaseId}`);
       }
-      return res.status(200).send(phase);
+      res.status(200).send(phase);
     })
-    .catch((err) => res.status(500).send({
-      message: `Error updating phase with id ${req.params.phaseId} due to [${err}]`,
-    }));
+    .catch((err) => {
+      handleError(err, res);
+    });
 };
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({ errors: errors.array() });
+    res.status(422).json({ errors: errors.array() });
   }
-  return Phase.findByIdAndRemove(req.params.phaseId)
+  const { phaseId } = req.params;
+  Phase.findByIdAndRemove(phaseId)
     .then((phase) => {
       if (!phase) {
-        return res.status(404).send({
-          message: `Phase not found with id ${req.params.phaseId}`,
-        });
+        throw new NotFoundError(`Phase not found with id ${phaseId}`);
       }
-      return res.status(200).send({ message: 'Phase deleted successfully!' });
-    }).catch((err) => res.status(500).send({
-      message: `Could not delete phase with id ${req.params.phaseId} due to [${err}]`,
-    }));
+      res.status(200).send({ message: 'Phase deleted successfully!' });
+    }).catch((err) => {
+      handleError(err, res);
+    });
 };

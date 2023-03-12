@@ -5,8 +5,8 @@ const fsPromises = require('fs').promises;
 // eslint-disable-next-line import/extensions
 const compareImages = require('resemblejs/compareImages');
 const rimraf = require('rimraf');
-const Screenshot = require('../models/screenshot.js');
 const jimp = require('jimp');
+const Screenshot = require('../models/screenshot.js');
 
 const imageUtils = {};
 
