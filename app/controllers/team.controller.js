@@ -53,7 +53,7 @@ exports.findOne = (req, res) => {
   Team.findById(teamId)
     .then((team) => {
       if (!team) {
-        throw new NotFoundError(teamId, `Team not found with id ${teamId}`);
+        throw new NotFoundError(`Team not found with id ${teamId}`);
       }
       res.status(200).send(team);
     }).catch((err) => {

@@ -41,7 +41,11 @@ const handleError = (error, res) => {
     res.status(statusCode).send({ message });
   } else {
     const message = error.message || 'Server Error';
-    res.status(500).send({ message });
+    if (!res.headersSent) {
+      res.status(500).send({ message });
+    } else {
+      console.log(`${message}, headersSent: ${res.headersSent}`);
+    }
   }
 };
 
