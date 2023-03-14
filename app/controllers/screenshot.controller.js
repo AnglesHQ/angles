@@ -46,7 +46,7 @@ exports.create = (req, res) => {
   // run validation here.
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   let build;
   const {
@@ -55,7 +55,7 @@ exports.create = (req, res) => {
     view,
     tags,
   } = req.body;
-  Build.findById(buildId)
+  return Build.findById(buildId)
     .then((foundBuild) => {
       if (!foundBuild) {
         throw new NotFoundError(`No build found with id ${buildId}`);
@@ -97,21 +97,18 @@ exports.create = (req, res) => {
     })
     .then((savedScreenshot) => {
       log(`Created screenshot "${savedScreenshot.path}", view "${savedScreenshot.view}" build "${savedScreenshot.build}", with id: "${savedScreenshot._id}"`);
-      res.status(201).send(savedScreenshot);
+      return res.status(201).send(savedScreenshot);
     })
-    .catch((error) => {
-      handleError(error, res);
-    });
+    .catch((error) => handleError(error, res));
 };
 
-exports.createFail = (error, req, res) => {
-  res.status(400).send({ error: error.message });
-};
+exports.createFail = (error, req, res) => res.status(400).send({ error: error.message });
 
+// TODO: check query
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const {
     buildId,
@@ -152,25 +149,21 @@ exports.findAll = (req, res) => {
     findScreenshotsPromise = Screenshot.find(query, null, options);
   }
 
-  findScreenshotsPromise
-    .then((screenshots) => {
-      res.status(200).send(screenshots);
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+  return findScreenshotsPromise
+    .then((screenshots) => res.status(200).send(screenshots))
+    .catch((err) => handleError(err, res));
 };
 
 /* This method will find the latest image for a specific view on every unique platform */
 exports.findLatestForViewGroupedByPlatform = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { view, numberOfDays } = req.query;
   const searchDate = new Date();
   searchDate.setDate(searchDate.getDate() - numberOfDays);
-  Screenshot.aggregate([
+  return Screenshot.aggregate([
     { $match: { view, createdAt: { $gt: searchDate } } },
     { $sort: { _id: 1 } },
     { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
@@ -180,23 +173,19 @@ exports.findLatestForViewGroupedByPlatform = (req, res) => {
       const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
       return Screenshot.find({ _id: { $in: latestScreenshotIds } });
     })
-    .then((screenshots) => {
-      res.status(200).send(screenshots);
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .then((screenshots) => res.status(200).send(screenshots))
+    .catch((err) => handleError(err, res));
 };
 
 exports.findLatestForTagGroupedByView = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { tag, numberOfDays } = req.query;
   const searchDate = new Date();
   searchDate.setDate(searchDate.getDate() - numberOfDays);
-  Screenshot.aggregate([
+  return Screenshot.aggregate([
     { $match: { tags: { $in: [tag] }, createdAt: { $gt: searchDate } } },
     { $sort: { view: 1, _id: 1 } },
     { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
@@ -206,53 +195,45 @@ exports.findLatestForTagGroupedByView = (req, res) => {
       const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
       return Screenshot.find({ _id: { $in: latestScreenshotIds } });
     })
-    .then((screenshots) => {
-      res.status(200).send(screenshots);
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .then((screenshots) => res.status(200).send(screenshots))
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { screenshotId } = req.params;
-  Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
-      res.status(200).send(screenshot);
+      return res.status(200).send(screenshot);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOneImage = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { screenshotId } = req.params;
-  Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
-      res.sendFile(path.resolve(`${screenshot.path}`));
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.sendFile(path.resolve(`${screenshot.path}`));
+    }).catch((err) => handleError(err, res));
 };
 
 exports.compareImages = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   // find both images
   const { screenshotId, screenshotCompareId } = req.params;
@@ -260,7 +241,7 @@ exports.compareImages = (req, res) => {
     Screenshot.findById(screenshotId).exec(),
     Screenshot.findById(screenshotCompareId).exec(),
   ];
-  Promise.all(promises).then((results) => {
+  return Promise.all(promises).then((results) => {
     const screenshot = results[0];
     const screenshotCompare = results[1];
     const options = {
@@ -273,17 +254,15 @@ exports.compareImages = (req, res) => {
       if (err) {
         throw new ServerError(`Something went wrong comparing the images ${err}`);
       }
-      res.status(200).send(data);
+      return res.status(200).send(data);
     });
-  }).catch((err) => {
-    handleError(err, res);
-  });
+  }).catch((err) => handleError(err, res));
 };
 
 exports.compareImagesAndReturnImage = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   // find both images
   const promises = [
@@ -293,7 +272,7 @@ exports.compareImagesAndReturnImage = (req, res) => {
 
   const { useCache } = req.query;
 
-  Promise.all(promises)
+  return Promise.all(promises)
     .then((results) => {
       const screenshot = results[0];
       const screenshotToCompare = results[1];
@@ -302,18 +281,14 @@ exports.compareImagesAndReturnImage = (req, res) => {
       }
       return imageUtils.compareImages(screenshot, screenshotToCompare, undefined, useCache);
     })
-    .then((tempFileName) => {
-      res.sendFile(path.resolve(tempFileName));
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .then((tempFileName) => res.sendFile(path.resolve(tempFileName)))
+    .catch((err) => handleError(err, res));
 };
 
 exports.generateDynamicBaselineImage = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
 
   // 1. request should contain image, you want to generate baseline
@@ -326,7 +301,7 @@ exports.generateDynamicBaselineImage = async (req, res) => {
   const { numberOfImagesToCompare } = req.query;
   const queryHistory = numberOfImagesToCompare || 5;
   let originalScreenshot;
-  Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -356,22 +331,18 @@ exports.generateDynamicBaselineImage = async (req, res) => {
       return imageUtils.generateDynamicBaseline(originalScreenshot, screenshots);
     })
     .then((baselineScreenshot) => baselineScreenshot.save())
-    .then((savedBaselineScreenshot) => {
-      res.status(201).send(savedBaselineScreenshot);
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .then((savedBaselineScreenshot) => res.status(201).send(savedBaselineScreenshot))
+    .catch((err) => handleError(err, res));
 };
 
 exports.compareImageAgainstBaseline = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   let screenshot;
   const { screenshotId } = req.params;
-  Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId)
     .then((screenshotFound) => {
       if (!screenshotFound) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -432,24 +403,22 @@ exports.compareImageAgainstBaseline = (req, res) => {
           if (err) {
             throw new ServerError(`Unable to compare images due to [${err}]`);
           }
-          res.status(200).send(data);
+          return res.status(200).send(data);
         },
       );
     })
-    .catch((error) => {
-      handleError(error, res);
-    });
+    .catch((error) => handleError(error, res));
 };
 
 exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { useCache } = req.query;
   const { screenshotId } = req.params;
   let screenshotToCompare;
-  Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -493,22 +462,18 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
       });
       return imageUtils.compareImages(screenshot, screenshotToCompare, ignoredBoxes, useCache);
     })
-    .then((tempFileName) => {
-      res.sendFile(tempFileName);
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .then((tempFileName) => res.sendFile(tempFileName))
+    .catch((err) => handleError(err, res));
 };
 
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { platform, tags } = req.body;
   const { screenshotId } = req.params;
-  Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -522,28 +487,22 @@ exports.update = (req, res) => {
           .generatePlatformId(platformToStore, screenshot);
       }
       return screenshotToModify.save();
-    }).then((savedScreenshot) => {
-      res.status(200).send(savedScreenshot);
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    }).then((savedScreenshot) => res.status(200).send(savedScreenshot))
+    .catch((err) => handleError(err, res));
 };
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { screenshotId } = req.params;
-  Screenshot.findByIdAndRemove(screenshotId)
+  return Screenshot.findByIdAndRemove(screenshotId)
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
       fs.unlinkSync(screenshot.path);
-      res.status(200).send({ message: 'Screenshot deleted successfully!' });
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send({ message: 'Screenshot deleted successfully!' });
+    }).catch((err) => handleError(err, res));
 };

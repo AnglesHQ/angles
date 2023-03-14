@@ -8,10 +8,10 @@ const log = debug('phase:controller');
 exports.create = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { name, orderNumber } = req.body;
-  Phase
+  return Phase
     .findOne({ name })
     .then((existingPhase) => {
       if (existingPhase) {
@@ -27,48 +27,40 @@ exports.create = (req, res) => {
     })
     .then((data) => {
       log(`Created phase "${name}" with id: "${data._id}"`);
-      res.status(201).send(data);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(201).send(data);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
-  Phase.find({})
+  return Phase.find({})
     .sort({ orderNumber: 1 })
-    .then((phases) => {
-      res.status(200).send(phases);
-    })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .then((phases) => res.status(200).send(phases))
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { phaseId } = req.params;
-  Phase.findById(phaseId)
+  return Phase.findById(phaseId)
     .then((phase) => {
       if (!phase) {
         throw new NotFoundError(`Phase not found with id ${phaseId}`);
       }
-      res.status(200).send(phase);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send(phase);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { name, orderNumber } = req.body;
   const { phaseId } = req.params;
@@ -86,7 +78,7 @@ exports.update = (req, res) => {
   } else {
     promise = Promise.resolve(true);
   }
-  promise
+  return promise
     .then(() => {
       if (orderNumber) updateRequest.orderNumber = orderNumber;
       return Phase.findByIdAndUpdate(phaseId, updateRequest, { new: true });
@@ -95,26 +87,22 @@ exports.update = (req, res) => {
       if (!phase) {
         throw new NotFoundError(`Phase not found with id ${req.params.phaseId}`);
       }
-      res.status(200).send(phase);
+      return res.status(200).send(phase);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { phaseId } = req.params;
-  Phase.findByIdAndRemove(phaseId)
+  return Phase.findByIdAndRemove(phaseId)
     .then((phase) => {
       if (!phase) {
         throw new NotFoundError(`Phase not found with id ${phaseId}`);
       }
-      res.status(200).send({ message: 'Phase deleted successfully!' });
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send({ message: 'Phase deleted successfully!' });
+    }).catch((err) => handleError(err, res));
 };
