@@ -75,6 +75,7 @@ describe('Execution API Tests', () => {
     // add a build and ensure it's returned in the the full list.
   });
 
+  // TODO: this breaks reporting?
   // describe('POST /execution', () => {
   //   it('successfully create execution with valid details', (done) => {
   //     const createTestExecutionRequest = {
