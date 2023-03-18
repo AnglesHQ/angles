@@ -39,14 +39,9 @@ const handleError = (error, res) => {
   if (error.statusCode) {
     const { statusCode, message } = error;
     res.status(statusCode).send({ message });
-  } else {
-    const message = error.message || 'Server Error';
-    if (!res.headersSent) {
-      res.status(500).send({ message });
-    } else {
-      console.log(`${message}, headersSent: ${res.headersSent}`);
-    }
   }
+  const message = error.message || 'Server Error';
+  return res.status(500).send({ message });
 };
 
 module.exports = {

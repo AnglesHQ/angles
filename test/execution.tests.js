@@ -18,9 +18,9 @@ let testbuild = null;
 describe('Execution API Tests', () => {
   before((done) => {
     // do the setup required for all tests
-    Execution.deleteMany({ name: /^unit-testing/ }, (err) => {
+    Execution.deleteMany({ title: { $regex: /^unit-testing/ } }, (err) => {
       if (err) {
-        logger.error('Error occured whilst clearing test executions', err);
+        logger.error('Error occurred whilst clearing test executions', err);
       } else {
         logger.info('Cleared any lingering test executions');
       }

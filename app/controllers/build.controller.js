@@ -20,7 +20,7 @@ const log = debug('build:controller');
 exports.create = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const {
     team,
@@ -39,7 +39,7 @@ exports.create = (req, res) => {
     phasePromise,
   ];
 
-  Promise.all(promises)
+  return Promise.all(promises)
     .then((results) => {
       const teamFound = results[0];
       const environmentFound = results[1];
@@ -92,17 +92,15 @@ exports.create = (req, res) => {
       .exec())
     .then((savedBuild) => {
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
-      res.status(201).send(savedBuild);
+      return res.status(201).send(savedBuild);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const {
     teamId,
@@ -116,7 +114,7 @@ exports.findAll = (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
   let query = {};
-  Team.findById({ _id: teamId })
+  return Team.findById({ _id: teamId })
     .then((teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with name ${req.body.team}`);
@@ -170,20 +168,18 @@ exports.findAll = (req, res) => {
       const builds = results[0];
       const count = results[1];
       const response = { builds, count };
-      res.status(200).send(response);
+      return res.status(200).send(response);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
-  Build.findById(buildId)
+  return Build.findById(buildId)
     .populate('team')
     .populate('environment')
     .populate('phase')
@@ -192,21 +188,19 @@ exports.findOne = (req, res) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
-      res.status(200).send(build);
+      return res.status(200).send(build);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.getReport = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   let build;
   const { buildId } = req.params;
-  Build.findById(req.params.buildId)
+  return Build.findById(req.params.buildId)
     .populate('team')
     .populate('environment')
     .populate('phase')
@@ -222,22 +216,20 @@ exports.getReport = (req, res) => {
     })
     .then((screenshots) => {
       // eslint-disable-next-line global-require
-      res.render('index', { build, screenshots, moment: require('moment') });
+      return res.render('index', { build, screenshots, moment: require('moment') });
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 // TODO: We should be able to update more than just team and/or environment.
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
   const { team, environment } = req.body;
-  Build.findByIdAndUpdate(buildId, {
+  return Build.findByIdAndUpdate(buildId, {
     team,
     environment,
   }, { new: true })
@@ -245,39 +237,35 @@ exports.update = (req, res) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
-      res.status(200).send(build);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send(build);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.setKeep = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
   const { keep } = req.body;
-  Build.findByIdAndUpdate(buildId, {
+  return Build.findByIdAndUpdate(buildId, {
     keep,
   }, { new: true })
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
-      res.status(200).send(build);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send(build);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.setArtifacts = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
-  Build.findByIdAndUpdate(buildId, {
+  return Build.findByIdAndUpdate(buildId, {
     artifacts: req.body.artifacts,
   }, { new: true })
     .populate('team')
@@ -287,11 +275,9 @@ exports.setArtifacts = (req, res) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
-      res.status(200).send(build);
+      return res.status(200).send(build);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 /*
@@ -303,30 +289,28 @@ exports.setArtifacts = (req, res) => {
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
-  Build.findByIdAndRemove(buildId)
+  return Build.findByIdAndRemove(buildId)
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
-      res.status(200).send({ message: 'Build deleted successfully!' });
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send({ message: 'Build deleted successfully!' });
+    }).catch((err) => handleError(err, res));
 };
 
 exports.deleteMany = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   let allBuildsToDelete;
   let reportingMetrics = {};
   const { teamId, ageInDays } = req.query;
   // delete by team and age (or default age 2 months) unless keep flag
-  Team.findById({ _id: teamId })
+  return Team.findById({ _id: teamId })
     .then((teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with id ${teamId}`);
@@ -373,9 +357,7 @@ exports.deleteMany = (req, res) => {
     })
     .then((results) => {
       log(results);
-      res.status(200).send({ message: `Deleted [${reportingMetrics.buildsToDeleteLength}] for team with id ${teamId} and age ${ageInDays}. Unable to delete ${reportingMetrics.uniqueBaselineBuildIdsLength} builds as they have baselines set.` });
+      return res.status(200).send({ message: `Deleted [${reportingMetrics.buildsToDeleteLength}] for team with id ${teamId} and age ${ageInDays}. Unable to delete ${reportingMetrics.uniqueBaselineBuildIdsLength} builds as they have baselines set.` });
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };

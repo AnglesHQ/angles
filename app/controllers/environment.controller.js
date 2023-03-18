@@ -9,11 +9,11 @@ const log = debug('environment:controller');
 exports.create = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
 
   const { name } = req.body;
-  Environment.findOne({ name }).exec()
+  return Environment.findOne({ name }).exec()
     .then((existingEnvironment) => {
       if (existingEnvironment) {
         throw new ConflictError(`Environment with name ${name} already exists.`);
@@ -25,52 +25,46 @@ exports.create = (req, res) => {
     })
     .then((data) => {
       log(`Created environment "${data.name}" with id: "${data._id}".`);
-      res.status(201).send(data);
+      return res.status(201).send(data);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
-  Environment.find()
+  return Environment.find()
     .then((environments) => {
-      res.status(200).send(environments);
+      return res.status(200).send(environments);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { environmentId } = req.params;
-  Environment.findById(environmentId)
+  return Environment.findById(environmentId)
     .then((environment) => {
       if (!environment) {
         throw new NotFoundError(`Environment not found with id ${environmentId}`);
       }
-      res.send(environment);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send(environment);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { name } = req.body;
   const { environmentId } = req.params;
-  Environment.findOne({ name })
+  return Environment.findOne({ name })
     .then((existingEnvironment) => {
       if (existingEnvironment) {
         throw new ConflictError(`Environment with name ${name} already exists.`);
@@ -83,26 +77,22 @@ exports.update = (req, res) => {
       if (!environment) {
         throw new NotFoundError(`Environment not found with id ${environmentId}`);
       }
-      res.status(200).send(environment);
+      return res.status(200).send(environment);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { environmentId } = req.params;
-  Environment.findByIdAndRemove(environmentId)
+  return Environment.findByIdAndRemove(environmentId)
     .then((environment) => {
       if (!environment) {
         throw new NotFoundError(`Environment not found with id ${environmentId}`);
       }
-      res.status(200).send({ message: 'Environment deleted successfully!' });
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send({ message: 'Environment deleted successfully!' });
+    }).catch((err) => handleError(err, res));
 };

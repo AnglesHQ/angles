@@ -51,7 +51,7 @@ const log = debug('metrics:controller');
 exports.retrieveMetricsPerPhase = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const metrics = {};
   const {
@@ -62,7 +62,7 @@ exports.retrieveMetricsPerPhase = (req, res) => {
     groupingPeriod,
   } = req.query;
   let query = {};
-  Team.findById({ _id: teamId })
+  return Team.findById({ _id: teamId })
     .then((teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with id ${teamId}`);
@@ -224,11 +224,9 @@ exports.retrieveMetricsPerPhase = (req, res) => {
         delete period.items;
         delete period.buildIds;
       });
-      res.status(200).send(metrics);
+      return res.status(200).send(metrics);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 /**

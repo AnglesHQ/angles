@@ -12,11 +12,11 @@ exports.create = (req, res) => {
   // check the request is valid
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   let testExecution;
   const { build: buildId } = req.body;
-  Build.findById(buildId)
+  return Build.findById(buildId)
     .populate('suites.executions')
     .then((buildFound) => {
       if (!buildFound) {
@@ -32,21 +32,19 @@ exports.create = (req, res) => {
     .then((savedBuild) => {
       testExecution.build = savedBuild._id;
       log(`Created test "${testExecution.title}", suite "${testExecution.suite}" build "${testExecution.build}", with id: "${testExecution._id}"`);
-      res.status(201).send(testExecution);
+      return res.status(201).send(testExecution);
     })
-    .catch((error) => {
-      handleError(error, res);
-    });
+    .catch((error) => handleError(error, res));
 };
 
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { buildId, executionIds } = req.query;
   if (buildId) {
-    Build.findById(buildId)
+    return Build.findById(buildId)
       // .populate('suites.executions')
       .then((buildFound) => {
         if (!buildFound) {
@@ -59,49 +57,38 @@ exports.findAll = (req, res) => {
         }
         return TestExecution.find(query);
       })
-      .then((executionsFound) => {
-        res.status(200).send(executionsFound);
-      })
-      .catch((err) => {
-        handleError(err, res);
-      });
-  } else {
-    // if no buildId provided
-    const executionIdArray = executionIds.split(',');
-    TestExecution.find({ _id: { $in: executionIdArray } })
-      .then((testExecutions) => {
-        res.status(200).send(testExecutions);
-      })
-      .catch((err) => {
-        handleError(err, res);
-      });
+      .then((executionsFound) => res.status(200).send(executionsFound))
+      .catch((err) => handleError(err, res));
   }
+  // if no buildId provided
+  const executionIdArray = executionIds.split(',');
+  return TestExecution.find({ _id: { $in: executionIdArray } })
+    .then((testExecutions) => res.status(200).send(testExecutions))
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOne = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { executionId } = req.params;
-  TestExecution.findById(executionId)
+  return TestExecution.findById(executionId)
     .then((testExecution) => {
       if (!testExecution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      res.status(200).send(testExecution);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send(testExecution);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.findHistory = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { executionId } = req.params;
-  TestExecution.findById(executionId)
+  return TestExecution.findById(executionId)
     .populate('build')
     .then((testExecution) => {
       if (!testExecution) {
@@ -131,66 +118,58 @@ exports.findHistory = (req, res) => {
       const executions = results[0];
       const count = results[1];
       const response = { executions, count };
-      res.status(200).send(response);
+      return res.status(200).send(response);
     })
-    .catch((err) => {
-      handleError(err, res);
-    });
+    .catch((err) => handleError(err, res));
 };
 
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { executionId } = req.params;
   const { name } = req.body;
-  TestExecution.findByIdAndUpdate(executionId, {
+  return TestExecution.findByIdAndUpdate(executionId, {
     name,
   }, { new: true })
     .then((testExecution) => {
       if (!testExecution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      res.status(200).send(testExecution);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send(testExecution);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.setPlatform = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { executionId } = req.params;
   const { platforms } = req.body;
-  TestExecution.findByIdAndUpdate(executionId, {
+  return TestExecution.findByIdAndUpdate(executionId, {
     platforms,
   }, { new: true })
     .then((execution) => {
       if (!execution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      res.status(200).send(execution);
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send(execution);
+    }).catch((err) => handleError(err, res));
 };
 
 exports.delete = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { executionId } = req.params;
-  TestExecution.findByIdAndRemove(executionId)
+  return TestExecution.findByIdAndRemove(executionId)
     .then((testExecution) => {
       if (!testExecution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      res.status(200).send({ message: 'Test execution deleted successfully!' });
-    }).catch((err) => {
-      handleError(err, res);
-    });
+      return res.status(200).send({ message: 'Test execution deleted successfully!' });
+    }).catch((err) => handleError(err, res));
 };
