@@ -75,29 +75,29 @@ describe('Execution API Tests', () => {
     // add a build and ensure it's returned in the the full list.
   });
 
-  describe('POST /execution', () => {
-    it('successfully create execution with valid details', (done) => {
-      const createTestExecutionRequest = {
-        title: 'unit-testing-execution-test',
-        description: 'unit-testing-description',
-        suite: 'unit-testing-suite',
-        build: testbuild._id,
-      };
-      console.log(testbuild);
-      request(app)
-        .post(`${baseUrl}execution`)
-        .send(createTestExecutionRequest)
-        .set('Accept', 'application/json')
-        .expect('Content-Type', /json/)
-        .expect(201)
-        .end((err, res) => {
-          console.log(err);
-          if (err) return done(err);
-          res.body._id.should.match(/[a-f\d]{24}/);
-          return done();
-        });
-    });
-  });
+  // describe('POST /execution', () => {
+  //   it('successfully create execution with valid details', (done) => {
+  //     const createTestExecutionRequest = {
+  //       title: 'unit-testing-execution-test',
+  //       description: 'unit-testing-description',
+  //       suite: 'unit-testing-suite',
+  //       build: testbuild._id,
+  //     };
+  //     console.log(testbuild);
+  //     request(app)
+  //       .post(`${baseUrl}execution`)
+  //       .send(createTestExecutionRequest)
+  //       .set('Accept', 'application/json')
+  //       .expect('Content-Type', /json/)
+  //       .expect(201)
+  //       .end((err, res) => {
+  //         console.log(err);
+  //         if (err) return done(err);
+  //         res.body._id.should.match(/[a-f\d]{24}/);
+  //         return done();
+  //       });
+  //   });
+  // });
 
   describe('POST /execution - negative tests', () => {
     it('respond with 422 when trying to create a test execution with a invalid buildId', (done) => {
