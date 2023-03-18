@@ -37,15 +37,14 @@ exports.create = (req, res) => {
     .catch((error) => handleError(error, res));
 };
 
-// TODO: handle returns
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(422).json({ errors: errors.array() });
+    return res.status(422).json({ errors: errors.array() });
   }
   const { buildId, executionIds } = req.query;
   if (buildId) {
-    Build.findById(buildId)
+    return Build.findById(buildId)
       // .populate('suites.executions')
       .then((buildFound) => {
         if (!buildFound) {
@@ -58,23 +57,14 @@ exports.findAll = (req, res) => {
         }
         return TestExecution.find(query);
       })
-      .then((executionsFound) => {
-        res.status(200).send(executionsFound);
-      })
-      .catch((err) => {
-        handleError(err, res);
-      });
-  } else {
-    // if no buildId provided
-    const executionIdArray = executionIds.split(',');
-    TestExecution.find({ _id: { $in: executionIdArray } })
-      .then((testExecutions) => {
-        res.status(200).send(testExecutions);
-      })
-      .catch((err) => {
-        handleError(err, res);
-      });
+      .then((executionsFound) => res.status(200).send(executionsFound))
+      .catch((err) => handleError(err, res));
   }
+  // if no buildId provided
+  const executionIdArray = executionIds.split(',');
+  return TestExecution.find({ _id: { $in: executionIdArray } })
+    .then((testExecutions) => res.status(200).send(testExecutions))
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOne = (req, res) => {
