@@ -58,7 +58,8 @@ exports.update = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { name, teamId } = req.body;
+  const { name } = req.body;
+  const { teamId } = req.params;
   return Team.where({ name }).findOne()
     .then((foundTeam) => {
       if (foundTeam) {
