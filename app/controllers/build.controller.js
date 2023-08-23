@@ -130,8 +130,8 @@ exports.findAll = (req, res) => {
           team: mongoose.Types.ObjectId(teamId),
         };
       }
-      if (environmentIds) query.environment = { $in: environmentIds.split(',') };
-      if (componentIds) query.component = { $in: componentIds.split(',') };
+      if (environmentIds) query.environment = { $in: environmentIds.split(',').map((environmentId) => (mongoose.Types.ObjectId(environmentId))) };
+      if (componentIds) query.component = { $in: componentIds.split(',').map((componentId) => (mongoose.Types.ObjectId(componentId))) };
       if (fromDate) {
         const fromDateJS = new Date(fromDate);
         fromDateJS.setHours(0, 0, 0, 0);
@@ -142,7 +142,7 @@ exports.findAll = (req, res) => {
         toDateJS.setHours(23, 59, 59, 0);
         query.end = { $lt: toDateJS };
       }
-      log(JSON.stringify(query));
+      log(`QUERY: ${JSON.stringify(query)}`);
       const buildQuery = Build.find(query, null, {
         limit,
         skip,
