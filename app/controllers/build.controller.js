@@ -130,8 +130,8 @@ exports.findAll = (req, res) => {
           team: mongoose.Types.ObjectId(teamId),
         };
       }
-      if (environmentIds) query.environment = { $in: environmentIds.split(',') };
-      if (componentIds) query.component = { $in: componentIds.split(',') };
+      if (environmentIds) query.environment = { $in: environmentIds.split(',').map((environmentId) => (mongoose.Types.ObjectId(environmentId))) };
+      if (componentIds) query.component = { $in: componentIds.split(',').map((componentId) => (mongoose.Types.ObjectId(componentId))) };
       if (fromDate) {
         const fromDateJS = new Date(fromDate);
         fromDateJS.setHours(0, 0, 0, 0);
@@ -142,7 +142,7 @@ exports.findAll = (req, res) => {
         toDateJS.setHours(23, 59, 59, 0);
         query.end = { $lt: toDateJS };
       }
-      log(JSON.stringify(query));
+      log(`QUERY: ${JSON.stringify(query)}`);
       const buildQuery = Build.find(query, null, {
         limit,
         skip,
@@ -161,13 +161,32 @@ exports.findAll = (req, res) => {
         buildQuery.exec(),
         Build.countDocuments(query)
           .exec(),
+        Build.aggregate([
+          { $match: query },
+          { $project: { result: 1, end: 1, start: 1 } },
+          { $addFields: { length: { $subtract: ['$end', '$start'] } } },
+          { $unset: ['end', 'start'] },
+          {
+            $group: {
+              _id: { _id: 'result' },
+              pass: { $sum: '$result.PASS' },
+              fail: { $sum: '$result.FAIL' },
+              error: { $sum: '$result.ERROR' },
+              skipped: { $sum: '$result.SKIPPED' },
+              totalTimeMs: { $sum: '$length' },
+            },
+          },
+          { $addFields: { totalExecutions: { $sum: ['$pass', '$fail', '$error', '$skipped'] } } },
+          { $unset: ['_id'] },
+        ]),
       ];
       return Promise.all(promises);
     })
     .then((results) => {
       const builds = results[0];
       const count = results[1];
-      const response = { builds, count };
+      const executionMetrics = results[2][0];
+      const response = { builds, metrics: { totalTestRuns: count, ...executionMetrics } };
       return res.status(200).send(response);
     })
     .catch((err) => handleError(err, res));
@@ -214,10 +233,9 @@ exports.getReport = (req, res) => {
       const query = { build: mongoose.Types.ObjectId(build._id) };
       return Screenshot.find(query);
     })
-    .then((screenshots) => {
+    .then((screenshots) =>
       // eslint-disable-next-line global-require
-      return res.render('index', { build, screenshots, moment: require('moment') });
-    })
+      res.render('index', { build, screenshots, moment: require('moment') }))
     .catch((err) => handleError(err, res));
 };
 
