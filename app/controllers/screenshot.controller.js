@@ -390,11 +390,15 @@ exports.compareImageAgainstBaseline = (req, res) => {
       const options = {
         output: {
           returnEarlyThreshold: 50,
-          ignoredBoxes,
-          ignoreAreasColoredWith: { r: 255, g: 0, b: 255 },
           ignore: 'less',
         },
       };
+      // it turns out you can only use one or the other.
+      if (ignoredBoxes.length > 0) {
+        options.output.ignoredBoxes = ignoredBoxes;
+      } else {
+        options.output.ignoreAreasColoredWith = { r: 255, g: 0, b: 255 };
+      }
       return compare(
         screenshot.path,
         baseline.screenshot.path,
