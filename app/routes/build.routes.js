@@ -14,8 +14,8 @@ module.exports = (app, path) => {
     check('name')
       .exists()
       .isString()
-      .isLength({ max: 50 })
-      .withMessage('Max length for build name is 50 characters'),
+      .isLength({ max: 100 })
+      .withMessage('Max length for build name is 100 characters'),
     check('component')
       .exists()
       .isString()
