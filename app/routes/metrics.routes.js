@@ -1,6 +1,7 @@
 const { query } = require('express-validator');
 const moment = require('moment');
 const buildController = require('../controllers/metrics.controller.js');
+const screenshotController = require('../controllers/screenshot.controller.js');
 
 module.exports = (app, path) => {
   app.get(`${path}/metrics/phase`, [
@@ -59,4 +60,10 @@ module.exports = (app, path) => {
       })
       .withMessage('The groupingPeriod has to be a number between 1 and 90, or one of the following values [day, week, fortnight, month, year]'),
   ], buildController.retrieveMetricsPerPhase);
+
+  app.get(`${path}/metrics/screenshot`, [
+    query('limit')
+      .optional()
+      .isNumeric(),
+  ], screenshotController.retrieveScreenshotMetrics);
 };
