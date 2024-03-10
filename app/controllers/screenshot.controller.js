@@ -164,7 +164,7 @@ exports.findViewNames = (req, res) => {
     limit,
   } = req.query;
 
-  const queryLimit = parseInt(limit, 10) || 0;
+  const queryLimit = parseInt(limit, 10) || 10;
 
   return Screenshot.aggregate([
     { $match: { view: { $regex: `^${partialView}` } } },
@@ -223,7 +223,7 @@ exports.retrieveScreenshotMetrics = (req, res) => {
     thumbnail: includeThumbnail,
   } = req.query;
 
-  const limit = parseInt(queryLimit, 10) || 0;
+  const limit = parseInt(queryLimit, 10) || 10;
   const aggregateViewQuery = [];
   if (viewString) {
     aggregateViewQuery.push({ $match: { view: { $regex: `^${viewString}` } } });

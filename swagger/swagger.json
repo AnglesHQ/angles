@@ -1356,6 +1356,76 @@
         }
       }
     },
+    "/screenshot/views": {
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get all view names based on a view search string",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": true,
+            "description": "Part of all of the view name you want to find (min 3 characters).",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "The number of view names you want to return.",
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screenshot/tags": {
+      "get": {
+        "tags": [
+          "Screenshot"
+        ],
+        "summary": "Get all tags based on a tag search string",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "query",
+            "required": true,
+            "description": "Part of all of the tag you want to find (min 3 characters).",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "The number of view names you want to return.",
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
     "/screenshot/grouped/platform": {
       "get": {
         "tags": [
