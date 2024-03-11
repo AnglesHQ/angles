@@ -2074,6 +2074,49 @@
         }
       }
     },
+    "/metrics/screenshot": {
+      "get": {
+        "tags": [
+          "Metrics"
+        ],
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "Part of all of the view you want to retrieve metrics for",
+            "type": "string"
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "description": "Part of all of the tag(s) you want to retrieve metrics for",
+            "type": "string"
+          },
+          {
+            "name": "thumbnail",
+            "in": "query",
+            "required": false,
+            "description": "Boolean value if you want to include the latest thumbnail in the response",
+            "type": "boolean"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "The number of top view and tags you want to return.",
+            "type": "number"
+          }
+        ],
+        "summary": "Gets metrics grouped by tags and views",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/angles/versions": {
       "get": {
         "tags": [

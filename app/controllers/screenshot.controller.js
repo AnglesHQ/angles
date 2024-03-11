@@ -269,7 +269,7 @@ exports.retrieveScreenshotMetrics = (req, res) => {
     { $unwind: '$tags' },
     {
       $group: {
-        _id: { tags: '$view', platform: '$platformId' },
+        _id: { tags: '$tags', platform: '$platformId' },
         latest_screenshot: { $last: '$_id' },
         count: { $sum: 1 },
       },
