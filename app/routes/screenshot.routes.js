@@ -60,7 +60,35 @@ module.exports = (app, path) => {
         .optional()
         .isString(),
     ]),
+    query('limit')
+      .optional()
+      .isNumeric(),
+    query('skip')
+      .optional()
+      .isNumeric(),
   ], screenshotController.findAll);
+
+  app.get(`${path}/screenshot/views`, [
+    query('view')
+      .exists()
+      .isString()
+      .isLength({ min: 3, max: 100 })
+      .withMessage('Please supply a minimum of 3 character to lookup view names.'),
+    query('limit')
+      .optional()
+      .isNumeric(),
+  ], screenshotController.findViewNames);
+
+  app.get(`${path}/screenshot/tags`, [
+    query('tag')
+      .exists()
+      .isString()
+      .isLength({ min: 3, max: 100 })
+      .withMessage('Please supply a minimum of 3 character to lookup tags.'),
+    query('limit')
+      .optional()
+      .isNumeric(),
+  ], screenshotController.findTagNames);
 
   app.get(`${path}/screenshot/grouped/platform`, [
     query('view')

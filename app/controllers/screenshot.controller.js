@@ -154,6 +154,173 @@ exports.findAll = (req, res) => {
     .catch((err) => handleError(err, res));
 };
 
+exports.findViewNames = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const {
+    view: partialView,
+    limit,
+  } = req.query;
+
+  const queryLimit = parseInt(limit, 10) || 10;
+
+  return Screenshot.aggregate([
+    { $match: { view: { $regex: `^${partialView}` } } },
+    { $group: { _id: '$view' } },
+    { $limit: queryLimit },
+    { $group: { _id: 0, views: { $push: '$_id' } } },
+  ])
+    .then((resultArray) => {
+      if (resultArray.length > 0) {
+        const { views } = resultArray[0];
+        return res.status(200).send(views);
+      }
+      return res.status(200).send(resultArray);
+    })
+    .catch((err) => handleError(err, res));
+};
+
+exports.findTagNames = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const {
+    tag: partialTag,
+    limit,
+  } = req.query;
+
+  const queryLimit = parseInt(limit, 10) || 0;
+
+  return Screenshot.aggregate([
+    { $unwind: '$tags' },
+    { $match: { tags: { $regex: `^${partialTag}` } } },
+    { $group: { _id: '$tags' } },
+    { $limit: queryLimit },
+    { $group: { _id: 0, tagsArray: { $push: '$_id' } } },
+  ])
+    .then((resultArray) => {
+      if (resultArray.length > 0) {
+        const { tagsArray } = resultArray[0];
+        return res.status(200).send(tagsArray);
+      }
+      return res.status(200).send(resultArray);
+    })
+    .catch((err) => handleError(err, res));
+};
+
+exports.retrieveScreenshotMetrics = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const {
+    limit: queryLimit,
+    view: viewString,
+    tag: tagString,
+    thumbnail: includeThumbnail,
+  } = req.query;
+
+  const limit = parseInt(queryLimit, 10) || 10;
+  const aggregateViewQuery = [];
+  if (viewString) {
+    aggregateViewQuery.push({ $match: { view: { $regex: `^${viewString}` } } });
+  }
+  aggregateViewQuery.push({
+    $group: {
+      _id: { view: '$view', platform: '$platformId' },
+      latest_screenshot: { $last: '$_id' },
+      count: { $sum: 1 },
+    },
+  });
+  // if flag set include thumbnail.
+  if (includeThumbnail && includeThumbnail === 'true') {
+    aggregateViewQuery.push({
+      $lookup: {
+        from: 'screenshots',
+        localField: 'latest_screenshot',
+        foreignField: '_id',
+        as: 'screenshot',
+      },
+    });
+  }
+  aggregateViewQuery.push(
+    {
+      $group: {
+        _id: '$_id.view',
+        platforms: {
+          $push: {
+            platformId: '$_id.platform',
+            count: '$count',
+            screenshot: { $first: '$screenshot' },
+          },
+        },
+        count: { $sum: '$count' },
+      },
+    },
+    { $sort: { count: -1 } },
+    { $limit: limit },
+  );
+
+  let aggregateTagsQuery = [];
+  aggregateTagsQuery.push(
+    { $unwind: '$tags' },
+    {
+      $group: {
+        _id: { tags: '$tags', platform: '$platformId' },
+        latest_screenshot: { $last: '$_id' },
+        count: { $sum: 1 },
+      },
+    },
+  );
+  // if flag set include thumbnail.
+  if (includeThumbnail && includeThumbnail === 'true') {
+    aggregateTagsQuery.push({
+      $lookup: {
+        from: 'screenshots',
+        localField: 'latest_screenshot',
+        foreignField: '_id',
+        as: 'screenshot',
+      },
+    });
+  }
+  aggregateTagsQuery.push(
+    {
+      $group: {
+        _id: '$_id.tags',
+        platforms: {
+          $push: {
+            platformId: '$_id.platform',
+            count: '$count',
+            screenshot: { $first: '$screenshot' },
+          },
+        },
+        count: { $sum: '$count' },
+      },
+    },
+    { $sort: { count: -1 } },
+    { $limit: limit },
+  );
+  if (tagString) {
+    aggregateTagsQuery = [{ $match: { tags: { $regex: `^${tagString}` } } }, ...aggregateTagsQuery];
+  }
+  const promises = [
+    Screenshot.aggregate(aggregateViewQuery).exec(),
+    Screenshot.aggregate(aggregateTagsQuery).exec(),
+  ];
+  return Promise.all(promises).then((results) => {
+    const viewScreenshots = results[0];
+    const tagsScreenshots = results[1];
+    const result = {
+      views: viewScreenshots,
+      tags: tagsScreenshots,
+    };
+    return res.status(200).send(result);
+  }).catch((err) => handleError(err, res));
+};
+
 /* This method will find the latest image for a specific view on every unique platform */
 exports.findLatestForViewGroupedByPlatform = (req, res) => {
   const errors = validationResult(req);
