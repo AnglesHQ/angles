@@ -120,7 +120,7 @@ html
                 tbody
                     each execution, index in suite.executions
                         tr(class="test-row")
-                            td(class=`${execution.status} caps` colspan="100%" onclick='toggleElement("' + execution._id + '"); this.classList.toggle("opened");')= `Test: ${execution.title}`
+                            td(class=`${execution.status} caps` colspan="100%" onclick=`toggleElement("' + execution._id + '"); this.classList.toggle("opened");`)= `Test: ${execution.title}`
                         tr(class="actions-row" id=`${execution._id}` style={ display: "none" })
                             td(colspan="100%")
                                 table(class="actions-table")
