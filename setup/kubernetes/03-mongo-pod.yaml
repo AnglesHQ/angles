@@ -8,7 +8,7 @@ metadata:
 spec:
   containers:
   - name: angles-mongo
-    image: mongo:4.4.13
+    image: mongo:5.0.28
     imagePullPolicy: IfNotPresent
     resources:
       limits:
