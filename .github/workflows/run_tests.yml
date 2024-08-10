@@ -7,8 +7,6 @@ jobs:
   test:
     name: Run Angles unit/integration tests
     runs-on: ubuntu-latest
-    env:
-      COMPOSE_FILE: ./test/test-setup/docker-compose.yml
 
     steps:
       - name: Checkout code
