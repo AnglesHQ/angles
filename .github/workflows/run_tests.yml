@@ -6,7 +6,7 @@ on:
 jobs:
   test:
     name: Run Angles unit/integration tests
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     env:
       COMPOSE_FILE: ./test/test-setup/docker-compose.yml
 
@@ -18,6 +18,9 @@ jobs:
         uses: "actions/setup-node@v3"
         with:
           node-version: 16
+
+      - name: "Install docker-compose"
+        run: sudo apt-get install docker-compose-plugin
 
       - name: Setup Angles Mongo instance
         run: docker-compose up -d
