@@ -118,7 +118,21 @@ module.exports = (app, path) => {
 
   app.get(`${path}/screenshot/:screenshotId/text`, [
     param('screenshotId').isMongoId(),
-    query('language').optional(),
+    query('language')
+      .optional()
+      .isString(),
+    query('left')
+      .optional()
+      .isNumeric(),
+    query('top')
+      .optional()
+      .isNumeric(),
+    query('width')
+      .optional()
+      .isNumeric(),
+    query('height')
+      .optional()
+      .isNumeric(),
   ], screenshotController.getText);
 
   app.get(`${path}/screenshot/:screenshotId/dynamic-baseline`, [
