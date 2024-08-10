@@ -116,6 +116,11 @@ module.exports = (app, path) => {
     param('screenshotId').isMongoId(),
   ], screenshotController.findOneImage);
 
+  app.get(`${path}/screenshot/:screenshotId/text`, [
+    param('screenshotId').isMongoId(),
+    query('language').optional(),
+  ], screenshotController.getText);
+
   app.get(`${path}/screenshot/:screenshotId/dynamic-baseline`, [
     param('screenshotId').isMongoId(),
     query('numberOfImagesToCompare').optional().isNumeric(),

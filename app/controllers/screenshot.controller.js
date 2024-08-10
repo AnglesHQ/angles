@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { compare } = require('resemblejs');
 const sizeOf = require('image-size');
 const jimp = require('jimp');
+const { createWorker: createTesseractWorker } = require('tesseract.js');
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
@@ -17,6 +18,7 @@ const {
   InvalidRequestError,
   handleError,
 } = require('../exceptions/errors.js');
+const { createWorker } = require('tesseract.js');
 
 const log = debug('screenshot:controller');
 
@@ -395,6 +397,22 @@ exports.findOneImage = (req, res) => {
       }
       return res.sendFile(path.resolve(`${screenshot.path}`));
     }).catch((err) => handleError(err, res));
+};
+
+exports.getText = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { screenshotId } = req.params;
+  const { language } = req.query;
+  const textLanguage = language;
+  const screenshot = await Screenshot.findById(screenshotId);
+
+  const worker = await createTesseractWorker(textLanguage);
+  const { data: { text } } = await worker.recognize(path.resolve(`${screenshot.path}`));
+  await worker.terminate();
+  return res.status(200).json(text);
 };
 
 exports.compareImages = (req, res) => {
