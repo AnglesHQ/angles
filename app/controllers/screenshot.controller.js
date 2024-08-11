@@ -406,23 +406,23 @@ exports.getText = async (req, res) => {
   const { screenshotId } = req.params;
   const {
     language,
-    left,
-    top,
-    width,
-    height,
+    // left,
+    // top,
+    // width,
+    // height,
   } = req.query;
 
   const textLanguage = language || 'eng';
   const screenshot = await Screenshot.findById(screenshotId);
-  const rectangle = {
-    left: left || 0,
-    top: top || 0,
-    width: width || screenshot.width,
-    height: height || screenshot.height,
-  };
+  // const rectangle = {
+  //   left: left || 0,
+  //   top: top || 0,
+  //   width: width || screenshot.width,
+  //   height: height || screenshot.height,
+  // };
 
-  const worker = await createWorker(textLanguage);
-  const { data: { text } } = await worker.recognize(path.resolve(`${screenshot.path}`), { rectangle });
+  const worker = await createWorker(textLanguage, 1);
+  const { data: { text } } = await worker.recognize(path.resolve(`${screenshot.path}`));
   await worker.terminate();
   return res.status(200).json(text);
 };
