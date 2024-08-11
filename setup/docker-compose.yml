@@ -1,4 +1,4 @@
-version: "2.0"
+version: "3.4"
 
 services:
   mongodb:
@@ -10,9 +10,8 @@ services:
         - angles_mongo_db:/data/db
         - angles_mongo_config:/data/configdb
         - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-
     ports:
-        - 27017:27017
+        - "27017:27017"
     environment:
         - MONGO_INITDB_ROOT_USERNAME=admin
         - MONGO_INITDB_ROOT_PASSWORD=@nglesPassword
@@ -26,7 +25,7 @@ services:
     image: angleshq/angles:latest
     restart: always
     ports:
-       - 3000:3000
+       - "3000:3000"
     environment:
        - REACT_APP_SWAGGER_ANGLES_API_URL=127.0.0.1:3000
        - REACT_APP_SWAGGER_SCHEMES=http
@@ -43,19 +42,57 @@ services:
     image: angleshq/angles-ui:latest
     restart: always
     ports:
-       - 3001:3001
+       - "3001:3001"
     environment:
        - REACT_APP_ANGLES_API_URL=http://127.0.0.1:3000
        - PORT=3001
     depends_on:
       - backend
 
+  keycloakdb:
+    image: postgres:15
+    container_name: keycloakdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloakpassword123
+
+  keycloak_web:
+    image: quay.io/keycloak/keycloak:23.0.7
+    container_name: keycloak_web
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloakdb:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloakpassword123
+
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: keycloakadminpassword123
+    command: start-dev
+    depends_on:
+      - "keycloakdb"
+    ports:
+      - "8080:8080"
+
 volumes:
- angles_mongo_db:
+  angles_mongo_db:
     name: angles_mongo_db
- angles_mongo_config:
-     name: angles_mongo_config
- angles_screenshots:
-     name: angles_screenshots
- angles_screenshot_compares:
-     name: angels_screenshot_compares
+  angles_mongo_config:
+    name: angles_mongo_config
+  angles_screenshots:
+    name: angles_screenshots
+  angles_screenshot_compares:
+    name: angels_screenshot_compares
+  postgres_data:
+    name: postgres_data
+
