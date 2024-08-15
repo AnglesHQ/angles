@@ -12,11 +12,13 @@ const dbConfig = require('./config/database.config.js');
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const expressLogger = expressPino({ logger });
 const mongoURL = process.env.MONGO_URL || dbConfig.url;
+const keycloak = require('./middlewares/keycloak.js');
 
 // create express app
 const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
+app.use(keycloak.middleware());
 app.use(compression());
 
 // parse requests of content-type - application/x-www-form-urlencoded
