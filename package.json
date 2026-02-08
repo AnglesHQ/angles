@@ -26,6 +26,7 @@
   "dependencies": {
     "ansi-regex": ">=6.0.1",
     "body-parser": "^1.20.0",
+    "canvas": "^3.2.1",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "debug": "^4.3.4",
@@ -48,6 +49,9 @@
     "swagger-ui-express": "^4.3.0",
     "typescript": "^4.6.4",
     "uuid": "^8.3.2"
+  },
+  "overrides": {
+    "tar": "^7.5.7"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.17.0",
