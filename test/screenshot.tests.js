@@ -62,6 +62,7 @@ describe('Screenshot API Tests', () => {
         .expect('Content-Type', /json/)
         .end((err, res) => {
           if (err) return done(err);
+          logger(res.body);
           res.body._id.should.match(/[a-f\d]{24}/);
           screenshot = res.body;
           return done();
