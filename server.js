@@ -32,6 +32,7 @@ app.use(expressLogger);
 mongoose.Promise = global.Promise;
 
 // Connecting to the database
+mongoose.set('strictQuery', false);
 mongoose.connect(mongoURL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
