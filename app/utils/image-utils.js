@@ -82,7 +82,7 @@ imageUtils.removeScreenshotDirectories = (buildsToDelete) => {
     // do a thing, possibly async, then…
     buildIds.forEach((buildId) => {
       const directoryToRemove = path.join(__dirname, `../../screenshots/${buildId}`);
-      rimraf(directoryToRemove, () => {
+      rimraf(directoryToRemove).then(() => {
         log(`Removed directory ${directoryToRemove}`);
       });
     });
@@ -128,7 +128,7 @@ imageUtils.generateDynamicBaseline = async (screenshot, screenshots) => {
   const thumbnail = await image
     .scaleToFit(300, 300)
     .quality(72)
-    .getBase64Async(image.getMIME());
+    .getBase64Async(jimp.MIME_JPEG);
   currentScreenshot.thumbnail = thumbnail;
   currentScreenshot.type = 'DYNAMIC';
   return currentScreenshot;
