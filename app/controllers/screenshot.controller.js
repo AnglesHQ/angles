@@ -66,7 +66,7 @@ exports.create = (req, res) => {
           .then((image) => image
             .scaleToFit(300, 300)
             .quality(72)
-            .getBase64Async(jimp.MIME_JPEG)),
+            .getBase64Async(image.getMIME())),
         sizeOf(req.file.path),
       ];
       return Promise.all(promises);
