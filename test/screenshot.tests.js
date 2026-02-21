@@ -61,8 +61,8 @@ describe('Screenshot API Tests', () => {
         .attach('screenshot', './test/resources/angles_home_page.jpg')
         .expect('Content-Type', /json/)
         .end((err, res) => {
-          logger(res.body);
           if (err) return done(err);
+          logger.info(res.body);
           res.body._id.should.match(/[a-f\d]{24}/);
           screenshot = res.body;
           return done();
