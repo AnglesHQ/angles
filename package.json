@@ -26,7 +26,6 @@
   "dependencies": {
     "ansi-regex": ">=6.0.1",
     "body-parser": "^1.20.0",
-    "canvas": "^3.2.1",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "debug": "^4.3.4",
@@ -43,8 +42,8 @@
     "pino": "^7.11.0",
     "pug": "^3.0.2",
     "randomstring": "^1.2.2",
-    "resemblejs": "^4.1.0",
-    "rimraf": "^3.0.2",
+    "pixelmatch": "^5.3.0",
+    "rimraf": "^6.0.0",
     "saslprep": "^1.0.3",
     "swagger-ui-express": "^4.3.0",
     "typescript": "^4.6.4",
