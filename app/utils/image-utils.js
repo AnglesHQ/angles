@@ -57,7 +57,11 @@ const performPixelmatch = async (path1, path2, ignoredBoxes) => {
   }
 
   const diff = Buffer.alloc(w * h * 4);
-  const numDiffPixels = pixelmatch(data1, data2, diff, w, h, { threshold: 0.1 });
+  const numDiffPixels = pixelmatch(data1, data2, diff, w, h, {
+    threshold: 0.1,
+    diffColor: [255, 0, 255], // magenta — matches old resemblejs errorColor
+    alpha: 0.3,               // 30% opacity for unchanged pixels — matches old resemblejs transparency
+  });
   const rawMisMatchPercentage = (numDiffPixels / (w * h)) * 100;
 
   return {
@@ -129,6 +133,7 @@ imageUtils.compareImagesAndPassResultName = (
  * @returns {Promise<Object>} { misMatchPercentage, rawMisMatchPercentage, isSameDimensions, dimensionDifference }
  */
 imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes) => {
+  const start = Date.now();
   const {
     misMatchPercentage,
     rawMisMatchPercentage,
@@ -140,6 +145,7 @@ imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes) => {
     rawMisMatchPercentage,
     isSameDimensions,
     dimensionDifference,
+    analysisTime: Date.now() - start,
   };
 };
 
