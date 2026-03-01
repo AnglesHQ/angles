@@ -58,9 +58,9 @@ const performPixelmatch = async (path1, path2, ignoredBoxes) => {
 
   const diff = Buffer.alloc(w * h * 4);
   const numDiffPixels = pixelmatch(data1, data2, diff, w, h, {
-    threshold: 0.1,
-    diffColor: [255, 0, 255], // magenta — matches old resemblejs errorColor
-    alpha: 0.3,               // 30% opacity for unchanged pixels — matches old resemblejs transparency
+    threshold: 0.5,
+    diffColor: [255, 0, 255],
+    alpha: 0.3,
   });
   const rawMisMatchPercentage = (numDiffPixels / (w * h)) * 100;
 
