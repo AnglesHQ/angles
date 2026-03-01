@@ -3,7 +3,7 @@ const fs = require('fs');
 const debug = require('debug');
 const path = require('path');
 const mongoose = require('mongoose');
-const { compare } = require('resemblejs');
+
 const sizeOf = require('image-size');
 const jimp = require('jimp');
 const Screenshot = require('../models/screenshot.js');
@@ -408,21 +408,19 @@ exports.compareImages = (req, res) => {
     Screenshot.findById(screenshotId).exec(),
     Screenshot.findById(screenshotCompareId).exec(),
   ];
-  return Promise.all(promises).then((results) => {
+  return Promise.all(promises).then(async (results) => {
     const screenshot = results[0];
     const screenshotCompare = results[1];
-    const options = {
-      // if there is more than 50% difference then just return it.
-      returnEarlyThreshold: 50,
-      ignoreAreasColoredWith: { r: 255, g: 0, b: 255 },
-      ignore: 'less',
-    };
-    compare(screenshot.path, screenshotCompare.path, options, (err, data) => {
-      if (err) {
-        throw new ServerError(`Something went wrong comparing the images ${err}`);
-      }
+    try {
+      const data = await imageUtils.compareAndGetResult(
+        screenshot.path,
+        screenshotCompare.path,
+        undefined,
+      );
       return res.status(200).send(data);
-    });
+    } catch (err) {
+      return handleError(new ServerError(`Something went wrong comparing the images ${err}`), res);
+    }
   }).catch((err) => handleError(err, res));
 };
 
@@ -537,7 +535,7 @@ exports.compareImageAgainstBaseline = (req, res) => {
       }
       return Baseline.findOne(baseLineQuery).populate('screenshot');
     })
-    .then((baseline) => {
+    .then(async (baseline) => {
       // compare image with baseline and return result.
       if (!baseline) {
         throw new NotFoundError(`No baseline found for screenshot with id ${screenshotId}`);
@@ -554,29 +552,16 @@ exports.compareImageAgainstBaseline = (req, res) => {
         ignoreBox.bottom = height * (1 - (baselineIgnoreBox.bottom / 100));
         ignoredBoxes.push(ignoreBox);
       });
-      const options = {
-        output: {
-          returnEarlyThreshold: 50,
-          ignore: 'less',
-        },
-      };
-      // it turns out you can only use one or the other.
-      if (ignoredBoxes.length > 0) {
-        options.output.ignoredBoxes = ignoredBoxes;
-      } else {
-        options.output.ignoreAreasColoredWith = { r: 255, g: 0, b: 255 };
+      try {
+        const data = await imageUtils.compareAndGetResult(
+          screenshot.path,
+          baseline.screenshot.path,
+          ignoredBoxes.length > 0 ? ignoredBoxes : undefined,
+        );
+        return res.status(200).send(data);
+      } catch (err) {
+        throw new ServerError(`Unable to compare images due to [${err}]`);
       }
-      return compare(
-        screenshot.path,
-        baseline.screenshot.path,
-        options,
-        (err, data) => {
-          if (err) {
-            throw new ServerError(`Unable to compare images due to [${err}]`);
-          }
-          return res.status(200).send(data);
-        },
-      );
     })
     .catch((error) => handleError(error, res));
 };
