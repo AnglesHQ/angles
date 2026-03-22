@@ -1,2548 +1,3318 @@
 {
-  "swagger": "2.0",
-  "info": {
-    "version": "1.0.0",
-    "title": "Angles API",
-    "description": "The API allows the various clients to manage their test results for the Angles Dashboard.",
-    "license": {
-      "name": "Apache License 2.0",
-      "url": "http://www.apache.org/licenses/LICENSE-2.0"
-    }
-  },
-  "host": "127.0.0.1:3000",
-  "basePath": "/rest/api/v1.0",
-  "tags": [
-    {
-      "name": "Team",
-      "description": "API for managing the teams"
-    },
-    {
-      "name": "Environment",
-      "description": "API for managing the environments"
-    },
-    {
-      "name": "Phase",
-      "description": "API for managing the test phases for the various builds"
-    },
-
-    {
-      "name": "Build",
-      "description": "API for managing the builds"
-    },
-    {
-      "name": "Execution",
-      "description": "API for managing the executions"
-    },
-    {
-      "name": "Screenshot",
-      "description": "API for managing the screenshots"
-    }
-  ],
-  "schemes": [
-    "http"
-  ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
-  "paths": {
-    "/team": {
-      "post": {
-        "tags": [
-          "Team"
-        ],
-        "summary": "Create a new team",
-        "parameters": [
-          {
-            "name": "create",
-            "in": "body",
-            "description": "Team that we want to create",
-            "schema": {
-              "$ref": "#/definitions/Team"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New team is created",
-            "schema": {
-              "$ref": "#/definitions/StoredTeam"
-            }
-          },
-          "409": {
-            "description": "Duplicate team found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
+    "openapi": "3.0.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "Angles API",
+        "description": "The API allows the various clients to manage their test results for the Angles Dashboard.",
+        "license": {
+            "name": "Apache License 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0"
         }
-      },
-      "get": {
-        "tags": [
-          "Team"
-        ],
-        "summary": "Get all teams for the dashboard in system",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Team"
-              }
-            }
-          }
-        }
-      }
     },
-    "/team/{teamId}": {
-      "parameters": [
+    "tags": [
         {
-          "name": "teamId",
-          "in": "path",
-          "required": true,
-          "description": "ID of team that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Team"
-        ],
-        "summary": "Get team with given ID",
-        "responses": {
-          "200": {
-            "description": "Team is found",
-            "schema": {
-              "$ref": "#/definitions/StoredTeam"
-            }
-          },
-          "404": {
-            "description": "No team found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete team with given ID",
-        "tags": [
-          "Team"
-        ],
-        "responses": {
-          "200": {
-            "description": "Team has been deleted",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "404": {
-            "description": "Team not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update team with given ID",
-        "tags": [
-          "Team"
-        ],
-        "parameters": [
-          {
-            "name": "update",
-            "in": "body",
-            "description": "Team with new values of properties",
-            "schema": {
-              "type": "object",
-              "required": [
-                "name"
-              ],
-              "properties": {
-                "name": {"type": "string"}
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Team is updated",
-            "schema": {
-              "$ref": "#/definitions/StoredTeam"
-            }
-          },
-          "404": {
-            "description": "No team found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/team/{teamId}/components": {
-      "parameters": [
+            "name": "Team",
+            "description": "API for managing the teams"
+        },
         {
-          "name": "teamId",
-          "in": "path",
-          "required": true,
-          "description": "ID of team that we want to add components to.",
-          "type": "string"
-        }
-      ],
-      "put": {
-        "summary": "Adds components to the components array for team with given ID",
-        "tags": [
-          "Team"
-        ],
-        "parameters": [
-          {
-            "name": "update",
-            "in": "body",
-            "description": "Components you want to add to the team with the given ID.",
-            "schema": {
-              "required": [
-                "components"
-              ],
-              "properties": {
-                "components": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "New components were added to the team.",
-            "schema": {
-              "$ref": "#/definitions/Build"
-            }
-          }
-        }
-      }
-    },
-    "/environment": {
-      "post": {
-        "tags": [
-          "Environment"
-        ],
-        "summary": "Create new environment for the dashboard",
-        "parameters": [
-          {
-            "name": "create",
-            "in": "body",
-            "description": "Environment that we want to create",
-            "schema": {
-              "$ref": "#/definitions/Environment"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New environment is created",
-            "schema": {
-              "$ref": "#/definitions/StoredEnvironment"
-            }
-          },
-          "409": {
-            "description": "Duplicate environment found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Environment"
-        ],
-        "summary": "Get all environments for the dashboard in system",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Environment"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/environment/{environmentId}": {
-      "parameters": [
+            "name": "Environment",
+            "description": "API for managing the environments"
+        },
         {
-          "name": "environmentId",
-          "in": "path",
-          "required": true,
-          "description": "ID of environment that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Environment"
-        ],
-        "summary": "Get environment with given ID",
-        "responses": {
-          "200": {
-            "description": "Environment is found",
-            "schema": {
-              "$ref": "#/definitions/Environment"
-            }
-          },
-          "404": {
-            "description": "No team found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete environment with given ID",
-        "tags": [
-          "Environment"
-        ],
-        "responses": {
-          "200": {
-            "description": "Environment has been deleted",
-            "schema": {
-              "$ref": "#/definitions/Environment"
-            }
-          },
-          "404": {
-            "description": "Team not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update environment with given ID",
-        "tags": [
-          "Environment"
-        ],
-        "parameters": [
-          {
-            "name": "environment",
-            "in": "body",
-            "description": "Request to update the environment",
-            "schema": {
-              "type": "object",
-              "required": [
-                "name"
-              ],
-              "properties": {
-                "name": {"type": "string"}
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Environment is updated",
-            "schema": {
-              "$ref": "#/definitions/Environment"
-            }
-          },
-          "404": {
-            "description": "No team found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/phase": {
-      "post": {
-        "tags": [
-          "Phase"
-        ],
-        "summary": "Create new test phase for the dashboard",
-        "parameters": [
-          {
-            "name": "create",
-            "in": "body",
-            "description": "Phase that we want to create",
-            "schema": {
-              "$ref": "#/definitions/Phase"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New test phase is created",
-            "schema": {
-              "$ref": "#/definitions/StoredPhase"
-            }
-          },
-          "409": {
-            "description": "Duplicate phase found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Phase"
-        ],
-        "summary": "Get all test phases for the dashboard in system",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Phase"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/phase/{phaseId}": {
-      "parameters": [
+            "name": "Phase",
+            "description": "API for managing the test phases for the various builds"
+        },
         {
-          "name": "phaseId",
-          "in": "path",
-          "required": true,
-          "description": "ID of test phase that we want to find",
-          "type": "string"
+            "name": "Build",
+            "description": "API for managing the builds"
+        },
+        {
+            "name": "Execution",
+            "description": "API for managing the executions"
+        },
+        {
+            "name": "Screenshot",
+            "description": "API for managing the screenshots"
         }
-      ],
-      "get": {
-        "tags": [
-          "Phase"
-        ],
-        "summary": "Get test phase with given ID",
-        "responses": {
-          "200": {
-            "description": "Phase is found",
-            "schema": {
-              "$ref": "#/definitions/Phase"
-            }
-          },
-          "404": {
-            "description": "No phase found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete phase with given ID",
-        "tags": [
-          "Phase"
-        ],
-        "responses": {
-          "200": {
-            "description": "Phase has been deleted",
-            "schema": {
-              "$ref": "#/definitions/Phase"
-            }
-          },
-          "404": {
-            "description": "Phase not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update phase with given ID",
-        "tags": [
-          "Phase"
-        ],
-        "parameters": [
-          {
-            "name": "phase",
-            "in": "body",
-            "description": "Request to update the phase. Please provide either a name and/or orderNumber.",
-            "schema": {
-              "type": "object",
-              "required": [
-                "name",
-                "orderNumber"
-              ],
-              "properties": {
-                "name": {"type": "string"},
-                "orderNumber" : {"type": "number"}
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Phase is updated",
-            "schema": {
-              "$ref": "#/definitions/Phase"
-            }
-          },
-          "404": {
-            "description": "No phase found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/build": {
-      "post": {
-        "tags": [
-          "Build"
-        ],
-        "summary": "Create new build for the dashboard",
-        "parameters": [
-          {
-            "name": "create",
-            "in": "body",
-            "description": "Build that we want to create",
-            "schema": {
-              "$ref": "#/definitions/Build"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New build is created",
-            "schema": {
-              "$ref": "#/definitions/StoredBuild"
-            }
-          },
-          "404": {
-            "description": "Environment or Team not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Build"
-        ],
-        "summary": "Get all builds for the dashboard",
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "query",
-            "required": true,
-            "description": "ID of team that we want to retrieve the builds for.",
-            "type": "string"
-          },
-          {
-            "name": "buildIds",
-            "in": "query",
-            "required": false,
-            "description": "IDs of builds that we want to retrieve, comma separated.",
-            "type": "string"
-          },
-          {
-            "name": "environmentIds",
-            "in": "query",
-            "required": false,
-            "description": "IDs of the environment you want to filter by, comma seperated.",
-            "type": "string"
-          },
-          {
-            "name": "componentIds",
-            "in": "query",
-            "required": false,
-            "description": "IDs of the component you want to filter by, comma seperated",
-            "type": "string"
-          },
-          {
-            "name": "returnExecutionDetails",
-            "in": "query",
-            "required": false,
-            "description": "Boolean to see if you want the execution details returned as well.",
-            "type": "boolean"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "Limit the number of builds to retrieve",
-            "type": "number"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The builds you want to skip (or offset) in the data base query",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The response contains a count of total builds and contains the returned builds in an array",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "count": {
-                  "type": "number"
+    ],
+    "paths": {
+        "/team": {
+            "post": {
+                "tags": [
+                    "Team"
+                ],
+                "summary": "Create a new team",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Team"
+                            }
+                        }
+                    },
+                    "description": "Team that we want to create"
                 },
-                "builds": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/StoredBuild"
-                  }
+                "responses": {
+                    "201": {
+                        "description": "New team is created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredTeam"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Duplicate team found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
                 }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Will delete multiple builds based on the parameters",
-        "tags": [
-          "Build"
-        ],
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "query",
-            "required": true,
-            "description": "ID of team that we want to remove builds for",
-            "type": "string"
-          },
-          {
-            "name": "ageInDays",
-            "in": "query",
-            "required": false,
-            "description": "The age in days we want to delete builds for (e.g. older than 30 days)",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Builds have been deleted",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "404": {
-            "description": "Team not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/build/{buildId}": {
-      "parameters": [
-        {
-          "name": "buildId",
-          "in": "path",
-          "required": true,
-          "description": "ID of build that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Build"
-        ],
-        "summary": "Get build with given ID",
-        "responses": {
-          "200": {
-            "description": "Build is found",
-            "schema": {
-              "$ref": "#/definitions/StoredBuild"
-            }
-          },
-          "404": {
-            "description": "Build not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete build with given ID",
-        "tags": [
-          "Build"
-        ],
-        "responses": {
-          "200": {
-            "description": "Build is deleted",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "404": {
-            "description": "Build not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update build with given ID",
-        "tags": [
-          "Build"
-        ],
-        "parameters": [
-          {
-            "name": "build",
-            "in": "body",
-            "description": "Build with new values of properties",
-            "schema": {
-              "$ref": "#/definitions/Build"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Build is updated",
-            "schema": {
-              "$ref": "#/definitions/StoredBuild"
-            }
-          },
-          "404": {
-            "description": "Build not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/build/{buildId}/keep": {
-      "parameters": [
-        {
-          "name": "buildId",
-          "in": "path",
-          "required": true,
-          "description": "ID of build that we want to update the keep value for. This value is used to determine if a build should be cleaned up (or not))",
-          "type": "string"
-        }
-      ],
-      "put": {
-        "summary": "Update keep value for build with given ID",
-        "tags": [
-          "Build"
-        ],
-        "parameters": [
-          {
-            "name": "build",
-            "in": "body",
-            "description": "Keep request with boolean set.",
-            "schema": {
-              "required": [
-                "keep"
-              ],
-              "properties": {
-                "keep": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Build is updated with new keep value.",
-            "schema": {
-              "$ref": "#/definitions/Build"
-            }
-          }
-        }
-      }
-    },
-    "/build/{buildId}/artifacts": {
-      "parameters": [
-        {
-          "name": "buildId",
-          "in": "path",
-          "required": true,
-          "description": "ID of build that we want to store the artifacts for.",
-          "type": "string"
-        }
-      ],
-      "put": {
-        "summary": "Updates the artifacts array for build with given ID",
-        "tags": [
-          "Build"
-        ],
-        "parameters": [
-          {
-            "name": "update",
-            "in": "body",
-            "description": "Artifacts you want to store with build with the given ID.",
-            "schema": {
-              "required": [
-                "artifacts"
-              ],
-              "properties": {
-                "artifacts": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Artifact"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Build is updated with new keep value.",
-            "schema": {
-              "$ref": "#/definitions/Build"
-            }
-          }
-        }
-      }
-    },
-    "/execution": {
-      "post": {
-        "tags": [
-          "Execution"
-        ],
-        "summary": "Create new execution for a build",
-        "parameters": [
-          {
-            "name": "create",
-            "in": "body",
-            "description": "Execution you want to create",
-            "schema": {
-              "$ref": "#/definitions/Execution"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New execution is created",
-            "schema": {
-              "$ref": "#/definitions/StoredExecution"
-            }
-          },
-          "404": {
-            "description": "Build not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Execution"
-        ],
-        "summary": "Get all executions either by ids (comma separated) or by buildId",
-        "parameters": [
-          {
-            "name": "buildId",
-            "in": "query",
-            "required": false,
-            "description": "ID of build that we want to retrieve the executions for.",
-            "type": "string"
-          },
-          {
-            "name": "executionIds",
-            "in": "query",
-            "required": false,
-            "description": "IDs of execution that we want to retrieve, comma separated.",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/StoredExecution"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/execution/{executionId}": {
-      "parameters": [
-        {
-          "name": "executionId",
-          "in": "path",
-          "required": true,
-          "description": "ID of execution that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Execution"
-        ],
-        "summary": "Get execution with given ID",
-        "responses": {
-          "200": {
-            "description": "Execution is found",
-            "schema": {
-              "$ref": "#/definitions/StoredExecution"
-            }
-          },
-          "404": {
-            "description": "Execution not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete execution with given ID",
-        "tags": [
-          "Execution"
-        ],
-        "responses": {
-          "200": {
-            "description": "Execution has been deleted",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "404": {
-            "description": "Execution not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update Execution with given ID",
-        "tags": [
-          "Execution"
-        ],
-        "parameters": [
-          {
-            "name": "update",
-            "in": "body",
-            "description": "Execution with new values of properties",
-            "schema": {
-              "$ref": "#/definitions/Execution"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Execution has been updated",
-            "schema": {
-              "$ref": "#/definitions/StoredExecution"
-            }
-          },
-          "404": {
-            "description": "Execution not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/execution/{executionId}/history": {
-      "parameters": [
-        {
-          "name": "executionId",
-          "in": "path",
-          "required": true,
-          "description": "ID of execution that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Execution"
-        ],
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "Limit the number of executions to retrieve",
-            "type": "number"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The executions you want to skip (or offset) in the data base query",
-            "type": "number"
-          }
-        ],
-        "summary": "Get the history for the execution with given ID. This finds the hisory by suite name and title, so these have to be unique as a combination for this test.",
-        "responses": {
-          "200": {
-            "description": "The response contains a count of total executions and contains the returned executions in an array",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "count": {
-                  "type": "number"
-                },
-                "executions": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/StoredExecution"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Execution not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/execution/{executionId}/platforms": {
-      "parameters": [
-        {
-          "name": "executionId",
-          "in": "path",
-          "required": true,
-          "description": "ID of execution you want to store the platforms for.",
-          "type": "string"
-        }
-      ],
-      "put": {
-        "summary": "Updates the platforms array for execution with given ID",
-        "tags": [
-          "Execution"
-        ],
-        "parameters": [
-          {
-            "name": "update",
-            "in": "body",
-            "description": "Store platforms for execution with ID",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Platform"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Execution has been updated with platforms",
-            "schema": {
-              "$ref": "#/definitions/StoredExecution"
-            }
-          }
-        }
-      }
-    },
-    "/screenshot": {
-      "post": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Create new screenshot for an execution",
-        "parameters": [
-          {
-            "in": "formData",
-            "name": "buildId",
-            "type": "string",
-            "required": true
-          },
-          {
-            "in": "formData",
-            "name": "timestamp",
-            "type": "string",
-            "format": "date-time",
-            "required": true
-          },
-          {
-            "in": "formData",
-            "name": "view",
-            "type": "string"
-          },
-          {
-            "name": "platformName",
-            "in": "formData",
-            "type": "string"
-          },
-          {
-            "name": "platformVersion",
-            "in": "formData",
-            "type": "string"
-          },
-          {
-            "name": "browserName",
-            "in": "formData",
-            "type": "string"
-          },
-          {
-            "name": "browserVersion",
-            "in": "formData",
-            "type": "string"
-          },
-          {
-            "name": "deviceName",
-            "in": "formData",
-            "type": "string"
-          },
-          {
-            "name": "tags",
-            "in": "formData",
-            "description": "Tags should be provided as an array with double quotes in a string format e.g. \"[\"tag1\",\"tag2\",\"tag3\"]\".",
-            "type": "string"
-          },
-          {
-            "name": "screenshot",
-            "in": "formData",
-            "type": "file",
-            "description": "Screenshot to upload"
-          }
-        ],
-        "consumes": [
-          "multipart/form-data"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New screenshot is created",
-            "schema": {
-              "$ref": "#/definitions/Screenshot"
-            }
-          },
-          "404": {
-            "description": "Build not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Get all Screenshots, please provide either a buildId, view (or view with platformId)",
-        "parameters": [
-          {
-            "name": "buildId",
-            "in": "query",
-            "required": false,
-            "description": "ID of build that we want to retrieve the screenshots for.",
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "description": "Name of the view you want to find screenshots for.",
-            "type": "string"
-          },
-          {
-            "name": "platformId",
-            "in": "query",
-            "required": false,
-            "description": "Unique Identifier of the platform you want to retrieve the images for.",
-            "type": "string"
-          },
-          {
-            "name": "screenshotIds",
-            "in": "query",
-            "required": false,
-            "description": "Comma seperated list of screenshot ids for the screenshots you want to retrieve.",
-            "type": "string"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "The number of screenshots you want to return.",
-            "type": "number"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The images you want to skip (or offset) in the data base query",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Screenshot"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/views": {
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Get all view names based on a view search string",
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": true,
-            "description": "Part of all of the view name you want to find (min 3 characters).",
-            "type": "string"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "The number of view names you want to return.",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/tags": {
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Get all tags based on a tag search string",
-        "parameters": [
-          {
-            "name": "tag",
-            "in": "query",
-            "required": true,
-            "description": "Part of all of the tag you want to find (min 3 characters).",
-            "type": "string"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "The number of view names you want to return.",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/grouped/platform": {
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Get all screenshots for a specific view grouped by platform",
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": true,
-            "description": "Name of the view you want to find screenshots for.",
-            "type": "string"
-          },
-          {
-            "name": "numberOfDays",
-            "in": "query",
-            "required": true,
-            "description": "The number of days in the past you want to return screenshots for.",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Screenshot"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/grouped/tag": {
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Get all screenshots for a specific tag grouped by view",
-        "parameters": [
-          {
-            "name": "tag",
-            "in": "query",
-            "required": false,
-            "description": "Name of the tag you want to find screenshots for.",
-            "type": "string"
-          },
-          {
-            "name": "numberOfDays",
-            "in": "query",
-            "required": true,
-            "description": "The number of days in the past you want to return screenshots for.",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Screenshot"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/{screenshotId}": {
-      "parameters": [
-        {
-          "name": "screenshotId",
-          "in": "path",
-          "required": true,
-          "description": "ID of screenshot that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Get screenshot with given ID",
-        "responses": {
-          "200": {
-            "description": "Screenshot is found",
-            "schema": {
-              "$ref": "#/definitions/Screenshot"
-            }
-          },
-          "404": {
-            "description": "Screenshot not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete screenshot with given ID",
-        "tags": [
-          "Screenshot"
-        ],
-        "responses": {
-          "200": {
-            "description": "Screenshot has been deleted",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "404": {
-            "description": "Screenshot not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update Screenshot with given ID",
-        "tags": [
-          "Screenshot"
-        ],
-        "parameters": [
-          {
-            "name": "update",
-            "in": "body",
-            "description": "Screenshot details to be added to the screenshot e.g. platform, tags",
-            "schema": {
-              "$ref": "#/definitions/ScreenshotUpdate"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Screenshot has been updated",
-            "schema": {
-              "$ref": "#/definitions/Screenshot"
-            }
-          },
-          "404": {
-            "description": "Screenshot not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/{screenshotId}/image": {
-      "parameters": [
-        {
-          "name": "screenshotId",
-          "in": "path",
-          "required": true,
-          "description": "ID of screenshot that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Get screenshot with given ID as a image",
-        "responses": {
-          "200": {
-            "description": "Screenshot is found",
-            "schema": {
-              "type": "file"
-            }
-          },
-          "404": {
-            "description": "Screenshot not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/{screenshotId}/dynamic-baseline": {
-      "parameters": [
-        {
-          "name": "screenshotId",
-          "in": "path",
-          "required": true,
-          "description": "ID of screenshot you want to generate the dynamic baseline for",
-          "type": "string"
-        },
-        {
-          "name": "numberOfImagesToCompare",
-          "in": "query",
-          "required": false,
-          "description": "The number of images historically you want to use to generate the dynamic baseline",
-          "type": "number"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Will generate a baseline image by comparing the last n number of images dependent on the numberOfImagesToCompare value",
-        "responses": {
-          "201": {
-            "description": "Successfully created the dynamic baseline image",
-            "schema": {
-              "$ref": "#/definitions/Screenshot"
-            }
-          },
-          "404": {
-            "description": "Screenshots not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          },
-          "500": {
-            "description": "Any error, e.g. not enough images to generate dynamic baseline",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/{screenshotId}/compare/{screenshotCompareId}": {
-      "parameters": [
-        {
-          "name": "screenshotId",
-          "in": "path",
-          "required": true,
-          "description": "ID of screenshot you want to compare against the base",
-          "type": "string"
-        },
-        {
-          "name": "screenshotCompareId",
-          "in": "path",
-          "required": true,
-          "description": "ID of the base screenshot",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Allows you to compare the screenshot against a previous screenshot",
-        "responses": {
-          "200": {
-            "description": "Comparison sucessful and results returned",
-            "schema": {
-              "type": "object"
-            }
-          },
-          "404": {
-            "description": "Screenshots not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/{screenshotId}/compare/{screenshotCompareId}/image": {
-      "parameters": [
-        {
-          "name": "screenshotId",
-          "in": "path",
-          "required": true,
-          "description": "ID of screenshot you want to compare against the base",
-          "type": "string"
-        },
-        {
-          "name": "screenshotCompareId",
-          "in": "path",
-          "required": true,
-          "description": "ID of the base screenshot",
-          "type": "string"
-        },
-        {
-          "name": "useCache",
-          "in": "query",
-          "required": false,
-          "default": true,
-          "description": "All compares are stored using the two id's of the images used to compare. By default we will return this cached version unless this flag is set to false (and the compare will be done again)",
-          "type": "boolean"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Allows you to compare the screenshot against a previous screenshot and returns the image",
-        "responses": {
-          "200": {
-            "description": "Comparison sucessful and results returned as an image",
-            "schema": {
-              "type": "file"
-            }
-          },
-          "404": {
-            "description": "Screenshots not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/screenshot/{screenshotId}/baseline/compare": {
-      "parameters": [
-        {
-          "name": "screenshotId",
-          "in": "path",
-          "required": true,
-          "description": "ID of screenshot you want to compare against the baseline",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Screenshot"
-        ],
-        "summary": "Allows you to compare the screenshot against the baseline",
-        "responses": {
-          "200": {
-            "description": "Comparison sucessful and results returned",
-            "schema": {
-              "type": "object"
-            }
-          },
-          "404": {
-            "description": "Screenshots or baseline not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/baseline": {
-      "post": {
-        "tags": [
-          "Baseline"
-        ],
-        "summary": "Create a new baseline to map for a specific view and deviceName, which image is the baseline.",
-        "parameters": [
-          {
-            "name": "create",
-            "in": "body",
-            "description": "Baseline that you want to create.",
-            "schema": {
-              "$ref": "#/definitions/CreateBaseline"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "201": {
-            "description": "New baseline is created",
-            "schema": {
-              "$ref": "#/definitions/StoredBaseline"
-            }
-          },
-          "409": {
-            "description": "Duplicate baseline found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Baseline"
-        ],
-        "summary": "Get all baselines for the dashboard in system (please either provide a deviceName or a browser name). If no deviceName is provide height and width are required to identify the correct baseline.",
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": true,
-            "description": "The view you want to retrieve the baselines for.",
-            "type": "string"
-          },
-          {
-            "name": "platformName",
-            "in": "query",
-            "required": true,
-            "description": "PlatformName you want to retrieve the baselines for.",
-            "type": "string"
-          },
-          {
-            "name": "deviceName",
-            "in": "query",
-            "required": false,
-            "description": "DeviceName you want to retrieve the baselines for.",
-            "type": "string"
-          },
-          {
-            "name": "browsername",
-            "in": "query",
-            "required": false,
-            "description": "Browsername you wan to retrieve the baselines for.",
-            "type": "string"
-          },
-          {
-            "name": "screenHeight",
-            "in": "query",
-            "required": false,
-            "description": "The screenHeight you want to retrieve baselines for (only required when not providing deviceName)",
-            "type": "number"
-          },
-          {
-            "name": "screenWidth",
-            "in": "query",
-            "required": false,
-            "description": "The screenWidth want to retrieve baselines for (only required when not providing deviceName)",
-            "type": "number"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/StoredBaseline"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/baseline/{baselineId}": {
-      "parameters": [
-        {
-          "name": "baselineId",
-          "in": "path",
-          "required": true,
-          "description": "ID of baseline that we want to find",
-          "type": "string"
-        }
-      ],
-      "get": {
-        "tags": [
-          "Baseline"
-        ],
-        "summary": "Get baseline with given ID",
-        "responses": {
-          "200": {
-            "description": "Baseline is found",
-            "schema": {
-              "$ref": "#/definitions/StoredBaseline"
-            }
-          },
-          "404": {
-            "description": "No baseline found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete baseline with given ID",
-        "tags": [
-          "Baseline"
-        ],
-        "responses": {
-          "200": {
-            "description": "Baseline has been deleted",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "404": {
-            "description": "Baseline not found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update baseline with given ID",
-        "tags": [
-          "Baseline"
-        ],
-        "parameters": [
-          {
-            "name": "update",
-            "in": "body",
-            "description": "Whilst updating a basline you need to provide at least a new screenshotId or a new array of ignoreBoxes.",
-            "schema": {
-              "type": "object",
-              "required": [
-                "screenshotId",
-                "ignoreBoxes"
-              ],
-              "properties": {
-                "screenshotId": {"type": "string"},
-                "ignoreBoxes": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/IgnoreBox"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Baseline has been updated",
-            "schema": {
-              "$ref": "#/definitions/StoredBaseline"
-            }
-          },
-          "404": {
-            "description": "No baseline found",
-            "schema": {
-              "$ref": "#/definitions/DefaultResponse"
-            }
-          },
-          "422": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/ExpressValidatorError"
-            }
-          }
-        }
-      }
-    },
-    "/metrics/phase": {
-      "get": {
-        "tags": [
-          "Metrics"
-        ],
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "query",
-            "required": true,
-            "description": "ID of team you want to retrieve metrics for",
-            "type": "string"
-          },
-          {
-            "name": "componentId",
-            "in": "query",
-            "required": false,
-            "description": "ID of component you want to retrieve metrics for",
-            "type": "string"
-          },
-          {
-            "name": "fromDate",
-            "in": "query",
-            "required": false,
-            "description": "Start of the date range [e.g. YYYY-MM-DD].",
-            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-            "type": "string"
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "required": false,
-            "description": "End of the date range [e.g. YYYY-MM-DD]",
-            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-            "type": "string"
-          }
-        ],
-        "summary": "Gets metrics grouped by test phase",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/metrics/screenshot": {
-      "get": {
-        "tags": [
-          "Metrics"
-        ],
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "description": "Part of all of the view you want to retrieve metrics for",
-            "type": "string"
-          },
-          {
-            "name": "tag",
-            "in": "query",
-            "required": false,
-            "description": "Part of all of the tag(s) you want to retrieve metrics for",
-            "type": "string"
-          },
-          {
-            "name": "thumbnail",
-            "in": "query",
-            "required": false,
-            "description": "Boolean value if you want to include the latest thumbnail in the response",
-            "type": "boolean"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "The number of top view and tags you want to return.",
-            "type": "number"
-          }
-        ],
-        "summary": "Gets metrics grouped by tags and views",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/angles/versions": {
-      "get": {
-        "tags": [
-          "Info"
-        ],
-        "summary": "Get versions for current Angles instance",
-        "responses": {
-          "200": {
-            "description": "Returns the versions of the Angles backend components",
-            "schema": {
-              "properties": {
-                "node": {
-                  "type": "string"
-                },
-                "mongo": {
-                  "type": "string"
-                },
-                "angles": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "definitions": {
-    "DefaultResponse": {
-      "required": [
-        "message"
-      ],
-      "properties": {
-        "message": {
-          "type": "string",
-          "uniqueItems": true
-        }
-      }
-    },
-    "ExpressValidatorError": {
-      "properties": {
-        "errors": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "value": {"type": "string"},
-              "msg": {"type": "string"},
-              "param": {"type": "string"},
-              "location": {"type": "string"}
-            }
-          }
-        }
-      }
-    },
-    "Environment": {
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "name": {
-          "type": "string",
-          "uniqueItems": true
-        }
-      }
-    },
-    "StoredEnvironment": {
-      "allOf": [
-        {"$ref": "#/definitions/Environment"},
-        {
-          "properties": {
-            "_id": {
-              "type": "string",
-              "uniqueItems": true
-            }
-          }
-        }
-      ]
-    },
-    "Team": {
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "name": {
-          "type": "string",
-          "uniqueItems": true
-        },
-        "components": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties":{
-              "name": { "type": "string" }
-            }
-          }
-        }
-      }
-    },
-    "StoredTeam": {
-      "allOf": [
-        {"$ref": "#/definitions/Team"},
-        {
-          "properties": {
-            "_id": {
-              "type": "string",
-              "uniqueItems": true
-            }
-          }
-        }
-      ]
-    },
-    "Phase": {
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "name": {
-          "type": "string",
-          "uniqueItems": true
-        },
-        "orderNumber": {
-          "type": "number"
-        }
-      }
-    },
-    "StoredPhase": {
-      "allOf": [
-        {"$ref": "#/definitions/Phase"},
-        {
-          "properties": {
-            "_id": {
-              "type": "string",
-              "uniqueItems": true
-            }
-          }
-        }
-      ]
-    },
-    "Build": {
-      "required": [
-        "name",
-        "environment",
-        "component",
-        "team",
-        "start"
-      ],
-      "properties": {
-        "name": { "type": "string" },
-        "environment": { "type": "string" },
-        "component": { "type": "string" },
-        "team": { "type": "string" },
-        "phase": { "type": "string" },
-        "artifacts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Artifact"
-          }
-        },
-        "start": { "type": "string", "format": "date-time" },
-        "suites": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Suite"
-          }
-        }
-      }
-    },
-    "StoredBuild": {
-      "allOf": [
-        {"$ref": "#/definitions/Build"},
-        {
-          "properties": {
-            "_id": {
-              "type": "string",
-              "uniqueItems": true
-            }
-          }
-        }
-      ]
-    },
-    "Artifact": {
-      "required": [
-        "artifactId",
-        "groupId",
-        "version"
-      ],
-      "properties": {
-        "artifactId": { "type": "string" },
-        "groupId": { "type": "string" },
-        "version": { "type": "string" }
-      }
-    },
-    "Platform": {
-      "required": [
-        "platformName"
-      ],
-      "properties": {
-        "platformName": { "type": "string" },
-        "platformVersion": { "type": "string" },
-        "browserName": { "type": "string" },
-        "browserVersion": { "type": "string" },
-        "deviceName": { "type": "string" },
-        "userAgent": { "type": "string" },
-        "screenHeight": { "type": "number" },
-        "screenWidth": { "type": "number" },
-        "pixelRatio": { "type": "number" }
-      }
-    },
-    "Step": {
-      "required": [
-        "name",
-        "status",
-        "timestamp"
-      ],
-      "properties": {
-        "name": { "type": "string" },
-        "expected": { "type": "object" },
-        "actual": { "type": "object" },
-        "info": { "type": "string" },
-        "status": {"type": "string", "enum": ["INFO", "DEBUG", "PASS", "ERROR", "FAIL"]},
-        "timestamp": { "type": "string", "format": "date-time" },
-        "screenshot": { "type": "string" }
-      }
-    },
-    "Screenshot": {
-      "properties": {
-        "_id": {
-          "type": "string",
-          "uniqueItems": true
-        },
-        "build": { "type": "string" },
-        "thumbnail": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "path": { "type": "string" }
-      }
-    },
-    "ScreenshotUpdate": {
-      "properties": {
-        "platform": {
-          "$ref": "#/definitions/Platform"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "Action": {
-      "required": [
-        "name",
-        "steps"
-      ],
-      "properties": {
-        "name": { "type": "string" },
-        "steps": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Step"
-          }
-        }
-      }
-    },
-    "StoredAction": {
-      "allOf": [
-        {"$ref": "#/definitions/Action"},
-        {
-          "properties": {
-            "_id": {
-              "type": "string",
-              "uniqueItems": true
             },
-            "start": { "type": "string", "format": "date-time" },
-            "end": { "type": "string", "format": "date-time" },
-            "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]}
-          }
-        }
-      ]
-    },
-    "Execution": {
-      "required": [
-        "title",
-        "suite",
-        "build"
-      ],
-      "properties": {
-        "title": { "type": "string" },
-        "suite": { "type": "string" },
-        "build": { "type": "string", "uniqueItems": true },
-        "feature": { "type": "string" },
-        "actions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Action"
-          }
-        },
-        "platforms": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Platform"
-          }
-        },
-        "tags": {
-          "type": "array",
-          "items": { "type":"string" }
-        },
-        "meta": {
-          "type": "object"
-        }
-      }
-    },
-    "StoredExecution": {
-      "allOf": [
-        {"$ref": "#/definitions/Execution"},
-        {
-          "properties": {
-            "_id": {
-              "type": "string",
-              "uniqueItems": true
-            },
-            "actions": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/StoredAction"
-              }
-            },
-            "start": { "type": "string", "format": "date-time" },
-            "end": { "type": "string", "format": "date-time" },
-            "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]}
-          }
-        }
-      ]
-    },
-    "Suite": {
-      "required": [
-        "name",
-        "executions"
-      ],
-      "properties": {
-        "name": { "type": "string" },
-        "executions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/StoredExecution"
-          }
-        },
-        "start": { "type": "string", "format": "date-time" },
-        "end": { "type": "string", "format": "date-time" },
-        "status": {"type": "string", "enum": ["SKIPPED", "PASS", "ERROR", "FAIL"]},
-        "result": {}
-      }
-    },
-    "IgnoreBox": {
-      "required": [
-        "left",
-        "top",
-        "right",
-        "bottom"
-      ],
-      "properties": {
-        "left": { "type": "number" },
-        "top": { "type": "number" },
-        "right": { "type": "number" },
-        "bottom": { "type": "number" }
-      }
-    },
-    "Baseline": {
-      "required": [
-        "view",
-        "deviceName"
-      ],
-      "properties": {
-        "view": { "type": "string" },
-        "platform": {
-          "$ref": "#/definitions/BaselinePlatform"
-        },
-        "ignoreBoxes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/IgnoreBox"
-          }
-        }
-      }
-    },
-    "BaselinePlatform": {
-      "required": [
-        "platformName"
-      ],
-      "properties": {
-        "platformName": { "type": "string" },
-        "browserName": { "type": "string" },
-        "deviceName": { "type": "string" },
-        "screenHeight": { "type": "number" },
-        "screenWidth": { "type": "number" },
-        "pixelRatio": { "type": "number" }
-      }
-    },
-    "CreateBaseline": {
-      "allOf": [
-        {"$ref": "#/definitions/Baseline"},
-        {
-          "required": [
-            "screenshotId"
-          ],
-          "properties": {
-            "screenshotId": { "type": "string" }
-          }
-        }
-      ]
-    },
-    "StoredBaseline": {
-      "allOf": [
-        {"$ref": "#/definitions/Baseline"},
-        {
-          "properties": {
-            "_id": { "type": "string", "uniqueItems": true },
-            "height": { "type": "number" },
-            "width": { "type": "number" },
-            "screenshot": {
-              "$ref": "#/definitions/Screenshot"
+            "get": {
+                "tags": [
+                    "Team"
+                ],
+                "summary": "Get all teams for the dashboard in system",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Team"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-          }
+        },
+        "/team/{teamId}": {
+            "parameters": [
+                {
+                    "name": "teamId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of team that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Team"
+                ],
+                "summary": "Get team with given ID",
+                "responses": {
+                    "200": {
+                        "description": "Team is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredTeam"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No team found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete team with given ID",
+                "tags": [
+                    "Team"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Team has been deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update team with given ID",
+                "tags": [
+                    "Team"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Team with new values of properties"
+                },
+                "responses": {
+                    "200": {
+                        "description": "Team is updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredTeam"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No team found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/team/{teamId}/components": {
+            "parameters": [
+                {
+                    "name": "teamId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of team that we want to add components to.",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "put": {
+                "summary": "Adds components to the components array for team with given ID",
+                "tags": [
+                    "Team"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "components"
+                                ],
+                                "properties": {
+                                    "components": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Components you want to add to the team with the given ID."
+                },
+                "responses": {
+                    "200": {
+                        "description": "New components were added to the team.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Build"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/environment": {
+            "post": {
+                "tags": [
+                    "Environment"
+                ],
+                "summary": "Create new environment for the dashboard",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Environment"
+                            }
+                        }
+                    },
+                    "description": "Environment that we want to create"
+                },
+                "responses": {
+                    "201": {
+                        "description": "New environment is created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredEnvironment"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Duplicate environment found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Environment"
+                ],
+                "summary": "Get all environments for the dashboard in system",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Environment"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/environment/{environmentId}": {
+            "parameters": [
+                {
+                    "name": "environmentId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of environment that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Environment"
+                ],
+                "summary": "Get environment with given ID",
+                "responses": {
+                    "200": {
+                        "description": "Environment is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Environment"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No team found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete environment with given ID",
+                "tags": [
+                    "Environment"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Environment has been deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Environment"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update environment with given ID",
+                "tags": [
+                    "Environment"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Request to update the environment"
+                },
+                "responses": {
+                    "200": {
+                        "description": "Environment is updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Environment"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No team found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/phase": {
+            "post": {
+                "tags": [
+                    "Phase"
+                ],
+                "summary": "Create new test phase for the dashboard",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Phase"
+                            }
+                        }
+                    },
+                    "description": "Phase that we want to create"
+                },
+                "responses": {
+                    "201": {
+                        "description": "New test phase is created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredPhase"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Duplicate phase found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Phase"
+                ],
+                "summary": "Get all test phases for the dashboard in system",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Phase"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/phase/{phaseId}": {
+            "parameters": [
+                {
+                    "name": "phaseId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of test phase that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Phase"
+                ],
+                "summary": "Get test phase with given ID",
+                "responses": {
+                    "200": {
+                        "description": "Phase is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No phase found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete phase with given ID",
+                "tags": [
+                    "Phase"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Phase has been deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Phase not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update phase with given ID",
+                "tags": [
+                    "Phase"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "orderNumber"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "orderNumber": {
+                                        "type": "number"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Request to update the phase. Please provide either a name and/or orderNumber."
+                },
+                "responses": {
+                    "200": {
+                        "description": "Phase is updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No phase found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/build": {
+            "post": {
+                "tags": [
+                    "Build"
+                ],
+                "summary": "Create new build for the dashboard",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Build"
+                            }
+                        }
+                    },
+                    "description": "Build that we want to create"
+                },
+                "responses": {
+                    "201": {
+                        "description": "New build is created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredBuild"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Environment or Team not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Build"
+                ],
+                "summary": "Get all builds for the dashboard",
+                "parameters": [
+                    {
+                        "name": "teamId",
+                        "in": "query",
+                        "required": true,
+                        "description": "ID of team that we want to retrieve the builds for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "buildIds",
+                        "in": "query",
+                        "required": false,
+                        "description": "IDs of builds that we want to retrieve, comma separated.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "environmentIds",
+                        "in": "query",
+                        "required": false,
+                        "description": "IDs of the environment you want to filter by, comma seperated.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "componentIds",
+                        "in": "query",
+                        "required": false,
+                        "description": "IDs of the component you want to filter by, comma seperated",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "returnExecutionDetails",
+                        "in": "query",
+                        "required": false,
+                        "description": "Boolean to see if you want the execution details returned as well.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "Limit the number of builds to retrieve",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "skip",
+                        "in": "query",
+                        "required": false,
+                        "description": "The builds you want to skip (or offset) in the data base query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The response contains a count of total builds and contains the returned builds in an array",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "count": {
+                                            "type": "number"
+                                        },
+                                        "builds": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/StoredBuild"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Will delete multiple builds based on the parameters",
+                "tags": [
+                    "Build"
+                ],
+                "parameters": [
+                    {
+                        "name": "teamId",
+                        "in": "query",
+                        "required": true,
+                        "description": "ID of team that we want to remove builds for",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ageInDays",
+                        "in": "query",
+                        "required": false,
+                        "description": "The age in days we want to delete builds for (e.g. older than 30 days)",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Builds have been deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/build/{buildId}": {
+            "parameters": [
+                {
+                    "name": "buildId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of build that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Build"
+                ],
+                "summary": "Get build with given ID",
+                "responses": {
+                    "200": {
+                        "description": "Build is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredBuild"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Build not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete build with given ID",
+                "tags": [
+                    "Build"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Build is deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Build not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update build with given ID",
+                "tags": [
+                    "Build"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Build"
+                            }
+                        }
+                    },
+                    "description": "Build with new values of properties"
+                },
+                "responses": {
+                    "200": {
+                        "description": "Build is updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredBuild"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Build not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/build/{buildId}/keep": {
+            "parameters": [
+                {
+                    "name": "buildId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of build that we want to update the keep value for. This value is used to determine if a build should be cleaned up (or not))",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "put": {
+                "summary": "Update keep value for build with given ID",
+                "tags": [
+                    "Build"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "keep"
+                                ],
+                                "properties": {
+                                    "keep": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Keep request with boolean set."
+                },
+                "responses": {
+                    "200": {
+                        "description": "Build is updated with new keep value.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Build"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/build/{buildId}/artifacts": {
+            "parameters": [
+                {
+                    "name": "buildId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of build that we want to store the artifacts for.",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "put": {
+                "summary": "Updates the artifacts array for build with given ID",
+                "tags": [
+                    "Build"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "artifacts"
+                                ],
+                                "properties": {
+                                    "artifacts": {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/components/schemas/Artifact"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Artifacts you want to store with build with the given ID."
+                },
+                "responses": {
+                    "200": {
+                        "description": "Build is updated with new keep value.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Build"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/execution": {
+            "post": {
+                "tags": [
+                    "Execution"
+                ],
+                "summary": "Create new execution for a build",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Execution"
+                            }
+                        }
+                    },
+                    "description": "Execution you want to create"
+                },
+                "responses": {
+                    "201": {
+                        "description": "New execution is created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredExecution"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Build not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Execution"
+                ],
+                "summary": "Get all executions either by ids (comma separated) or by buildId",
+                "parameters": [
+                    {
+                        "name": "buildId",
+                        "in": "query",
+                        "required": false,
+                        "description": "ID of build that we want to retrieve the executions for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "executionIds",
+                        "in": "query",
+                        "required": false,
+                        "description": "IDs of execution that we want to retrieve, comma separated.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StoredExecution"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/execution/{executionId}": {
+            "parameters": [
+                {
+                    "name": "executionId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of execution that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Execution"
+                ],
+                "summary": "Get execution with given ID",
+                "responses": {
+                    "200": {
+                        "description": "Execution is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredExecution"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Execution not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete execution with given ID",
+                "tags": [
+                    "Execution"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Execution has been deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Execution not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update Execution with given ID",
+                "tags": [
+                    "Execution"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Execution"
+                            }
+                        }
+                    },
+                    "description": "Execution with new values of properties"
+                },
+                "responses": {
+                    "200": {
+                        "description": "Execution has been updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredExecution"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Execution not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/execution/{executionId}/history": {
+            "parameters": [
+                {
+                    "name": "executionId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of execution that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Execution"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "Limit the number of executions to retrieve",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "skip",
+                        "in": "query",
+                        "required": false,
+                        "description": "The executions you want to skip (or offset) in the data base query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "summary": "Get the history for the execution with given ID. This finds the hisory by suite name and title, so these have to be unique as a combination for this test.",
+                "responses": {
+                    "200": {
+                        "description": "The response contains a count of total executions and contains the returned executions in an array",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "count": {
+                                            "type": "number"
+                                        },
+                                        "executions": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/StoredExecution"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Execution not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/execution/{executionId}/platforms": {
+            "parameters": [
+                {
+                    "name": "executionId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of execution you want to store the platforms for.",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "put": {
+                "summary": "Updates the platforms array for execution with given ID",
+                "tags": [
+                    "Execution"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Platform"
+                                }
+                            }
+                        }
+                    },
+                    "description": "Store platforms for execution with ID"
+                },
+                "responses": {
+                    "200": {
+                        "description": "Execution has been updated with platforms",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredExecution"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot": {
+            "post": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Create new screenshot for an execution",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "buildId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "view": {
+                                        "type": "string"
+                                    },
+                                    "platformName": {
+                                        "type": "string"
+                                    },
+                                    "platformVersion": {
+                                        "type": "string"
+                                    },
+                                    "browserName": {
+                                        "type": "string"
+                                    },
+                                    "browserVersion": {
+                                        "type": "string"
+                                    },
+                                    "deviceName": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "description": "Tags should be provided as an array with double quotes in a string format e.g. \"[\"tag1\",\"tag2\",\"tag3\"]\".",
+                                        "type": "string"
+                                    },
+                                    "screenshot": {
+                                        "description": "Screenshot to upload",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "required": [
+                                    "buildId",
+                                    "timestamp"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "New screenshot is created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Screenshot"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Build not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Get all Screenshots, please provide either a buildId, view (or view with platformId)",
+                "parameters": [
+                    {
+                        "name": "buildId",
+                        "in": "query",
+                        "required": false,
+                        "description": "ID of build that we want to retrieve the screenshots for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "view",
+                        "in": "query",
+                        "required": false,
+                        "description": "Name of the view you want to find screenshots for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "platformId",
+                        "in": "query",
+                        "required": false,
+                        "description": "Unique Identifier of the platform you want to retrieve the images for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "screenshotIds",
+                        "in": "query",
+                        "required": false,
+                        "description": "Comma seperated list of screenshot ids for the screenshots you want to retrieve.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "The number of screenshots you want to return.",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "skip",
+                        "in": "query",
+                        "required": false,
+                        "description": "The images you want to skip (or offset) in the data base query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Screenshot"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/views": {
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Get all view names based on a view search string",
+                "parameters": [
+                    {
+                        "name": "view",
+                        "in": "query",
+                        "required": true,
+                        "description": "Part of all of the view name you want to find (min 3 characters).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "The number of view names you want to return.",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/tags": {
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Get all tags based on a tag search string",
+                "parameters": [
+                    {
+                        "name": "tag",
+                        "in": "query",
+                        "required": true,
+                        "description": "Part of all of the tag you want to find (min 3 characters).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "The number of view names you want to return.",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/grouped/platform": {
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Get all screenshots for a specific view grouped by platform",
+                "parameters": [
+                    {
+                        "name": "view",
+                        "in": "query",
+                        "required": true,
+                        "description": "Name of the view you want to find screenshots for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "numberOfDays",
+                        "in": "query",
+                        "required": true,
+                        "description": "The number of days in the past you want to return screenshots for.",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Screenshot"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/grouped/tag": {
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Get all screenshots for a specific tag grouped by view",
+                "parameters": [
+                    {
+                        "name": "tag",
+                        "in": "query",
+                        "required": false,
+                        "description": "Name of the tag you want to find screenshots for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "numberOfDays",
+                        "in": "query",
+                        "required": true,
+                        "description": "The number of days in the past you want to return screenshots for.",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Screenshot"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of screenshot that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Get screenshot with given ID",
+                "responses": {
+                    "200": {
+                        "description": "Screenshot is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Screenshot"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete screenshot with given ID",
+                "tags": [
+                    "Screenshot"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Screenshot has been deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update Screenshot with given ID",
+                "tags": [
+                    "Screenshot"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScreenshotUpdate"
+                            }
+                        }
+                    },
+                    "description": "Screenshot details to be added to the screenshot e.g. platform, tags"
+                },
+                "responses": {
+                    "200": {
+                        "description": "Screenshot has been updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Screenshot"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}/image": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of screenshot that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Get screenshot with given ID as a image",
+                "responses": {
+                    "200": {
+                        "description": "Screenshot is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}/dynamic-baseline": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of screenshot you want to generate the dynamic baseline for",
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "numberOfImagesToCompare",
+                    "in": "query",
+                    "required": false,
+                    "description": "The number of images historically you want to use to generate the dynamic baseline",
+                    "schema": {
+                        "type": "number"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Will generate a baseline image by comparing the last n number of images dependent on the numberOfImagesToCompare value",
+                "responses": {
+                    "201": {
+                        "description": "Successfully created the dynamic baseline image",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Screenshot"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshots not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Any error, e.g. not enough images to generate dynamic baseline",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}/compare/{screenshotCompareId}": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of screenshot you want to compare against the base",
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "screenshotCompareId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the base screenshot",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Allows you to compare the screenshot against a previous screenshot",
+                "responses": {
+                    "200": {
+                        "description": "Comparison sucessful and results returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshots not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}/compare/{screenshotCompareId}/image": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of screenshot you want to compare against the base",
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "screenshotCompareId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the base screenshot",
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "useCache",
+                    "in": "query",
+                    "required": false,
+                    "description": "All compares are stored using the two id's of the images used to compare. By default we will return this cached version unless this flag is set to false (and the compare will be done again)",
+                    "schema": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Allows you to compare the screenshot against a previous screenshot and returns the image",
+                "responses": {
+                    "200": {
+                        "description": "Comparison sucessful and results returned as an image",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshots not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}/baseline/compare": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of screenshot you want to compare against the baseline",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Allows you to compare the screenshot against the baseline",
+                "responses": {
+                    "200": {
+                        "description": "Comparison sucessful and results returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshots or baseline not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/baseline": {
+            "post": {
+                "tags": [
+                    "Baseline"
+                ],
+                "summary": "Create a new baseline to map for a specific view and deviceName, which image is the baseline.",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateBaseline"
+                            }
+                        }
+                    },
+                    "description": "Baseline that you want to create."
+                },
+                "responses": {
+                    "201": {
+                        "description": "New baseline is created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredBaseline"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Duplicate baseline found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Baseline"
+                ],
+                "summary": "Get all baselines for the dashboard in system (please either provide a deviceName or a browser name). If no deviceName is provide height and width are required to identify the correct baseline.",
+                "parameters": [
+                    {
+                        "name": "view",
+                        "in": "query",
+                        "required": true,
+                        "description": "The view you want to retrieve the baselines for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "platformName",
+                        "in": "query",
+                        "required": true,
+                        "description": "PlatformName you want to retrieve the baselines for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "deviceName",
+                        "in": "query",
+                        "required": false,
+                        "description": "DeviceName you want to retrieve the baselines for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "browsername",
+                        "in": "query",
+                        "required": false,
+                        "description": "Browsername you wan to retrieve the baselines for.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "screenHeight",
+                        "in": "query",
+                        "required": false,
+                        "description": "The screenHeight you want to retrieve baselines for (only required when not providing deviceName)",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "screenWidth",
+                        "in": "query",
+                        "required": false,
+                        "description": "The screenWidth want to retrieve baselines for (only required when not providing deviceName)",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StoredBaseline"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/baseline/{baselineId}": {
+            "parameters": [
+                {
+                    "name": "baselineId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of baseline that we want to find",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Baseline"
+                ],
+                "summary": "Get baseline with given ID",
+                "responses": {
+                    "200": {
+                        "description": "Baseline is found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredBaseline"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No baseline found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete baseline with given ID",
+                "tags": [
+                    "Baseline"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Baseline has been deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Baseline not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update baseline with given ID",
+                "tags": [
+                    "Baseline"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "screenshotId",
+                                    "ignoreBoxes"
+                                ],
+                                "properties": {
+                                    "screenshotId": {
+                                        "type": "string"
+                                    },
+                                    "ignoreBoxes": {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/components/schemas/IgnoreBox"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Whilst updating a basline you need to provide at least a new screenshotId or a new array of ignoreBoxes."
+                },
+                "responses": {
+                    "200": {
+                        "description": "Baseline has been updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredBaseline"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No baseline found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics/phase": {
+            "get": {
+                "tags": [
+                    "Metrics"
+                ],
+                "parameters": [
+                    {
+                        "name": "teamId",
+                        "in": "query",
+                        "required": true,
+                        "description": "ID of team you want to retrieve metrics for",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "componentId",
+                        "in": "query",
+                        "required": false,
+                        "description": "ID of component you want to retrieve metrics for",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "fromDate",
+                        "in": "query",
+                        "required": false,
+                        "description": "Start of the date range [e.g. YYYY-MM-DD].",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                        }
+                    },
+                    {
+                        "name": "endDate",
+                        "in": "query",
+                        "required": false,
+                        "description": "End of the date range [e.g. YYYY-MM-DD]",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                        }
+                    }
+                ],
+                "summary": "Gets metrics grouped by test phase",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/metrics/screenshot": {
+            "get": {
+                "tags": [
+                    "Metrics"
+                ],
+                "parameters": [
+                    {
+                        "name": "view",
+                        "in": "query",
+                        "required": false,
+                        "description": "Part of all of the view you want to retrieve metrics for",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tag",
+                        "in": "query",
+                        "required": false,
+                        "description": "Part of all of the tag(s) you want to retrieve metrics for",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "thumbnail",
+                        "in": "query",
+                        "required": false,
+                        "description": "Boolean value if you want to include the latest thumbnail in the response",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "The number of top view and tags you want to return.",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "summary": "Gets metrics grouped by tags and views",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/angles/versions": {
+            "get": {
+                "tags": [
+                    "Info"
+                ],
+                "summary": "Get versions for current Angles instance",
+                "responses": {
+                    "200": {
+                        "description": "Returns the versions of the Angles backend components",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "node": {
+                                            "type": "string"
+                                        },
+                                        "mongo": {
+                                            "type": "string"
+                                        },
+                                        "angles": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-      ]
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:3000/rest/api/v1.0"
+        }
+    ],
+    "components": {
+        "schemas": {
+            "DefaultResponse": {
+                "required": [
+                    "message"
+                ],
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "uniqueItems": true
+                    }
+                }
+            },
+            "ExpressValidatorError": {
+                "properties": {
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "value": {
+                                    "type": "string"
+                                },
+                                "msg": {
+                                    "type": "string"
+                                },
+                                "param": {
+                                    "type": "string"
+                                },
+                                "location": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Environment": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "uniqueItems": true
+                    }
+                }
+            },
+            "StoredEnvironment": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Environment"
+                    },
+                    {
+                        "properties": {
+                            "_id": {
+                                "type": "string",
+                                "uniqueItems": true
+                            }
+                        }
+                    }
+                ]
+            },
+            "Team": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "uniqueItems": true
+                    },
+                    "components": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "StoredTeam": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Team"
+                    },
+                    {
+                        "properties": {
+                            "_id": {
+                                "type": "string",
+                                "uniqueItems": true
+                            }
+                        }
+                    }
+                ]
+            },
+            "Phase": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "uniqueItems": true
+                    },
+                    "orderNumber": {
+                        "type": "number"
+                    }
+                }
+            },
+            "StoredPhase": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Phase"
+                    },
+                    {
+                        "properties": {
+                            "_id": {
+                                "type": "string",
+                                "uniqueItems": true
+                            }
+                        }
+                    }
+                ]
+            },
+            "Build": {
+                "required": [
+                    "name",
+                    "environment",
+                    "component",
+                    "team",
+                    "start"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "environment": {
+                        "type": "string"
+                    },
+                    "component": {
+                        "type": "string"
+                    },
+                    "team": {
+                        "type": "string"
+                    },
+                    "phase": {
+                        "type": "string"
+                    },
+                    "artifacts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Artifact"
+                        }
+                    },
+                    "start": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "suites": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Suite"
+                        }
+                    }
+                }
+            },
+            "StoredBuild": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Build"
+                    },
+                    {
+                        "properties": {
+                            "_id": {
+                                "type": "string",
+                                "uniqueItems": true
+                            }
+                        }
+                    }
+                ]
+            },
+            "Artifact": {
+                "required": [
+                    "artifactId",
+                    "groupId",
+                    "version"
+                ],
+                "properties": {
+                    "artifactId": {
+                        "type": "string"
+                    },
+                    "groupId": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Platform": {
+                "required": [
+                    "platformName"
+                ],
+                "properties": {
+                    "platformName": {
+                        "type": "string"
+                    },
+                    "platformVersion": {
+                        "type": "string"
+                    },
+                    "browserName": {
+                        "type": "string"
+                    },
+                    "browserVersion": {
+                        "type": "string"
+                    },
+                    "deviceName": {
+                        "type": "string"
+                    },
+                    "userAgent": {
+                        "type": "string"
+                    },
+                    "screenHeight": {
+                        "type": "number"
+                    },
+                    "screenWidth": {
+                        "type": "number"
+                    },
+                    "pixelRatio": {
+                        "type": "number"
+                    }
+                }
+            },
+            "Step": {
+                "required": [
+                    "name",
+                    "status",
+                    "timestamp"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "expected": {
+                        "type": "object"
+                    },
+                    "actual": {
+                        "type": "object"
+                    },
+                    "info": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "INFO",
+                            "DEBUG",
+                            "PASS",
+                            "ERROR",
+                            "FAIL"
+                        ]
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "screenshot": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Screenshot": {
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "uniqueItems": true
+                    },
+                    "build": {
+                        "type": "string"
+                    },
+                    "thumbnail": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "path": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ScreenshotUpdate": {
+                "properties": {
+                    "platform": {
+                        "$ref": "#/components/schemas/Platform"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "Action": {
+                "required": [
+                    "name",
+                    "steps"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "steps": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Step"
+                        }
+                    }
+                }
+            },
+            "StoredAction": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Action"
+                    },
+                    {
+                        "properties": {
+                            "_id": {
+                                "type": "string",
+                                "uniqueItems": true
+                            },
+                            "start": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "end": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "SKIPPED",
+                                    "PASS",
+                                    "ERROR",
+                                    "FAIL"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "Execution": {
+                "required": [
+                    "title",
+                    "suite",
+                    "build"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "suite": {
+                        "type": "string"
+                    },
+                    "build": {
+                        "type": "string",
+                        "uniqueItems": true
+                    },
+                    "feature": {
+                        "type": "string"
+                    },
+                    "actions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Action"
+                        }
+                    },
+                    "platforms": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Platform"
+                        }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "meta": {
+                        "type": "object"
+                    }
+                }
+            },
+            "StoredExecution": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Execution"
+                    },
+                    {
+                        "properties": {
+                            "_id": {
+                                "type": "string",
+                                "uniqueItems": true
+                            },
+                            "actions": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/StoredAction"
+                                }
+                            },
+                            "start": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "end": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "SKIPPED",
+                                    "PASS",
+                                    "ERROR",
+                                    "FAIL"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "Suite": {
+                "required": [
+                    "name",
+                    "executions"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "executions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StoredExecution"
+                        }
+                    },
+                    "start": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "end": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "SKIPPED",
+                            "PASS",
+                            "ERROR",
+                            "FAIL"
+                        ]
+                    },
+                    "result": {}
+                }
+            },
+            "IgnoreBox": {
+                "required": [
+                    "left",
+                    "top",
+                    "right",
+                    "bottom"
+                ],
+                "properties": {
+                    "left": {
+                        "type": "number"
+                    },
+                    "top": {
+                        "type": "number"
+                    },
+                    "right": {
+                        "type": "number"
+                    },
+                    "bottom": {
+                        "type": "number"
+                    }
+                }
+            },
+            "Baseline": {
+                "required": [
+                    "view",
+                    "deviceName"
+                ],
+                "properties": {
+                    "view": {
+                        "type": "string"
+                    },
+                    "platform": {
+                        "$ref": "#/components/schemas/BaselinePlatform"
+                    },
+                    "ignoreBoxes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IgnoreBox"
+                        }
+                    }
+                }
+            },
+            "BaselinePlatform": {
+                "required": [
+                    "platformName"
+                ],
+                "properties": {
+                    "platformName": {
+                        "type": "string"
+                    },
+                    "browserName": {
+                        "type": "string"
+                    },
+                    "deviceName": {
+                        "type": "string"
+                    },
+                    "screenHeight": {
+                        "type": "number"
+                    },
+                    "screenWidth": {
+                        "type": "number"
+                    },
+                    "pixelRatio": {
+                        "type": "number"
+                    }
+                }
+            },
+            "CreateBaseline": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Baseline"
+                    },
+                    {
+                        "required": [
+                            "screenshotId"
+                        ],
+                        "properties": {
+                            "screenshotId": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ]
+            },
+            "StoredBaseline": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Baseline"
+                    },
+                    {
+                        "properties": {
+                            "_id": {
+                                "type": "string",
+                                "uniqueItems": true
+                            },
+                            "height": {
+                                "type": "number"
+                            },
+                            "width": {
+                                "type": "number"
+                            },
+                            "screenshot": {
+                                "$ref": "#/components/schemas/Screenshot"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
     }
-  }
 }
