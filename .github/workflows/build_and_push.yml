@@ -42,8 +42,10 @@ jobs:
           NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
         run: echo "new tag $NEW_TAG"
       - name: "publish release notes"
-        uses: fregante/release-with-changelog@v3
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version-bump.outputs.newTag }}
+          generate_release_notes: true
           token: ${{ secrets.GITHUB_TOKEN }}
   build:
     name: "Build angles container and push to docker hub"
