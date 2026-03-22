@@ -23,7 +23,7 @@ jobs:
           compose-file: "./test/test-setup/docker-compose.yml"
 
       - name: Install mocha
-        run: npm install mocha@11.0.0
+        run: npm install mocha@11.7.5
 
       - name: Trigger tests
         run: MONGO_URL='mongodb://angleshq:%40nglesPassword@127.0.0.1:27017/angles' npm run test-with-reporter
