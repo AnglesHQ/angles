@@ -7,7 +7,8 @@ jobs:
   test:
     name: Run Angles unit/integration tests
     runs-on: ubuntu-latest
-
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -32,7 +33,7 @@ jobs:
         run: grep -v '{"level":30' test-results.json >> modified-results.json
 
       - name: Generate test report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: success() || failure()
         with:
           name: Generate Mocha Tests results
