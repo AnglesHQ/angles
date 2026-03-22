@@ -26,7 +26,7 @@ jobs:
           node-version: 24
       - name: "Automated Version Bump"
         id: version-bump
-        uses: "phips28/gh-action-bump-version@master"
+        uses: "phips28/gh-action-bump-version@v11.1.5"
         with:
           tag-prefix: ''
           minor-wording: 'minor_bump'
@@ -61,7 +61,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Grab AnglesUI version
         id: extract_version
-        uses: Saionaro/extract-package-version@v1.0.6
+        uses: Saionaro/extract-package-version@v1.3.0
       # From now you can access the version
       - name: Print version
         run: echo ${{ steps.extract_version.outputs.version }}
