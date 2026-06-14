@@ -227,7 +227,6 @@ exports.getReport = (req, res) => {
     .populate('environment')
     .populate('phase')
     .populate('suites.executions')
-    .lean()
     .then((retrievedBuild) => {
       if (!retrievedBuild) {
         throw new NotFoundError(`No build found with id ${buildId}`);
