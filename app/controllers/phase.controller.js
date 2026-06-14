@@ -12,7 +12,7 @@ exports.create = (req, res) => {
   }
   const { name, orderNumber } = req.body;
   return Phase
-    .findOne({ name })
+    .findOne({ name }).select('_id').lean()
     .then((existingPhase) => {
       if (existingPhase) {
         throw new ConflictError(`Phase with name ${name} already exists.`);
@@ -36,8 +36,7 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Phase.find({})
-    .sort({ orderNumber: 1 })
+  return Phase.find({}).sort({ orderNumber: 1 }).lean()
     .then((phases) => res.status(200).send(phases))
     .catch((err) => handleError(err, res));
 };
@@ -48,7 +47,7 @@ exports.findOne = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { phaseId } = req.params;
-  return Phase.findById(phaseId)
+  return Phase.findById(phaseId).lean()
     .then((phase) => {
       if (!phase) {
         throw new NotFoundError(`Phase not found with id ${phaseId}`);
@@ -68,7 +67,7 @@ exports.update = (req, res) => {
   let updateRequest = {};
   if (name) {
     updateRequest = { name };
-    promise = Phase.findOne({ name })
+    promise = Phase.findOne({ name }).select('_id').lean()
       .then((existingPhase) => {
         if (existingPhase) {
           throw new ConflictError(`Phase with name ${name} already exists.`);

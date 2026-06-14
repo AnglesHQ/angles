@@ -30,12 +30,12 @@ exports.create = (req, res) => {
   } = req.body;
   let phasePromise = Promise.resolve(true);
   if (phase) {
-    phasePromise = Phase.findOne({ name: phase }).exec();
+    phasePromise = Phase.findOne({ name: phase }).lean().exec();
   }
 
   const promises = [
-    Team.findOne({ name: team }).exec(),
-    Environment.findOne({ name: environment }).exec(),
+    Team.findOne({ name: team }).lean().exec(),
+    Environment.findOne({ name: environment }).lean().exec(),
     phasePromise,
   ];
 
@@ -89,6 +89,7 @@ exports.create = (req, res) => {
       .populate('team')
       .populate('environment')
       .populate('phase')
+      .lean()
       .exec())
     .then((savedBuild) => {
       log(`Created build "${savedBuild.name}" for team "${savedBuild.team.name}" with id: ${savedBuild._id}`);
@@ -114,7 +115,7 @@ exports.findAll = (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
   let query = {};
-  return Team.findById({ _id: teamId })
+  return Team.findById(teamId).select('_id').lean()
     .then((teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with name ${req.body.team}`);
@@ -150,7 +151,8 @@ exports.findAll = (req, res) => {
         .populate('team')
         .populate('environment')
         .populate('phase')
-        .sort('-createdAt');
+        .sort('-createdAt')
+        .lean();
       if (returnExecutionDetails === 'true') {
         // if asking for addExecutionDetails
         buildQuery.populate('suites.executions');
@@ -203,6 +205,7 @@ exports.findOne = (req, res) => {
     .populate('environment')
     .populate('phase')
     .populate('suites.executions')
+    .lean()
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
@@ -231,7 +234,7 @@ exports.getReport = (req, res) => {
       build = retrievedBuild;
       // retrieve all screenshots by buildId
       const query = { build: mongoose.Types.ObjectId(build._id) };
-      return Screenshot.find(query);
+      return Screenshot.find(query).lean();
     })
     .then((screenshots) =>
       // eslint-disable-next-line global-require

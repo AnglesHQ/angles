@@ -9,35 +9,55 @@ buildMetricsUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
 buildMetricsUtils.defaultResultMap = new Map([['PASS', 0], ['FAIL', 0], ['ERROR', 0], ['SKIPPED', 0]]);
 const [defaultStatus] = buildMetricsUtils.executionStates;
 
-buildMetricsUtils.addExecutionToBuild = (build, execution) => {
-  const buildSuite = build.suites
-    .find((suite) => suite.name.toLowerCase() === execution.suite.toLowerCase());
-  let query;
-  let update;
-  if (buildSuite === undefined) {
-    log(`Creating suite ${execution.suite} for build ${build._id} and adding test ${execution._id}`);
-    const newSuite = {
-      name: execution.suite,
-      executions: [],
-    };
-    newSuite.executions.push(execution);
-    query = { _id: build.id };
-    update = { $push: { suites: newSuite } };
-  } else {
-    log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
-    // if build suite exists add the test to it.
-    query = { _id: build.id, 'suites.name': execution.suite };
-    update = { $push: { 'suites.$.executions': execution } };
+buildMetricsUtils.addExecutionToBuild = async (buildOrId, execution, retries = 5) => {
+  const buildId = buildOrId._id || buildOrId;
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      const build = await Build.findById(buildId).populate('suites.executions');
+      if (!build) {
+        throw new Error(`No build found with id ${buildId}`);
+      }
+      const buildSuite = build.suites
+        .find((suite) => suite.name.toLowerCase() === execution.suite.toLowerCase());
+
+      if (buildSuite === undefined) {
+        log(`Creating suite ${execution.suite} for build ${build._id} and adding test ${execution._id}`);
+        const newSuite = {
+          name: execution.suite,
+          executions: [execution],
+        };
+        build.suites.push(newSuite);
+      } else {
+        log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
+        const exists = buildSuite.executions.some((e) => {
+          const eId = e._id ? e._id.toString() : e.toString();
+          const execId = execution._id ? execution._id.toString() : execution.toString();
+          return eId === execId;
+        });
+        if (!exists) {
+          buildSuite.executions.push(execution);
+        }
+      }
+
+      const buildWithMetrics = buildMetricsUtils.calculateBuildMetrics(build);
+      log(`Update build (attempt ${attempt}): ${JSON.stringify(buildWithMetrics)}`);
+      const savedBuild = await buildWithMetrics.save();
+      return savedBuild;
+    } catch (error) {
+      const isVersionError = error.name === 'VersionError' || error.message.includes('No document found for query');
+      if (isVersionError && attempt < retries) {
+        log(`Version conflict for build ${buildId}, retrying attempt ${attempt + 1}...`);
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, 5 + Math.random() * 45);
+        });
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      throw error;
+    }
   }
-  return Build.findOneAndUpdate(query, update, { new: true })
-    .populate('suites.executions')
-    .then((updatedBuild) => {
-      // once updated we update the build metrics
-      const buildWithMetrics = buildMetricsUtils.calculateBuildMetrics(updatedBuild);
-      log(`Update build: ${JSON.stringify(buildWithMetrics)}`);
-      return buildWithMetrics.save();
-    })
-    .then((savedBuildWithMetrics) => savedBuildWithMetrics);
+  throw new Error(`Failed to add execution to build ${buildId} after ${retries} attempts due to write conflicts.`);
 };
 
 buildMetricsUtils.calculateBuildMetrics = (build) => {

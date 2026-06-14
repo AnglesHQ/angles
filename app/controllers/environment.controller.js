@@ -13,7 +13,7 @@ exports.create = (req, res) => {
   }
 
   const { name } = req.body;
-  return Environment.findOne({ name }).exec()
+  return Environment.findOne({ name }).select('_id').lean().exec()
     .then((existingEnvironment) => {
       if (existingEnvironment) {
         throw new ConflictError(`Environment with name ${name} already exists.`);
@@ -35,7 +35,7 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Environment.find()
+  return Environment.find().lean()
     .then((environments) => {
       return res.status(200).send(environments);
     })
@@ -48,7 +48,7 @@ exports.findOne = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { environmentId } = req.params;
-  return Environment.findById(environmentId)
+  return Environment.findById(environmentId).lean()
     .then((environment) => {
       if (!environment) {
         throw new NotFoundError(`Environment not found with id ${environmentId}`);
@@ -64,7 +64,7 @@ exports.update = (req, res) => {
   }
   const { name } = req.body;
   const { environmentId } = req.params;
-  return Environment.findOne({ name })
+  return Environment.findOne({ name }).select('_id').lean()
     .then((existingEnvironment) => {
       if (existingEnvironment) {
         throw new ConflictError(`Environment with name ${name} already exists.`);

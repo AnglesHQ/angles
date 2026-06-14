@@ -24,8 +24,8 @@ exports.create = (req, res) => {
   const { screenshotId, view: requestView, ignoreBoxes } = req.body;
   // determine if type is defined, otherwise set it to IMAGE (and handle default).
   const promises = [
-    Screenshot.findById(screenshotId).exec(),
-    Baseline.find({ view: requestView }).exec(),
+    Screenshot.findById(screenshotId).lean().exec(),
+    Baseline.find({ view: requestView }).lean().exec(),
   ];
   return Promise.all(promises)
     .then((results) => {
@@ -91,6 +91,7 @@ exports.findAll = (req, res) => {
   if (screenWidth) baseLineQuery.screenWidth = screenWidth;
   return Baseline.find(baseLineQuery)
     .populate('screenshot')
+    .lean()
     .then((baselines) => {
       return res.status(200).send(baselines);
     })
@@ -105,7 +106,7 @@ exports.findOne = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { baselineId } = req.query;
-  return Baseline.findById(baselineId)
+  return Baseline.findById(baselineId).lean()
     .then((baseline) => {
       if (!baseline) {
         throw new NotFoundError(`Baseline not found with id ${baselineId}`);
@@ -122,7 +123,7 @@ exports.update = (req, res) => {
   const { screenshotId, ignoreBoxes } = req.body;
   let screenshotPromise = new Promise((resolve) => { resolve(); });
   if (screenshotId) {
-    screenshotPromise = Screenshot.findById(screenshotId).exec();
+    screenshotPromise = Screenshot.findById(screenshotId).lean().exec();
   }
 
   const { baselineId } = req.params;

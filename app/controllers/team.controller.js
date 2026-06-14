@@ -11,7 +11,7 @@ exports.create = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { name, components } = req.body;
-  return Team.findOne({ name }).exec()
+  return Team.findOne({ name }).select('_id').lean().exec()
     .then((foundTeam) => {
       if (foundTeam) {
         throw new ConflictError(`Team with name ${name} already exists.`);
@@ -33,7 +33,7 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Team.find()
+  return Team.find().lean()
     .then((teams) => res.status(200).send(teams))
     .catch((err) => handleError(err, res));
 };
@@ -44,7 +44,7 @@ exports.findOne = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { teamId } = req.params;
-  return Team.findById(teamId)
+  return Team.findById(teamId).lean()
     .then((team) => {
       if (!team) {
         throw new NotFoundError(`Team not found with id ${teamId}`);
@@ -60,7 +60,7 @@ exports.update = (req, res) => {
   }
   const { name } = req.body;
   const { teamId } = req.params;
-  return Team.where({ name }).findOne()
+  return Team.where({ name }).findOne().select('_id').lean()
     .then((foundTeam) => {
       if (foundTeam) {
         throw new ConflictError(`Team with name ${name} already exists.`);

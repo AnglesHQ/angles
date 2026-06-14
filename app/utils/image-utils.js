@@ -152,15 +152,13 @@ imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes) => {
 imageUtils.removeScreenshotDirectories = (buildsToDelete) => {
   const buildIds = buildsToDelete.map((build) => build._id.toString());
   log(`Deleting screenshots for builds with ids ${buildIds}`);
-  return new Promise((resolve) => {
-    buildIds.forEach((buildId) => {
-      const directoryToRemove = path.join(__dirname, `../../screenshots/${buildId}`);
-      rimraf(directoryToRemove).then(() => {
-        log(`Removed directory ${directoryToRemove}`);
-      });
+  const promises = buildIds.map((buildId) => {
+    const directoryToRemove = path.join(__dirname, `../../screenshots/${buildId}`);
+    return rimraf(directoryToRemove).then(() => {
+      log(`Removed directory ${directoryToRemove}`);
     });
-    resolve({ deleted: buildIds.length });
   });
+  return Promise.all(promises).then(() => ({ deleted: buildIds.length }));
 };
 
 imageUtils.generateDynamicBaseline = async (screenshot, screenshots) => {
@@ -171,7 +169,7 @@ imageUtils.generateDynamicBaseline = async (screenshot, screenshots) => {
   }
   // file name we'll be overriding it a few times.
   const fileName = `${buildPath}/${screenshot.id}-${Date.now()}-dynamic-baseline.png`;
-  const currentScreenshotObject = screenshot.toObject();
+  const currentScreenshotObject = screenshot.toObject ? screenshot.toObject() : { ...screenshot };
   delete currentScreenshotObject._id;
   const currentScreenshot = new Screenshot(currentScreenshotObject);
   let dynamicBaselinePath;

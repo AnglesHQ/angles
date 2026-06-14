@@ -92,6 +92,21 @@ describe('Build API Tests', () => {
     });
   });
 
+  describe('GET /build/:buildId/report', () => {
+    it('should retrieve the build report as HTML', (done) => {
+      request(app)
+        .get(`${baseUrl}build/${createdBuild._id}/report`)
+        .expect('Content-Type', /html/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.text.should.containEql('<html>');
+          res.text.should.containEql('build-unit-testing-build');
+          done();
+        });
+    });
+  });
+
   describe('POST /build - negative tests', () => {
     it('respond with 422 when trying to create a build with empty body', (done) => {
       request(app)

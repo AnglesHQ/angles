@@ -55,32 +55,30 @@ exports.create = (req, res) => {
     view,
     tags,
   } = req.body;
-  return Build.findById(buildId)
+  return Build.findById(buildId).select('_id').lean()
     .then((foundBuild) => {
       if (!foundBuild) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
       build = foundBuild;
-      const promises = [
-        jimp.read(req.file.path)
-          .then((image) => image
+      return jimp.read(req.file.path)
+        .then((image) => {
+          const { width, height } = image.bitmap;
+          return image
             .scaleToFit(300, 300)
             .quality(72)
-            .getBase64Async(image.getMIME())),
-        sizeOf(req.file.path),
-      ];
-      return Promise.all(promises);
+            .getBase64Async(image.getMIME())
+            .then((thumbnail) => ({ thumbnail, width, height }));
+        });
     })
-    .then((results) => {
-      const thumbnailBuffer = results[0];
-      const dimensions = results[1];
-      const thumbnail = thumbnailBuffer;
+    .then((result) => {
+      const { thumbnail, width, height } = result;
       const screenshot = new Screenshot({
         build: build._id,
         timestamp,
         thumbnail,
-        height: dimensions.height,
-        width: dimensions.width,
+        height,
+        width,
         path: req.file.path,
         type: 'DEFAULT',
         view,
@@ -125,7 +123,7 @@ exports.findAll = (req, res) => {
   let findScreenshotsPromise;
   // use buildId
   if (buildId) {
-    findScreenshotsPromise = Build.findById({ _id: buildId })
+    findScreenshotsPromise = Build.findById(buildId).select('_id').lean()
       .then((buildFound) => {
         if (!buildFound) {
           throw new NotFoundError(`No build found with id ${buildId}`);
@@ -133,20 +131,20 @@ exports.findAll = (req, res) => {
         const query = { build: mongoose.Types.ObjectId(buildId) };
         if (view) { query.view = view; }
         if (platformId) { query.platformId = platformId; }
-        return Screenshot.find(query, null, options);
+        return Screenshot.find(query, null, options).lean();
       });
   } else if (screenshotIds) {
     const query = { _id: { $in: screenshotIds.split(',') } };
     if (view) { query.view = view; }
     if (platformId) { query.platformId = platformId; }
-    findScreenshotsPromise = Screenshot.find(query, null, options);
+    findScreenshotsPromise = Screenshot.find(query, null, options).lean();
   } else {
     // else use view and platform id to find screenshots
     const query = {};
     if (view) { query.view = view; }
     if (platformId) { query.platformId = platformId; }
     options.sort = { _id: -1 };
-    findScreenshotsPromise = Screenshot.find(query, null, options);
+    findScreenshotsPromise = Screenshot.find(query, null, options).lean();
   }
 
   return findScreenshotsPromise
@@ -338,7 +336,7 @@ exports.findLatestForViewGroupedByPlatform = (req, res) => {
   ])
     .then((screenshotsIdsArray) => {
       const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
-      return Screenshot.find({ _id: { $in: latestScreenshotIds } });
+      return Screenshot.find({ _id: { $in: latestScreenshotIds } }).lean();
     })
     .then((screenshots) => res.status(200).send(screenshots))
     .catch((err) => handleError(err, res));
@@ -360,7 +358,7 @@ exports.findLatestForTagGroupedByView = (req, res) => {
   ])
     .then((screenshotsIdsArray) => {
       const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
-      return Screenshot.find({ _id: { $in: latestScreenshotIds } });
+      return Screenshot.find({ _id: { $in: latestScreenshotIds } }).lean();
     })
     .then((screenshots) => res.status(200).send(screenshots))
     .catch((err) => handleError(err, res));
@@ -372,7 +370,7 @@ exports.findOne = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { screenshotId } = req.params;
-  return Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId).lean()
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -388,7 +386,7 @@ exports.findOneImage = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { screenshotId } = req.params;
-  return Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId).lean()
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -507,7 +505,7 @@ exports.compareImageAgainstBaseline = (req, res) => {
   }
   let screenshot;
   const { screenshotId } = req.params;
-  return Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId).lean()
     .then((screenshotFound) => {
       if (!screenshotFound) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -533,7 +531,7 @@ exports.compareImageAgainstBaseline = (req, res) => {
         baseLineQuery.screenHeight = height;
         baseLineQuery.screenWidth = width;
       }
-      return Baseline.findOne(baseLineQuery).populate('screenshot');
+      return Baseline.findOne(baseLineQuery).populate('screenshot').lean();
     })
     .then(async (baseline) => {
       // compare image with baseline and return result.
@@ -574,7 +572,7 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
   const { useCache } = req.query;
   const { screenshotId } = req.params;
   let screenshotToCompare;
-  return Screenshot.findById(screenshotId)
+  return Screenshot.findById(screenshotId).lean()
     .then((screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
@@ -599,7 +597,7 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
         baseLineQuery.screenHeight = height;
         baseLineQuery.screenWidth = width;
       }
-      return Baseline.findOne(baseLineQuery).populate('screenshot');
+      return Baseline.findOne(baseLineQuery).populate('screenshot').lean();
     })
     .then((baselineFound) => {
       if (!baselineFound) {
