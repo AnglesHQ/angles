@@ -110,8 +110,11 @@ const BuildSchema = Schema({
   }],
 }, {
   timestamps: true,
-}, { collection: 'builds' });
+  collection: 'builds',
+});
 
 BuildSchema.index({ team: 1 }, { unique: false });
+BuildSchema.index({ team: 1, createdAt: -1 }, { unique: false });
+BuildSchema.index({ team: 1, start: -1 }, { unique: false });
 
 module.exports = mongoose.model('Build', BuildSchema);

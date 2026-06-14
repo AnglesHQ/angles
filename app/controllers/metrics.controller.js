@@ -95,7 +95,7 @@ exports.retrieveMetricsPerPhase = (req, res) => {
 
       metrics.groupingPeriod = groupingPeriod;
 
-      return Build.find(buildQuery);
+      return Build.find(buildQuery).select('_id').lean();
     })
     .then((builds) => {
       const buildIds = builds.map((build) => build._id);
@@ -143,22 +143,23 @@ exports.retrieveMetricsPerPhase = (req, res) => {
         // { $addFields: { phase: { $ifNull: ['$phase', 'default'] } } },
         // { $unwind: '$phase' },
         { $addFields: { length: { $subtract: ['$end', '$start'] } } },
-        {
-          $addFields: {
-            component: {
-              $function: {
-                body: 'function(componentId, team){ return team.components.find((component) => component._id.str === componentId ) }',
-                args: ['$componentId', '$team'],
-                lang: 'js',
-              },
-            },
-          },
-        },
-        { $unset: ['build', 'actions', 'componentId', 'team.components'] },
+        { $unset: ['build', 'actions'] },
       ];
       return Execution.aggregate(query);
     })
     .then((executionsDetails) => {
+      executionsDetails.forEach((execution) => {
+        if (execution.team && execution.team.components && execution.componentId) {
+          execution.component = execution.team.components.find(
+            (c) => (c._id ? c._id.toString() : c.id) === execution.componentId
+          );
+        }
+        if (execution.team) {
+          delete execution.team.components;
+        }
+        delete execution.componentId;
+      });
+
       metrics.periods = groupingUtils.groupExecutionsByPeriod(
         metrics.fromDate,
         metrics.toDate,

@@ -71,8 +71,15 @@ const BaselineSchema = mongoose.Schema({
   }],
 }, {
   timestamps: true,
-}, { collection: 'baselines' });
+  collection: 'baselines',
+});
 
 BaselineSchema.index({ view: 1 }, { unique: false });
+BaselineSchema.index({
+  view: 1,
+  'platform.platformName': 1,
+  'platform.browserName': 1,
+  'platform.deviceName': 1,
+}, { unique: false });
 
 module.exports = mongoose.model('Baseline', BaselineSchema);

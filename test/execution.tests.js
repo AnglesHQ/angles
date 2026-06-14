@@ -115,4 +115,35 @@ describe('Execution API Tests', () => {
         .expect(422, done);
     });
   });
+
+  describe('GET /execution/:executionId/history', () => {
+    it('successfully retrieve execution history', (done) => {
+      const createTestExecutionRequest = {
+        title: `unit-testing-execution-${randomstring.generate(5)}`,
+        suite: 'unit-testing-suite',
+        build: testbuild._id,
+      };
+      request(app)
+        .post(`${baseUrl}execution`)
+        .send(createTestExecutionRequest)
+        .set('Accept', 'application/json')
+        .expect(201)
+        .end((err, res) => {
+          if (err) return done(err);
+          const executionId = res.body._id;
+          request(app)
+            .get(`${baseUrl}execution/${executionId}/history`)
+            .set('Accept', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end((historyErr, historyRes) => {
+              if (historyErr) return done(historyErr);
+              historyRes.body.should.have.property('executions');
+              historyRes.body.should.have.property('count');
+              historyRes.body.count.should.be.greaterThanOrEqual(1);
+              done();
+            });
+        });
+    });
+  });
 });
