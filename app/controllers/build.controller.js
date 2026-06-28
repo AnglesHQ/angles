@@ -13,7 +13,8 @@ const Screenshot = require('../models/screenshot.js');
 const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
 const Phase = require('../models/phase.js');
-const { NotFoundError, handleError } = require('../exceptions/errors.js');
+const { NotFoundError, ForbiddenError, handleError } = require('../exceptions/errors.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 
 const log = debug('build:controller');
 
@@ -47,6 +48,10 @@ exports.create = (req, res) => {
 
       if (teamFound === null || teamFound === undefined) {
         throw new NotFoundError(`No team found with name ${team}`);
+      }
+      
+      if (!authMiddleware.hasTeamAccess(req.user, teamFound._id)) {
+        throw new ForbiddenError('You do not have access to this team');
       }
 
       if (environmentFound === null || environmentFound === undefined) {
@@ -119,6 +124,9 @@ exports.findAll = (req, res) => {
     .then((teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with name ${req.body.team}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, teamId)) {
+        throw new ForbiddenError('You do not have access to this team');
       }
       if (buildIds) {
         const buildIdsArray = buildIds.split(',');
@@ -210,6 +218,9 @@ exports.findOne = (req, res) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
+      if (!authMiddleware.hasTeamAccess(req.user, build.team._id)) {
+        throw new ForbiddenError('You do not have access to this build');
+      }
       return res.status(200).send(build);
     })
     .catch((err) => handleError(err, res));
@@ -231,6 +242,9 @@ exports.getReport = (req, res) => {
       if (!retrievedBuild) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
+      if (!authMiddleware.hasTeamAccess(req.user, retrievedBuild.team._id)) {
+        throw new ForbiddenError('You do not have access to this build');
+      }
       build = retrievedBuild;
       // retrieve all screenshots by buildId
       const query = { build: mongoose.Types.ObjectId(build._id) };
@@ -250,10 +264,26 @@ exports.update = (req, res) => {
   }
   const { buildId } = req.params;
   const { team, environment } = req.body;
-  return Build.findByIdAndUpdate(buildId, {
-    team,
-    environment,
-  }, { new: true })
+  // Note: for a more robust update, we should fetch the existing build and check its team as well,
+  // but updating build.team is checked below if it's changing the team.
+  return Build.findById(buildId).then((existingBuild) => {
+    if (!existingBuild) {
+      throw new NotFoundError(`No build found with id ${buildId}`);
+    }
+    if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
+      throw new ForbiddenError('You do not have access to this build');
+    }
+    // if team is being updated, check if user has access to new team. (team comes as name or id? assume id for update)
+    if (team && existingBuild.team.toString() !== team.toString()) {
+       if (!authMiddleware.hasTeamAccess(req.user, team)) {
+         throw new ForbiddenError('You do not have access to the new team');
+       }
+    }
+    return Build.findByIdAndUpdate(buildId, {
+      team,
+      environment,
+    }, { new: true });
+  })
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
@@ -269,9 +299,17 @@ exports.setKeep = (req, res) => {
   }
   const { buildId } = req.params;
   const { keep } = req.body;
-  return Build.findByIdAndUpdate(buildId, {
-    keep,
-  }, { new: true })
+  return Build.findById(buildId).then((existingBuild) => {
+    if (!existingBuild) {
+      throw new NotFoundError(`No build found with id ${buildId}`);
+    }
+    if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
+      throw new ForbiddenError('You do not have access to this build');
+    }
+    return Build.findByIdAndUpdate(buildId, {
+      keep,
+    }, { new: true });
+  })
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
@@ -286,12 +324,20 @@ exports.setArtifacts = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
-  return Build.findByIdAndUpdate(buildId, {
-    artifacts: req.body.artifacts,
-  }, { new: true })
+  return Build.findById(buildId).then((existingBuild) => {
+    if (!existingBuild) {
+      throw new NotFoundError(`No build found with id ${buildId}`);
+    }
+    if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
+      throw new ForbiddenError('You do not have access to this build');
+    }
+    return Build.findByIdAndUpdate(buildId, {
+      artifacts: req.body.artifacts,
+    }, { new: true })
     .populate('team')
     .populate('environment')
-    .populate('phase')
+    .populate('phase');
+  })
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
@@ -313,7 +359,15 @@ exports.delete = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
-  return Build.findByIdAndRemove(buildId)
+  return Build.findById(buildId).then((existingBuild) => {
+    if (!existingBuild) {
+      throw new NotFoundError(`No build found with id ${buildId}`);
+    }
+    if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
+      throw new ForbiddenError('You do not have access to this build');
+    }
+    return Build.findByIdAndRemove(buildId);
+  })
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
@@ -335,6 +389,9 @@ exports.deleteMany = (req, res) => {
     .then((teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with id ${teamId}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, teamId)) {
+        throw new ForbiddenError('You do not have access to this team');
       }
       const date = new Date();
       let daysToDeletion = 90;

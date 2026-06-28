@@ -1,7 +1,8 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
 const { Team, Component } = require('../models/team.js');
-const { ConflictError, NotFoundError, handleError } = require('../exceptions/errors.js');
+const { ConflictError, NotFoundError, ForbiddenError, handleError } = require('../exceptions/errors.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 
 const log = debug('team:controller');
 
@@ -11,6 +12,9 @@ exports.create = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { name, components } = req.body;
+  if (req.user && req.user.role !== 'admin') {
+    return next(new ForbiddenError('Only admins can create teams'));
+  }
   return Team.findOne({ name }).select('_id').lean().exec()
     .then((foundTeam) => {
       if (foundTeam) {
@@ -33,7 +37,13 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  return Team.find().lean()
+  
+  let query = {};
+  if (req.user && req.user.role !== 'admin') {
+    query = { _id: { $in: req.user.teams } };
+  }
+
+  return Team.find(query).lean()
     .then((teams) => res.status(200).send(teams))
     .catch((err) => handleError(err, res));
 };
@@ -44,6 +54,11 @@ exports.findOne = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { teamId } = req.params;
+  
+  if (!authMiddleware.hasTeamAccess(req.user, teamId)) {
+    return res.status(403).json({ error: 'Forbidden. You do not have access to this team.' });
+  }
+
   return Team.findById(teamId).lean()
     .then((team) => {
       if (!team) {
@@ -60,6 +75,11 @@ exports.update = (req, res) => {
   }
   const { name } = req.body;
   const { teamId } = req.params;
+
+  if (req.user && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden. Only admins can update teams.' });
+  }
+
   return Team.where({ name }).findOne().select('_id').lean()
     .then((foundTeam) => {
       if (foundTeam) {
@@ -84,6 +104,11 @@ exports.addComponents = (req, res) => {
   }
   const { teamId } = req.params;
   const { components } = req.body;
+  
+  if (req.user && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden. Only admins can add components.' });
+  }
+
   return Team.findById(teamId)
     .then((team) => {
       if (!team) {
@@ -104,6 +129,11 @@ exports.delete = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { teamId } = req.params;
+  
+  if (req.user && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden. Only admins can delete teams.' });
+  }
+
   return Team.findByIdAndRemove(teamId)
     .then((team) => {
       if (!team) {
