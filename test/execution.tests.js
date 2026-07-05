@@ -1,8 +1,7 @@
-const request = require('supertest');
 const should = require('should');
 const randomstring = require('randomstring');
 const pino = require('pino');
-const app = require('../server.js');
+const testUtils = require('./test-utils.js');
 const Execution = require('../app/models/execution.js');
 const Environment = require('../app/models/environment.js');
 const { Team } = require('../app/models/team.js');
@@ -14,6 +13,7 @@ let environment;
 let team;
 let build;
 let testbuild = null;
+let request;
 
 describe('Execution API Tests', () => {
   before((done) => {
@@ -51,7 +51,10 @@ describe('Execution API Tests', () => {
       });
       build.save((error, savedBuild) => {
         testbuild = savedBuild;
-        done();
+        testUtils.getAdminAgent().then((agent) => {
+          request = agent;
+          done();
+        }).catch(done);
       });
     }).catch((err) => {
       logger.error(err);
@@ -66,7 +69,7 @@ describe('Execution API Tests', () => {
 
   describe('GET /execution for a specific build', () => {
     it('respond with json containing a list of all executions', (done) => {
-      request(app)
+      request
         .get(`${baseUrl}execution?buildId=${testbuild._id}`)
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
@@ -85,7 +88,7 @@ describe('Execution API Tests', () => {
   //       build: testbuild._id,
   //     };
   //     console.log(testbuild);
-  //     request(app)
+  //     request
   //       .post(`${baseUrl}execution`)
   //       .send(createTestExecutionRequest)
   //       .set('Accept', 'application/json')
@@ -107,7 +110,7 @@ describe('Execution API Tests', () => {
         suite: 'unit-testing-suite',
         build: '123',
       };
-      request(app)
+      request
         .post(`${baseUrl}execution`)
         .send(negativeRequest)
         .set('Accept', 'application/json')
@@ -123,7 +126,7 @@ describe('Execution API Tests', () => {
         suite: 'unit-testing-suite',
         build: testbuild._id,
       };
-      request(app)
+      request
         .post(`${baseUrl}execution`)
         .send(createTestExecutionRequest)
         .set('Accept', 'application/json')
@@ -131,7 +134,7 @@ describe('Execution API Tests', () => {
         .end((err, res) => {
           if (err) return done(err);
           const executionId = res.body._id;
-          request(app)
+          request
             .get(`${baseUrl}execution/${executionId}/history`)
             .set('Accept', 'application/json')
             .expect('Content-Type', /json/)

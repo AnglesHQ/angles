@@ -43,8 +43,8 @@ module.exports = (app, path) => {
       .withMessage('Password must be between 8 and 100 characters.'),
     check('role')
       .optional()
-      .isIn(['admin', 'user'])
-      .withMessage('Role must be one of: admin, user.'),
+      .isIn(['admin', 'user', 'team_lead'])
+      .withMessage('Role must be one of: admin, user, team_lead.'),
     check('authProvider')
       .optional()
       .isIn(['local', 'okta'])
@@ -65,8 +65,8 @@ module.exports = (app, path) => {
     param('userId').isMongoId(),
     check('role')
       .optional()
-      .isIn(['admin', 'user'])
-      .withMessage('Role must be one of: admin, user.'),
+      .isIn(['admin', 'user', 'team_lead'])
+      .withMessage('Role must be one of: admin, user, team_lead.'),
     check('password')
       .optional()
       .isLength({ min: 8, max: 100 })

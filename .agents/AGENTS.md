@@ -68,3 +68,13 @@ Do **not** skip this block on any handler, including `findAll`, `delete`, or any
 - Route files live in `app/routes/` and are named `<resource>.routes.js`.
 - They export a single function `(app, path) => { ... }` and are registered in `server.js`.
 - All routes are mounted under `/rest/api/v1.0` and protected by `authMiddleware.isAuthenticated` (already applied globally in `server.js`) — do **not** re-apply it per-route unless explicitly required.
+
+## 7. Unit Tests Are Mandatory for New Functionality
+
+Every time new functionality is **added** (a new endpoint, controller action, model, or non-trivial behavior change), you MUST add unit tests covering it. Tests must follow the same standards as the existing suite:
+
+- Test files live in `test/` and are named `<resource>.tests.js`, using `mocha` + `supertest` + `pino`, matching the pattern in `test/team.tests.js`.
+- Use `describe`/`it` blocks grouped by endpoint (e.g. `describe('POST /team', ...)`), with a separate `describe('... - negative tests', ...)` block for validation/error-path cases.
+- Cover both the happy path (expected success status, e.g. `200`/`201`) and negative cases (`422` validation errors, `404` not found, `409` conflicts, as applicable).
+- Use `before`/`after` hooks to set up and tear down any test data directly via the Mongoose models (e.g. `Team.deleteMany`, `team.save`, `team.remove`), not via the API.
+- Do not leave new routes, controller logic, or models untested — if you add it, you test it.

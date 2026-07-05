@@ -1,12 +1,12 @@
-const request = require('supertest');
 const pino = require('pino');
-const app = require('../server.js');
+const testUtils = require('./test-utils.js');
 const Phase = require('../app/models/phase.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let phase;
 let createdPhase;
+let request;
 
 describe('Phase API Tests', () => {
   before((done) => {
@@ -22,7 +22,10 @@ describe('Phase API Tests', () => {
           orderNumber: 300,
         });
         phase.save(() => {
-          done();
+          testUtils.getAdminAgent().then((agent) => {
+            request = agent;
+            done();
+          }).catch(done);
         });
       }
     });
@@ -33,7 +36,7 @@ describe('Phase API Tests', () => {
   });
   describe('GET /phase', () => {
     it('respond with json containing a list of all phases', (done) => {
-      request(app)
+      request
         .get(`${baseUrl}phase`)
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
@@ -43,7 +46,7 @@ describe('Phase API Tests', () => {
 
   describe('POST /phase', () => {
     it('respond with 201 when creating a valid phase', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}phase`)
         .send({ name: 'unit-testing-phase-new' })
         .set('Accept', 'application/json')
@@ -60,7 +63,7 @@ describe('Phase API Tests', () => {
 
   describe('POST /phase - negative tests', () => {
     it('respond with 422 when trying to create an phase with empty body', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}phase`)
         .send({})
         .set('Accept', 'application/json')
@@ -69,7 +72,7 @@ describe('Phase API Tests', () => {
     });
 
     it('respond with 422 when trying to create an phase with a very long name', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}phase`)
         .send({ name: 'unit-testing-phase-with-way-too-long-of-a-name' })
         .set('Accept', 'application/json')
@@ -78,7 +81,7 @@ describe('Phase API Tests', () => {
     });
 
     it('respond with 409 when trying to create an phase that already exists', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}phase`)
         .send({ name: phase.name })
         .set('Accept', 'application/json')

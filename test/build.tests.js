@@ -1,7 +1,6 @@
-const request = require('supertest');
 const should = require('should');
 const pino = require('pino');
-const app = require('../server.js');
+const testUtils = require('./test-utils.js');
 const Build = require('../app/models/build.js');
 const Environment = require('../app/models/environment.js');
 const Phase = require('../app/models/phase.js');
@@ -13,6 +12,7 @@ let team;
 let environment;
 let phase;
 let createdBuild;
+let request;
 
 describe('Build API Tests', () => {
   before((done) => {
@@ -39,10 +39,11 @@ describe('Build API Tests', () => {
         environment.save(),
         phase.save(),
       ];
-      Promise.all(savePromises).then(() => {
+      Promise.all(savePromises).then(() => testUtils.getAdminAgent()).then((agent) => {
+        request = agent;
         logger.info('Created required environment, team & phase for build tests.');
         done();
-      });
+      }).catch(done);
     });
   });
   after(() => {
@@ -63,7 +64,7 @@ describe('Build API Tests', () => {
         component: team.components[0].name,
         start: new Date(),
       };
-      request(app)
+      request
         .post(`${baseUrl}build`)
         .send(createBuildRequest)
         .set('Accept', 'application/json')
@@ -80,7 +81,7 @@ describe('Build API Tests', () => {
 
   describe('GET /builds for a team', () => {
     it('respond with json containing a list of all builds for the team', (done) => {
-      request(app)
+      request
         .get(`${baseUrl}build?teamId=${team._id}`)
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
@@ -94,7 +95,7 @@ describe('Build API Tests', () => {
 
   describe('GET /build/:buildId/report', () => {
     it('should retrieve the build report as HTML', (done) => {
-      request(app)
+      request
         .get(`${baseUrl}build/${createdBuild._id}/report`)
         .expect('Content-Type', /html/)
         .expect(200)
@@ -109,7 +110,7 @@ describe('Build API Tests', () => {
 
   describe('POST /build - negative tests', () => {
     it('respond with 422 when trying to create a build with empty body', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}build`)
         .send({})
         .set('Accept', 'application/json')
@@ -125,7 +126,7 @@ describe('Build API Tests', () => {
         component: '',
         start: new Date(),
       };
-      request(app)
+      request
         .post(`${baseUrl}build`)
         .send(createBuildRequest)
         .set('Accept', 'application/json')
@@ -141,7 +142,7 @@ describe('Build API Tests', () => {
         component: '',
         start: new Date(),
       };
-      request(app)
+      request
         .post(`${baseUrl}build`)
         .send(createBuildRequest)
         .set('Accept', 'application/json')
@@ -158,7 +159,7 @@ describe('Build API Tests', () => {
         component: '',
         start: new Date(),
       };
-      request(app)
+      request
         .post(`${baseUrl}build`)
         .send(createBuildRequest)
         .set('Accept', 'application/json')
