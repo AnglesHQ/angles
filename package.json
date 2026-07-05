@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "mocha --exit",
-    "test-with-reporter": "mocha --reporter json > test-results.json --exit"
+    "test-with-reporter": "mocha --reporter json --reporter-options output=test-results.json --exit"
   },
   "repository": {
     "type": "git",
