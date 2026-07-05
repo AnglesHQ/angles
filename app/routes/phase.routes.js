@@ -1,8 +1,9 @@
 const { check, param, oneOf } = require('express-validator');
 const phaseController = require('../controllers/phase.controller.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 
 module.exports = (app, path) => {
-  app.post(`${path}/phase`, [
+  app.post(`${path}/phase`, authMiddleware.authorizeAdmin, [
     check('name')
       .exists()
       .isLength({ max: 30 })
@@ -36,7 +37,7 @@ module.exports = (app, path) => {
 
   ], phaseController.update);
 
-  app.delete(`${path}/phase/:phaseId`, [
+  app.delete(`${path}/phase/:phaseId`, authMiddleware.authorizeAdmin, [
     param('phaseId').isMongoId(),
   ], phaseController.delete);
 };

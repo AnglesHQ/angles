@@ -177,11 +177,17 @@ exports.delete = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { executionId } = req.params;
-  return TestExecution.findByIdAndRemove(executionId)
-    .then((testExecution) => {
-      if (!testExecution) {
+  return TestExecution.findById(executionId)
+    .populate('build')
+    .then((execution) => {
+      if (!execution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      return res.status(200).send({ message: 'Test execution deleted successfully!' });
-    }).catch((err) => handleError(err, res));
+      if (!authMiddleware.hasTeamLeadAccess(req.user, execution.build.team)) {
+        throw new ForbiddenError('You do not have permission to delete this execution');
+      }
+      return TestExecution.findByIdAndRemove(executionId);
+    })
+    .then((testExecution) => res.status(200).send({ message: 'Test execution deleted successfully!' }))
+    .catch((err) => handleError(err, res));
 };

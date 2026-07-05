@@ -8,5 +8,7 @@ module.exports = {
     clientID: process.env.OKTA_CLIENT_ID,
     clientSecret: process.env.OKTA_CLIENT_SECRET,
     callbackURL: process.env.OKTA_CALLBACK_URL || 'http://localhost:3000/auth/okta/callback',
+    adminGroup: process.env.OKTA_ADMIN_GROUP,
+    userGroup: process.env.OKTA_USER_GROUP,
   },
 };

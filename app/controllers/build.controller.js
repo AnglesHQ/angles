@@ -363,8 +363,8 @@ exports.delete = (req, res) => {
     if (!existingBuild) {
       throw new NotFoundError(`No build found with id ${buildId}`);
     }
-    if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
-      throw new ForbiddenError('You do not have access to this build');
+    if (!authMiddleware.hasTeamLeadAccess(req.user, existingBuild.team)) {
+      throw new ForbiddenError('You do not have permission to delete this build');
     }
     return Build.findByIdAndRemove(buildId);
   })
@@ -390,8 +390,8 @@ exports.deleteMany = (req, res) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with id ${teamId}`);
       }
-      if (!authMiddleware.hasTeamAccess(req.user, teamId)) {
-        throw new ForbiddenError('You do not have access to this team');
+      if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+        throw new ForbiddenError('You do not have permission to delete builds for this team');
       }
       const date = new Date();
       let daysToDeletion = 90;

@@ -651,11 +651,18 @@ exports.delete = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { screenshotId } = req.params;
-  return Screenshot.findByIdAndRemove(screenshotId)
-    .then((screenshot) => {
-      if (!screenshot) {
+  return Screenshot.findById(screenshotId)
+    .populate('build')
+    .then((screenshotFound) => {
+      if (!screenshotFound) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
+      if (!authMiddleware.hasTeamLeadAccess(req.user, screenshotFound.build.team)) {
+        throw new ForbiddenError('You do not have permission to delete this screenshot');
+      }
+      return Screenshot.findByIdAndRemove(screenshotId);
+    })
+    .then((screenshot) => {
       fs.unlinkSync(screenshot.path);
       return res.status(200).send({ message: 'Screenshot deleted successfully!' });
     }).catch((err) => handleError(err, res));

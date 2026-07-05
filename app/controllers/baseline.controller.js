@@ -168,13 +168,22 @@ exports.delete = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { baselineId } = req.params;
-  return Baseline.findByIdAndRemove(baselineId)
-    .then((baseline) => {
-      if (!baseline) {
+  return Baseline.findById(baselineId)
+    .populate({
+      path: 'screenshot',
+      populate: { path: 'build' },
+    })
+    .then((baselineFound) => {
+      if (!baselineFound) {
         throw new NotFoundError(`Baseline not found with id ${baselineId}`);
       }
-      return res.status(200).send({ message: 'Baseline deleted successfully!' });
-    }).catch((err) => {
+      if (!authMiddleware.hasTeamLeadAccess(req.user, baselineFound.screenshot.build.team)) {
+        throw new ForbiddenError('You do not have permission to delete this baseline');
+      }
+      return Baseline.findByIdAndRemove(baselineId);
+    })
+    .then((baseline) => res.status(200).send({ message: 'Baseline deleted successfully!' }))
+    .catch((err) => {
       return handleError(err, res);
     });
 };

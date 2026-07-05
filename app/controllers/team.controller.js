@@ -76,8 +76,8 @@ exports.update = (req, res) => {
   const { name } = req.body;
   const { teamId } = req.params;
 
-  if (req.user && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden. Only admins can update teams.' });
+  if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+    return res.status(403).json({ error: 'Forbidden. You do not have permission to update this team.' });
   }
 
   return Team.where({ name }).findOne().select('_id').lean()
@@ -105,8 +105,8 @@ exports.addComponents = (req, res) => {
   const { teamId } = req.params;
   const { components } = req.body;
   
-  if (req.user && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden. Only admins can add components.' });
+  if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+    return res.status(403).json({ error: 'Forbidden. You do not have permission to add components to this team.' });
   }
 
   return Team.findById(teamId)
