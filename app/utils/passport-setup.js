@@ -1,6 +1,6 @@
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
-const OpenIDConnectStrategy = require('passport-openidconnect').Strategy;
+const { Issuer, Strategy: OpenIDConnectStrategy } = require('openid-client');
 const bcrypt = require('bcryptjs');
 const User = require('../models/user');
 const authConfig = require('../../config/auth.config');
@@ -46,17 +46,41 @@ passport.use(new LocalStrategy({
   }
 }));
 
-// Verify callback shared by every Okta strategy registration.
-const oktaVerify = async (issuer, profile, done) => {
-  try {
-    // Find user by email or username
-    const username = profile.emails && profile.emails.length > 0
-      ? profile.emails[0].value
-      : profile.username || profile.id;
+// Tracks whether the OIDC strategy is currently registered and usable. Because
+// configuration is asynchronous (OIDC discovery), Okta can be enabled in settings while
+// the strategy is momentarily unavailable (e.g. discovery failed); the auth routes use
+// this to avoid invoking an unregistered strategy.
+let oktaStrategyReady = false;
 
-    // Extract groups from profile
-    // Depending on Okta config, groups could be in profile._json.groups or profile.groups
-    const groups = profile._json?.groups || profile.groups || [];
+const removeOktaStrategy = () => {
+  oktaStrategyReady = false;
+  try {
+    passport.unuse('oidc');
+  } catch (err) {
+    // Strategy was not registered; nothing to remove.
+  }
+};
+
+// Verify callback shared by every Okta strategy registration. openid-client invokes this
+// with the validated token set and the userinfo response.
+const oktaVerify = async (tokenSet, userInfo, done) => {
+  try {
+    const claims = tokenSet.claims();
+    const profile = userInfo || {};
+
+    // Prefer the email claim; fall back to preferred_username and finally the subject.
+    const identifier = claims.email || profile.email
+      || claims.preferred_username || profile.preferred_username
+      || claims.sub;
+
+    if (!identifier) {
+      return done(null, false, { message: 'Unable to determine a username from the Okta profile.' });
+    }
+    const username = identifier.toLowerCase();
+
+    // Groups may arrive as an ID token claim or from the userinfo endpoint, depending on
+    // how the Okta authorization server is configured to emit the groups claim.
+    const groups = claims.groups || profile.groups || [];
 
     // Map Okta groups to an Angles role (admin > team_lead > user). Returns null
     // when the user belongs to none of the configured groups.
@@ -67,25 +91,23 @@ const oktaVerify = async (issuer, profile, done) => {
       return done(null, false, { message: 'You do not have permission to access this application.' });
     }
 
-    let user = await User.findOne({ username: username.toLowerCase() });
+    let user = await User.findOne({ username });
 
     if (!user) {
       // Auto-provision user on first login
       user = new User({
-        username: username.toLowerCase(),
+        username,
         authProvider: 'okta',
         role: newRole,
         teams: [],
       });
       await user.save();
       log(`Provisioned new Okta user: ${username} with role: ${newRole}`);
-    } else {
+    } else if (user.role !== newRole && user.authProvider === 'okta') {
       // Sync role if it has changed (only for okta users)
-      if (user.role !== newRole && user.authProvider === 'okta') {
-        user.role = newRole;
-        await user.save();
-        log(`Updated role for Okta user: ${username} to: ${newRole}`);
-      }
+      user.role = newRole;
+      await user.save();
+      log(`Updated role for Okta user: ${username} to: ${newRole}`);
     }
     return done(null, user);
   } catch (err) {
@@ -94,45 +116,57 @@ const oktaVerify = async (issuer, profile, done) => {
 };
 
 /**
- * (Re)registers the Okta OIDC strategy from the current authConfig values, or removes
- * it when Okta is disabled / not configured. Safe to call at startup and again whenever
- * the admin updates the auth settings, so issuer/client changes take effect without a
- * restart.
+ * (Re)registers the Okta OIDC strategy from the current authConfig values using OIDC
+ * discovery (the issuer's .well-known/openid-configuration provides all endpoints and the
+ * JWKS for token validation), or removes it when Okta is disabled / not fully configured.
+ *
+ * Asynchronous because of the discovery request. Safe to call at startup and again
+ * whenever the admin updates the auth settings, so changes take effect without a restart.
+ * @returns {Promise<boolean>} whether the strategy is registered afterwards
  */
-const configureOktaStrategy = () => {
-  const oktaReady = authConfig.oktaAuthEnabled && authConfig.okta.issuer && authConfig.okta.clientID;
-  if (oktaReady) {
-    // The issuer is entered free-text in the admin UI; strip any trailing slash so the
-    // derived endpoint URLs don't end up with a double slash (e.g. '…//v1/authorize').
-    const issuer = authConfig.okta.issuer.replace(/\/+$/, '');
+const configureOktaStrategy = async () => {
+  const oktaReady = authConfig.oktaAuthEnabled
+    && authConfig.okta.issuer
+    && authConfig.okta.clientID
+    && authConfig.okta.clientSecret;
+
+  if (!oktaReady) {
+    removeOktaStrategy();
+    return false;
+  }
+
+  try {
+    // The issuer is entered free-text in the admin UI; strip any trailing slash before
+    // discovery so it resolves cleanly.
+    const issuerUrl = authConfig.okta.issuer.replace(/\/+$/, '');
+    const issuer = await Issuer.discover(issuerUrl);
+    const client = new issuer.Client({
+      client_id: authConfig.okta.clientID,
+      client_secret: authConfig.okta.clientSecret,
+      redirect_uris: [authConfig.okta.callbackURL],
+      response_types: ['code'],
+    });
+
     passport.use('oidc', new OpenIDConnectStrategy({
-      issuer,
-      authorizationURL: `${issuer}/v1/authorize`,
-      tokenURL: `${issuer}/v1/token`,
-      userInfoURL: `${issuer}/v1/userinfo`,
-      clientID: authConfig.okta.clientID,
-      clientSecret: authConfig.okta.clientSecret,
-      callbackURL: authConfig.okta.callbackURL,
-      // The strategy always prepends the required 'openid' scope, so it is omitted here
-      // to avoid a duplicate in the authorization request.
-      scope: ['profile', 'email', 'groups'],
-      // Send and verify a nonce for ID token replay protection (state/CSRF is already
-      // handled by the strategy's session state store).
-      nonce: true,
+      client,
+      // Authorization code flow with PKCE (S256). The library also generates and verifies
+      // state for CSRF protection on the callback, and validates the returned ID token
+      // (signature against the discovered JWKS, plus issuer/audience/expiry) before the
+      // verify callback runs.
+      usePKCE: 'S256',
+      params: { scope: 'openid profile email groups' },
     }, oktaVerify));
-    log('Okta OIDC strategy configured.');
-  } else {
-    try {
-      passport.unuse('oidc');
-      log('Okta OIDC strategy removed (Okta disabled or not configured).');
-    } catch (err) {
-      // Strategy was not registered; nothing to remove.
-    }
+
+    oktaStrategyReady = true;
+    log('Okta OIDC strategy configured via discovery for issuer %s', issuer.issuer);
+    return true;
+  } catch (err) {
+    removeOktaStrategy();
+    log('Failed to configure Okta OIDC strategy: %s', err.message);
+    return false;
   }
 };
 
-// Register once at startup from whatever values are currently loaded (env defaults).
-// server.js calls this again after the persisted settings are loaded from the database.
-configureOktaStrategy();
+const isOktaStrategyReady = () => oktaStrategyReady;
 
-module.exports = { passport, configureOktaStrategy };
+module.exports = { passport, configureOktaStrategy, isOktaStrategyReady };

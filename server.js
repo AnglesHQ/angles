@@ -80,7 +80,7 @@ mongoose.connect(mongoURL, {
   // Okta strategy so database-managed values take effect.
   try {
     await authSettingsService.loadAuthSettings();
-    configureOktaStrategy();
+    await configureOktaStrategy();
     logger.info('Auth settings loaded');
   } catch (err) {
     logger.error('Could not load auth settings', err);

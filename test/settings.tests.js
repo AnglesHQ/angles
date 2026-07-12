@@ -2,6 +2,7 @@ const request = require('supertest');
 const should = require('should');
 const pino = require('pino');
 const bcrypt = require('bcryptjs');
+const http = require('http');
 const app = require('../server.js');
 const User = require('../app/models/user.js');
 const AuthSettings = require('../app/models/auth-settings.js');
@@ -14,6 +15,43 @@ describe('Auth Settings API Tests', () => {
   let adminAgent;
   let userAgent;
   let regularUser;
+
+  // A minimal fake OIDC provider so the client can perform real discovery
+  // (.well-known/openid-configuration) without reaching out to a live Okta tenant.
+  let oidcServer;
+  let oidcIssuer;
+
+  before((done) => {
+    oidcServer = http.createServer((req, res) => {
+      if (req.url === '/.well-known/openid-configuration') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          issuer: oidcIssuer,
+          authorization_endpoint: `${oidcIssuer}/v1/authorize`,
+          token_endpoint: `${oidcIssuer}/v1/token`,
+          userinfo_endpoint: `${oidcIssuer}/v1/userinfo`,
+          jwks_uri: `${oidcIssuer}/v1/keys`,
+          response_types_supported: ['code'],
+          subject_types_supported: ['public'],
+          id_token_signing_alg_values_supported: ['RS256'],
+          scopes_supported: ['openid', 'profile', 'email', 'groups'],
+          token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+          code_challenge_methods_supported: ['S256'],
+        }));
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    oidcServer.listen(0, '127.0.0.1', () => {
+      oidcIssuer = `http://127.0.0.1:${oidcServer.address().port}`;
+      done();
+    });
+  });
+
+  after((done) => {
+    oidcServer.close(done);
+  });
 
   before((done) => {
     User.deleteMany({ username: /^settings-testing/ }, (err) => {
@@ -105,7 +143,7 @@ describe('Auth Settings API Tests', () => {
         .put(`${baseUrl}settings/auth`)
         .send({
           oktaAuthEnabled: true,
-          oktaIssuer: 'https://example.okta.com/oauth2/default',
+          oktaIssuer: oidcIssuer,
           oktaClientId: 'test-client-id',
           oktaAdminGroup: 'angles-admins',
           oktaTeamLeadGroup: 'angles-team-leads',
@@ -221,13 +259,13 @@ describe('Auth Settings API Tests', () => {
         });
     });
 
-    it('redirects to the Okta authorize endpoint once enabled and configured', (done) => {
+    it('redirects to the discovered Okta authorize endpoint with PKCE once enabled and configured', (done) => {
       adminAgent
         .put(`${baseUrl}settings/auth`)
         .send({
           oktaAuthEnabled: true,
-          // Deliberately include a trailing slash to verify issuer normalisation.
-          oktaIssuer: 'https://example.okta.com/oauth2/default/',
+          // Deliberately include a trailing slash to verify issuer normalisation before discovery.
+          oktaIssuer: `${oidcIssuer}/`,
           oktaClientId: 'test-client-id',
           oktaClientSecret: 'test-secret',
         })
@@ -240,11 +278,12 @@ describe('Auth Settings API Tests', () => {
             .end((redirectErr, res) => {
               if (redirectErr) return done(redirectErr);
               const { location } = res.headers;
-              // Endpoint is built from the normalised issuer (no double slash).
-              location.should.containEql('https://example.okta.com/oauth2/default/v1/authorize');
-              location.should.not.containEql('/oauth2/default//v1/authorize');
-              // Nonce is sent for ID token replay protection.
-              location.should.containEql('nonce=');
+              // Endpoint comes from OIDC discovery, built on the normalised issuer.
+              location.should.startWith(`${oidcIssuer}/v1/authorize`);
+              // PKCE (S256) code challenge and CSRF state are present.
+              location.should.containEql('code_challenge=');
+              location.should.containEql('code_challenge_method=S256');
+              location.should.containEql('state=');
               // The required openid scope is present exactly once (not duplicated).
               location.should.containEql('scope=openid%20profile%20email%20groups');
               return done();

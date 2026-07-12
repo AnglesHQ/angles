@@ -23,8 +23,9 @@ exports.updateAuthSettings = async (req, res) => {
 
   try {
     const settings = await settingsService.updateAuthSettings(req.body);
-    // Re-register the Okta strategy so issuer/client changes take effect without a restart.
-    configureOktaStrategy();
+    // Re-register the Okta strategy (via OIDC discovery) so issuer/client changes take
+    // effect without a restart.
+    await configureOktaStrategy();
     log('Auth settings updated by admin.');
     return res.status(200).json(settings);
   } catch (err) {

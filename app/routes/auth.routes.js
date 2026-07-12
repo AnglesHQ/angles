@@ -1,6 +1,7 @@
 const { check, validationResult } = require('express-validator');
 const passport = require('passport');
 const authConfig = require('../../config/auth.config');
+const { isOktaStrategyReady } = require('../utils/passport-setup');
 
 module.exports = (app, path) => {
   // Config
@@ -45,6 +46,9 @@ module.exports = (app, path) => {
   const oktaGuard = (req, res, next) => {
     if (!authConfig.oktaAuthEnabled) {
       return res.status(404).json({ error: 'Okta authentication is not enabled.' });
+    }
+    if (!isOktaStrategyReady()) {
+      return res.status(503).json({ error: 'Okta authentication is enabled but not configured correctly.' });
     }
     return next();
   };
