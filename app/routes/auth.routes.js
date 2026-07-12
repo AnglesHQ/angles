@@ -6,8 +6,8 @@ module.exports = (app, path) => {
   // Config
   app.get(`${path}/auth/config`, (req, res) => {
     res.json({
-      localAuthEnabled: true,
-      oktaAuthEnabled: authConfig.authType === 'okta'
+      localAuthEnabled: authConfig.localAuthEnabled !== false,
+      oktaAuthEnabled: authConfig.oktaAuthEnabled === true
     });
   });
 
@@ -38,18 +38,28 @@ module.exports = (app, path) => {
     })(req, res, next);
   });
 
-  // Okta Authentication (only register if configured)
-  if (authConfig.authType === 'okta') {
-    app.get(`${path}/auth/okta`, passport.authenticate('oidc'));
-    
-    app.get(`${path}/auth/okta/callback`, 
-      passport.authenticate('oidc', { failureRedirect: '/login?error=true' }),
-      (req, res) => {
-        // Successful authentication, redirect home or send response
-        res.redirect('/');
-      }
-    );
-  }
+  // Okta Authentication. The routes are always registered because Okta can be enabled at
+  // runtime from the admin settings; they only function once an admin has enabled and
+  // configured Okta (at which point the OIDC strategy is registered). passport.authenticate
+  // is invoked per-request so it picks up the currently-registered strategy.
+  const oktaGuard = (req, res, next) => {
+    if (!authConfig.oktaAuthEnabled) {
+      return res.status(404).json({ error: 'Okta authentication is not enabled.' });
+    }
+    return next();
+  };
+
+  app.get(`${path}/auth/okta`,
+    oktaGuard,
+    (req, res, next) => passport.authenticate('oidc')(req, res, next));
+
+  app.get(`${path}/auth/okta/callback`,
+    oktaGuard,
+    (req, res, next) => passport.authenticate('oidc', { failureRedirect: '/login?error=true' })(req, res, next),
+    (req, res) => {
+      // Successful authentication, redirect home.
+      res.redirect('/');
+    });
 
   // Common Logout
   app.post(`${path}/auth/logout`, (req, res, next) => {

@@ -8,6 +8,10 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo').default || require('connect-mongo');
 const passport = require('passport');
 const authConfig = require('./config/auth.config.js');
+// requiring passport-setup registers the passport strategies (side effect) and exposes
+// the Okta strategy (re)configuration helper used after the DB settings load.
+const { configureOktaStrategy } = require('./app/utils/passport-setup.js');
+const authSettingsService = require('./app/utils/auth-settings-service.js');
 // mongo db config
 const mongoose = require('mongoose');
 const path = require('path');
@@ -70,8 +74,17 @@ mongoose.set('strictQuery', false);
 mongoose.connect(mongoURL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-}).then(() => {
+}).then(async () => {
   logger.info('Successfully connected to the database');
+  // Load persisted auth settings (seeding from env on first run) and (re)configure the
+  // Okta strategy so database-managed values take effect.
+  try {
+    await authSettingsService.loadAuthSettings();
+    configureOktaStrategy();
+    logger.info('Auth settings loaded');
+  } catch (err) {
+    logger.error('Could not load auth settings', err);
+  }
 }).catch((err) => {
   logger.error('Could not connect to the database. Exiting now...', err);
   process.exit();
@@ -93,7 +106,6 @@ app.use(session({
   },
 }));
 
-require('./app/utils/passport-setup.js');
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -109,6 +121,9 @@ app.use('/rest/api/v1.0', authMiddleware.isAuthenticated);
 
 // Add user routes
 require('./app/routes/user.routes.js')(app, '/rest/api/v1.0');
+
+// Add settings routes (admin-only)
+require('./app/routes/settings.routes.js')(app, '/rest/api/v1.0');
 
 // Add routes to server
 require('./app/routes/environment.routes.js')(app, '/rest/api/v1.0');

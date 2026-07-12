@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const app = require('../server.js');
 const User = require('../app/models/user.js');
 const authMiddleware = require('../app/utils/auth-middleware.js');
+const authConfig = require('../config/auth.config.js');
+const { resolveRoleFromGroups } = require('../app/utils/role-mapper.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
@@ -519,6 +521,57 @@ describe('User & Auth API Tests', () => {
 
     it('denies access to a regular user even for their own team', () => {
       authMiddleware.hasTeamLeadAccess({ role: 'user', teams: ['507f1f77bcf86cd799439011'] }, '507f1f77bcf86cd799439011').should.equal(false);
+    });
+  });
+
+  describe('role-mapper.resolveRoleFromGroups', () => {
+    let originalOktaGroups;
+
+    before(() => {
+      originalOktaGroups = {
+        adminGroup: authConfig.okta.adminGroup,
+        teamLeadGroup: authConfig.okta.teamLeadGroup,
+        userGroup: authConfig.okta.userGroup,
+      };
+      authConfig.okta.adminGroup = 'angles-admins';
+      authConfig.okta.teamLeadGroup = 'angles-team-leads';
+      authConfig.okta.userGroup = 'angles-users';
+    });
+
+    after(() => {
+      Object.assign(authConfig.okta, originalOktaGroups);
+    });
+
+    it('maps the admin group to the admin role', () => {
+      should.equal(resolveRoleFromGroups(['angles-admins']), 'admin');
+    });
+
+    it('maps the team lead group to the team_lead role', () => {
+      should.equal(resolveRoleFromGroups(['angles-team-leads']), 'team_lead');
+    });
+
+    it('maps the user group to the user role', () => {
+      should.equal(resolveRoleFromGroups(['angles-users']), 'user');
+    });
+
+    it('grants the highest-privilege role when a user is in multiple groups', () => {
+      should.equal(resolveRoleFromGroups(['angles-users', 'angles-team-leads', 'angles-admins']), 'admin');
+      should.equal(resolveRoleFromGroups(['angles-users', 'angles-team-leads']), 'team_lead');
+    });
+
+    it('returns null when the user is in none of the configured groups', () => {
+      should.equal(resolveRoleFromGroups(['some-other-group']), null);
+    });
+
+    it('returns null for an empty or missing group list', () => {
+      should.equal(resolveRoleFromGroups([]), null);
+      should.equal(resolveRoleFromGroups(), null);
+    });
+
+    it('ignores unconfigured group mappings', () => {
+      authConfig.okta.teamLeadGroup = undefined;
+      should.equal(resolveRoleFromGroups(['angles-team-leads']), null);
+      authConfig.okta.teamLeadGroup = 'angles-team-leads';
     });
   });
 });
