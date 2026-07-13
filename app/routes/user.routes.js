@@ -1,6 +1,7 @@
 const { check, param } = require('express-validator');
 const users = require('../controllers/user.controller');
 const authMiddleware = require('../utils/auth-middleware');
+const { passwordStrength } = require('../utils/password-policy');
 
 module.exports = (app, path) => {
   // Prevent token auth for all user routes
@@ -29,6 +30,20 @@ module.exports = (app, path) => {
     param('tokenId').isMongoId(),
   ], authMiddleware.isAuthenticated, users.revokeToken);
 
+  // Self-service password change (a user changes their own password). Registered before
+  // the admin guard below; the controller enforces that the caller owns the account.
+  app.put(`${path}/users/:userId/password`, [
+    param('userId').isMongoId(),
+    check('currentPassword')
+      .exists({ checkFalsy: true })
+      .withMessage('Current password is mandatory.'),
+    check('newPassword')
+      .exists({ checkFalsy: true })
+      .withMessage('New password is mandatory.')
+      .bail()
+      .custom(passwordStrength),
+  ], authMiddleware.isAuthenticated, users.changePassword);
+
   // Admin-only user management routes
   app.use(`${path}/users`, authMiddleware.authorizeAdmin);
 
@@ -39,8 +54,7 @@ module.exports = (app, path) => {
       .withMessage('Username must only contain letters, numbers, hyphens or underscores (2–50 characters).'),
     check('password')
       .optional()
-      .isLength({ min: 8, max: 100 })
-      .withMessage('Password must be between 8 and 100 characters.'),
+      .custom(passwordStrength),
     check('role')
       .optional()
       .isIn(['admin', 'user', 'team_lead'])
@@ -69,8 +83,7 @@ module.exports = (app, path) => {
       .withMessage('Role must be one of: admin, user, team_lead.'),
     check('password')
       .optional()
-      .isLength({ min: 8, max: 100 })
-      .withMessage('Password must be between 8 and 100 characters.'),
+      .custom(passwordStrength),
     check('teams')
       .optional()
       .isArray()

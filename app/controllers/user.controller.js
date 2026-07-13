@@ -129,6 +129,46 @@ exports.delete = async (req, res) => {
   }
 };
 
+exports.changePassword = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  const { userId } = req.params;
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    // Self-service only: a user may change their own password and no one else's. Admins
+    // change other users' passwords through PUT /users/:userId instead.
+    if (req.user._id.toString() !== userId) {
+      return res.status(403).json({ error: 'Forbidden. You can only change your own password.' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new NotFoundError(`User not found with id ${userId}`);
+    }
+
+    if (user.authProvider !== 'local') {
+      return res.status(400).json({ error: 'Password change is not available for SSO accounts.' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password || '');
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    log(`User "${user.username}" changed their password.`);
+
+    return res.status(200).json({ message: 'Password updated successfully' });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
 exports.generateToken = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

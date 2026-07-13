@@ -12,6 +12,7 @@ const authConfig = require('./config/auth.config.js');
 // the Okta strategy (re)configuration helper used after the DB settings load.
 const { configureOktaStrategy } = require('./app/utils/passport-setup.js');
 const authSettingsService = require('./app/utils/auth-settings-service.js');
+const adminSeedService = require('./app/utils/admin-seed-service.js');
 // mongo db config
 const mongoose = require('mongoose');
 const path = require('path');
@@ -76,6 +77,20 @@ mongoose.connect(mongoURL, {
   useUnifiedTopology: true,
 }).then(async () => {
   logger.info('Successfully connected to the database');
+  // Seed the initial admin account from the deployment-provided password env var
+  // (create-if-missing; see admin-seed-service).
+  try {
+    const result = await adminSeedService.ensureAdminUser();
+    if (result.seeded) {
+      logger.info('Seeded initial admin user "%s"', result.username);
+    } else if (result.reason === 'no-password') {
+      logger.warn('ANGLES_ADMIN_PASSWORD is not set; no admin user was seeded');
+    } else if (result.reason === 'weak-password') {
+      logger.warn('ANGLES_ADMIN_PASSWORD does not meet the strength policy (must %s); no admin user was seeded', result.violations.join(', '));
+    }
+  } catch (err) {
+    logger.error('Could not seed admin user', err);
+  }
   // Load persisted auth settings (seeding from env on first run) and (re)configure the
   // Okta strategy so database-managed values take effect.
   try {

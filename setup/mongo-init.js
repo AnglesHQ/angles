@@ -13,17 +13,10 @@ db.createCollection('baselines');
 db.createCollection('screenshots');
 db.createCollection('users');
 
-// Insert a default admin user with username 'admin' and password 'admin'
-// The password must be pre-hashed using bcrypt since mongo shell cannot run bcrypt.
-db.users.insertOne({
-  username: "admin",
-  password: "$2b$10$OeYsxUK5BMB2mFDU9BKc1..n17Rqdu7kAg9rAYNQUxqfVA1f2193W", // 'admin'
-  role: "admin",
-  teams: [],
-  authProvider: "local",
-  createdAt: new Date(),
-  updatedAt: new Date()
-});
+// The initial admin user is seeded by the backend at startup from the
+// ANGLES_ADMIN_PASSWORD environment variable (see app/utils/admin-seed-service.js).
+// It is intentionally not created here: the mongo shell cannot run bcrypt to hash the
+// deployment-provided password.
 
 db.testexecutions.createIndex({ build: 1 });
 db.testexecutions.createIndex({ suite: 1, title: 1 });

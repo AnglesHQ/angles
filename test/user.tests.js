@@ -16,6 +16,7 @@ describe('User & Auth API Tests', () => {
   let adminAgent;
   let selfAgent;
   let otherAgent;
+  let adminUser;
   let selfUser;
   let otherUser;
   let createdUser;
@@ -33,18 +34,20 @@ describe('User & Auth API Tests', () => {
       return Promise.all([
         bcrypt.hash('unit-testing-Password1', 10),
         bcrypt.hash('unit-testing-Password2', 10),
-      ]).then(([hash1, hash2]) => {
+        bcrypt.hash('unit-testing-AdminPass1!', 10),
+      ]).then(([hash1, hash2, adminHash]) => {
         selfUser = new User({ username: 'unit-testing-self', password: hash1, role: 'user' });
         otherUser = new User({ username: 'unit-testing-other', password: hash2, role: 'user' });
+        adminUser = new User({ username: 'unit-testing-admin', password: adminHash, role: 'admin' });
 
-        return Promise.all([selfUser.save(), otherUser.save()]).then(() => {
+        return Promise.all([selfUser.save(), otherUser.save(), adminUser.save()]).then(() => {
           adminAgent = request.agent(app);
           selfAgent = request.agent(app);
           otherAgent = request.agent(app);
 
           adminAgent
             .post(`${baseUrl}auth/login`)
-            .send({ username: 'admin', password: 'admin' })
+            .send({ username: 'unit-testing-admin', password: 'unit-testing-AdminPass1!' })
             .end((adminErr) => {
               if (adminErr) return done(adminErr);
               return selfAgent
@@ -67,6 +70,7 @@ describe('User & Auth API Tests', () => {
     // clean-up created users
     User.findOneAndRemove({ _id: selfUser._id }).exec();
     User.findOneAndRemove({ _id: otherUser._id }).exec();
+    User.findOneAndRemove({ _id: adminUser._id }).exec();
     if (createdUser) {
       User.findOneAndRemove({ _id: createdUser._id }).exec();
     }
@@ -485,6 +489,51 @@ describe('User & Auth API Tests', () => {
         .get(`${baseUrl}users/${selfUser._id}/tokens`)
         .set('x-api-key', apiKeyTokenString)
         .expect(403, done);
+    });
+  });
+
+  describe('PUT /users/:userId/password (self-service)', () => {
+    it('respond with 422 when the new password does not meet the strength policy', (done) => {
+      selfAgent
+        .put(`${baseUrl}users/${selfUser._id}/password`)
+        .send({ currentPassword: 'unit-testing-Password1', newPassword: 'weak' })
+        .expect(422, done);
+    });
+
+    it('respond with 422 when the current password is missing', (done) => {
+      selfAgent
+        .put(`${baseUrl}users/${selfUser._id}/password`)
+        .send({ newPassword: 'unit-testing-NewPass1!' })
+        .expect(422, done);
+    });
+
+    it('respond with 403 when attempting to change another user\'s password', (done) => {
+      selfAgent
+        .put(`${baseUrl}users/${otherUser._id}/password`)
+        .send({ currentPassword: 'unit-testing-Password2', newPassword: 'unit-testing-NewPass1!' })
+        .expect(403, done);
+    });
+
+    it('respond with 401 when the current password is incorrect', (done) => {
+      selfAgent
+        .put(`${baseUrl}users/${selfUser._id}/password`)
+        .send({ currentPassword: 'unit-testing-WrongPass9!', newPassword: 'unit-testing-NewPass1!' })
+        .expect(401, done);
+    });
+
+    it('respond with 200 and updates the password when the current password is correct', (done) => {
+      selfAgent
+        .put(`${baseUrl}users/${selfUser._id}/password`)
+        .send({ currentPassword: 'unit-testing-Password1', newPassword: 'unit-testing-NewPass1!' })
+        .expect(200)
+        .end((err) => {
+          if (err) return done(err);
+          // Confirm the new password now authenticates via a fresh login.
+          return request(app)
+            .post(`${baseUrl}auth/login`)
+            .send({ username: selfUser.username, password: 'unit-testing-NewPass1!' })
+            .expect(200, done);
+        });
     });
   });
 
