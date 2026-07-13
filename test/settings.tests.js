@@ -7,6 +7,7 @@ const app = require('../server.js');
 const User = require('../app/models/user.js');
 const AuthSettings = require('../app/models/auth-settings.js');
 const authSettingsService = require('../app/utils/auth-settings-service.js');
+const testUtils = require('./test-utils.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
@@ -63,21 +64,16 @@ describe('Auth Settings API Tests', () => {
       return bcrypt.hash('settings-testing-Password1', 10).then((hash) => {
         regularUser = new User({ username: 'settings-testing-user', password: hash, role: 'user' });
 
-        return regularUser.save().then(() => {
-          adminAgent = request.agent(app);
-          userAgent = request.agent(app);
-
-          adminAgent
-            .post(`${baseUrl}auth/login`)
-            .send({ username: 'admin', password: 'admin' })
-            .end((adminErr) => {
-              if (adminErr) return done(adminErr);
-              return userAgent
-                .post(`${baseUrl}auth/login`)
-                .send({ username: 'settings-testing-user', password: 'settings-testing-Password1' })
-                .end(done);
-            });
-        });
+        return regularUser.save()
+          .then(() => testUtils.getAdminAgent())
+          .then((agent) => {
+            adminAgent = agent;
+            userAgent = request.agent(app);
+            userAgent
+              .post(`${baseUrl}auth/login`)
+              .send({ username: 'settings-testing-user', password: 'settings-testing-Password1' })
+              .end(done);
+          });
       }).catch(done);
     });
   });
