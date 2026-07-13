@@ -2,8 +2,11 @@ const { query } = require('express-validator');
 const moment = require('moment');
 const buildController = require('../controllers/metrics.controller.js');
 const screenshotController = require('../controllers/screenshot.controller.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 
 module.exports = (app, path) => {
+  app.use(`${path}/metrics`, authMiddleware.preventTokenAuth);
+
   app.get(`${path}/metrics/phase`, [
     query('teamId')
       .exists()

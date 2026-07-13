@@ -1,12 +1,12 @@
-const request = require('supertest');
 const pino = require('pino');
-const app = require('../server.js');
+const testUtils = require('./test-utils.js');
 const { Team } = require('../app/models/team.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let team;
 let createdTeam;
+let request;
 
 describe('Team API Tests', () => {
   before((done) => {
@@ -22,7 +22,10 @@ describe('Team API Tests', () => {
           components: [{ name: 'component1' }],
         });
         team.save(() => {
-          done();
+          testUtils.getAdminAgent().then((agent) => {
+            request = agent;
+            done();
+          }).catch(done);
         });
       }
     });
@@ -36,7 +39,7 @@ describe('Team API Tests', () => {
 
   describe('GET /team', () => {
     it('respond with json containing a list of all teams', (done) => {
-      request(app)
+      request
         .get(`${baseUrl}team`)
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
@@ -46,7 +49,7 @@ describe('Team API Tests', () => {
 
   describe('POST /team', () => {
     it('respond with 201 when creating a valid team', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}team`)
         .send({ name: 'unit-testing-team-new', components: [{ name: 'component' }] })
         .set('Accept', 'application/json')
@@ -60,7 +63,7 @@ describe('Team API Tests', () => {
     });
 
     it('respond with 201 when adding a component to an existing team', (done) => {
-      request(app)
+      request
         .put(`${baseUrl}team/${team._id}/components`)
         .send({ components: ['component2'] })
         .set('Accept', 'application/json')
@@ -71,7 +74,7 @@ describe('Team API Tests', () => {
 
   describe('POST /team - negative tests', () => {
     it('respond with 422 when trying to create a team with empty body', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}team`)
         .send({})
         .set('Accept', 'application/json')
@@ -80,7 +83,7 @@ describe('Team API Tests', () => {
     });
 
     it('respond with 422 when trying to create a team with a very long name', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}team`)
         .send({ name: 'unit-testing-team-with-a-very-long-testing-name-123', components: [] })
         .set('Accept', 'application/json')
@@ -89,7 +92,7 @@ describe('Team API Tests', () => {
     });
 
     it('respond with 422 when trying to create a team with no components', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}team`)
         .send({ name: 'unit-testing-team-new', components: [] })
         .set('Accept', 'application/json')
@@ -98,7 +101,7 @@ describe('Team API Tests', () => {
     });
 
     it('respond with 422 when trying to create a team with an spaces in name', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}team`)
         .send({ name: 'unit testing team new', components: [{ name: 'component' }] })
         .set('Accept', 'application/json')
@@ -107,7 +110,7 @@ describe('Team API Tests', () => {
     });
 
     it('respond with 409 when trying to create an team that already exists', (done) => {
-      request(app)
+      request
         .post(`${baseUrl}team`)
         .send({ name: 'unit-testing-team', components: [{ name: 'component' }] })
         .set('Accept', 'application/json')
@@ -116,7 +119,7 @@ describe('Team API Tests', () => {
     });
 
     it('respond with 422 when adding an invalid component to an existing team', (done) => {
-      request(app)
+      request
         .put(`${baseUrl}team/${team._id}/components`)
         .send({ components: ['component with space'] })
         .set('Accept', 'application/json')

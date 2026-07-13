@@ -11,6 +11,9 @@ data:
   # change these credentials
   MONGO_ANGLES_USERNAME: "angleshq"
   MONGO_ANGLES_PASSWORD: "Password123"
+  # Initial admin account is seeded on first startup from this password. Change it before
+  # deploying (ideally move it to a Secret referenced via envFrom).
+  ANGLES_ADMIN_PASSWORD: "ChangeMe!1"
 
 ---
 

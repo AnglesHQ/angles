@@ -1,8 +1,9 @@
 const { check, param } = require('express-validator');
 const environmentController = require('../controllers/environment.controller.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 
 module.exports = (app, path) => {
-  app.post(`${path}/environment`, [
+  app.post(`${path}/environment`, authMiddleware.authorizeAdmin, [
     check('name')
       .exists({ checkFalsy: true })
       .matches(/^[A-Za-z0-9-]{2,50}$/)
@@ -23,7 +24,7 @@ module.exports = (app, path) => {
       .withMessage('Name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], environmentController.update);
 
-  app.delete(`${path}/environment/:environmentId`, [
+  app.delete(`${path}/environment/:environmentId`, authMiddleware.authorizeAdmin, [
     param('environmentId').isMongoId(),
   ], environmentController.delete);
 };

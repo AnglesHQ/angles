@@ -1,6 +1,4 @@
-const request = require('supertest');
 const pino = require('pino');
-const app = require('../server.js');
 const testUtils = require('./test-utils.js');
 const Screenshot = require('../app/models/screenshot.js');
 const { Team } = require('../app/models/team.js');
@@ -11,6 +9,7 @@ const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
 let build;
 let screenshot;
+let request;
 
 describe('Screenshot API Tests', () => {
   before((done) => {
@@ -32,6 +31,10 @@ describe('Screenshot API Tests', () => {
           .createBuild(result[0], result[1], 'build-unit-testing-screenshot'))
         .then((createBuild) => {
           build = createBuild;
+          return testUtils.getAdminAgent();
+        })
+        .then((agent) => {
+          request = agent;
           done();
         })
         .catch((exception) => {
@@ -51,7 +54,7 @@ describe('Screenshot API Tests', () => {
   describe('POST /screenshot', () => {
     it('successfully create store a screenshot', (done) => {
       // logger('during');
-      request(app)
+      request
         .post(`${baseUrl}screenshot`)
         .set('Content-Type', 'multipart/form-data')
         .set('Accept', 'application/json')

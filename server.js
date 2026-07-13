@@ -4,6 +4,15 @@ const compression = require('compression');
 const bodyParser = require('body-parser');
 const pino = require('pino');
 const expressPino = require('express-pino-logger');
+const session = require('express-session');
+const MongoStore = require('connect-mongo').default || require('connect-mongo');
+const passport = require('passport');
+const authConfig = require('./config/auth.config.js');
+// requiring passport-setup registers the passport strategies (side effect) and exposes
+// the Okta strategy (re)configuration helper used after the DB settings load.
+const { configureOktaStrategy } = require('./app/utils/passport-setup.js');
+const authSettingsService = require('./app/utils/auth-settings-service.js');
+const adminSeedService = require('./app/utils/admin-seed-service.js');
 // mongo db config
 const mongoose = require('mongoose');
 const path = require('path');
@@ -16,7 +25,37 @@ const mongoURL = process.env.MONGO_URL || dbConfig.url;
 // create express app
 const PORT = process.env.PORT || 3000;
 const app = express();
-app.use(cors());
+
+const corsOptionsDelegate = (req, callback) => {
+  const origin = req.header('Origin');
+  let corsOptions = {
+    credentials: true,
+  };
+
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      const isLocal = (host) => host === 'localhost' || host === '127.0.0.1';
+      const isSameHost = originUrl.hostname === req.hostname || (isLocal(originUrl.hostname) && isLocal(req.hostname));
+
+      if (isSameHost) {
+        corsOptions.origin = true;
+      } else {
+        corsOptions.origin = false;
+        corsOptions.credentials = false;
+      }
+    } catch (e) {
+      corsOptions.origin = false;
+      corsOptions.credentials = false;
+    }
+  } else {
+    corsOptions.origin = false;
+  }
+
+  callback(null, corsOptions);
+};
+
+app.use(cors(corsOptionsDelegate));
 app.use(compression());
 
 // parse requests of content-type - application/x-www-form-urlencoded
@@ -36,8 +75,31 @@ mongoose.set('strictQuery', false);
 mongoose.connect(mongoURL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-}).then(() => {
+}).then(async () => {
   logger.info('Successfully connected to the database');
+  // Seed the initial admin account from the deployment-provided password env var
+  // (create-if-missing; see admin-seed-service).
+  try {
+    const result = await adminSeedService.ensureAdminUser();
+    if (result.seeded) {
+      logger.info('Seeded initial admin user "%s"', result.username);
+    } else if (result.reason === 'no-password') {
+      logger.warn('ANGLES_ADMIN_PASSWORD is not set; no admin user was seeded');
+    } else if (result.reason === 'weak-password') {
+      logger.warn('ANGLES_ADMIN_PASSWORD does not meet the strength policy (must %s); no admin user was seeded', result.violations.join(', '));
+    }
+  } catch (err) {
+    logger.error('Could not seed admin user', err);
+  }
+  // Load persisted auth settings (seeding from env on first run) and (re)configure the
+  // Okta strategy so database-managed values take effect.
+  try {
+    await authSettingsService.loadAuthSettings();
+    await configureOktaStrategy();
+    logger.info('Auth settings loaded');
+  } catch (err) {
+    logger.error('Could not load auth settings', err);
+  }
 }).catch((err) => {
   logger.error('Could not connect to the database. Exiting now...', err);
   process.exit();
@@ -48,8 +110,35 @@ app.set('views', path.join(__dirname, 'app/assets/report'));
 app.set('view engine', 'pug');
 app.locals.moment = require('moment');
 
+// Setup Session and Passport
+app.use(session({
+  secret: authConfig.sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: mongoURL }),
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24, // 1 day
+  },
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Add swagger routes
 require('./swagger/routes/routes.js')(app);
+
+// Add auth routes (unprotected)
+require('./app/routes/auth.routes.js')(app, '/rest/api/v1.0');
+
+// Global authentication middleware for API routes
+const authMiddleware = require('./app/utils/auth-middleware.js');
+app.use('/rest/api/v1.0', authMiddleware.isAuthenticated);
+
+// Add user routes
+require('./app/routes/user.routes.js')(app, '/rest/api/v1.0');
+
+// Add settings routes (admin-only)
+require('./app/routes/settings.routes.js')(app, '/rest/api/v1.0');
 
 // Add routes to server
 require('./app/routes/environment.routes.js')(app, '/rest/api/v1.0');

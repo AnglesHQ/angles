@@ -29,13 +29,10 @@ jobs:
       - name: Trigger tests
         run: MONGO_URL='mongodb://angleshq:%40nglesPassword@127.0.0.1:27017/angles' npm run test-with-reporter
 
-      - name: Modify mocha results (due to bug)
-        run: grep -v '{"level":30' test-results.json >> modified-results.json
-
       - name: Generate test report
         uses: dorny/test-reporter@v3
         if: success() || failure()
         with:
           name: Generate Mocha Tests results
-          path: modified-results.json
+          path: test-results.json
           reporter: mocha-json

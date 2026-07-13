@@ -11,6 +11,12 @@ db.createCollection('phase');
 db.createCollection('environments');
 db.createCollection('baselines');
 db.createCollection('screenshots');
+db.createCollection('users');
+
+// The initial admin user is seeded by the backend at startup from the
+// ANGLES_ADMIN_PASSWORD environment variable (see app/utils/admin-seed-service.js).
+// It is intentionally not created here: the mongo shell cannot run bcrypt to hash the
+// deployment-provided password.
 
 db.testexecutions.createIndex({ build: 1 });
 db.testexecutions.createIndex({ suite: 1, title: 1 });

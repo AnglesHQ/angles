@@ -33,6 +33,14 @@
         {
             "name": "Screenshot",
             "description": "API for managing the screenshots"
+        },
+        {
+            "name": "Auth",
+            "description": "API for authentication and session management"
+        },
+        {
+            "name": "User",
+            "description": "API for managing users and API tokens"
         }
     ],
     "paths": {
@@ -2723,6 +2731,437 @@
                     }
                 }
             }
+        },
+        "/auth/config": {
+            "get": {
+                "tags": ["Auth"],
+                "summary": "Get authentication configuration",
+                "responses": {
+                    "200": {
+                        "description": "Returns which authentication providers are enabled",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "localAuthEnabled": { "type": "boolean" },
+                                        "oktaAuthEnabled": { "type": "boolean" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Login with local credentials",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AuthLogin" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/AuthMe" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Logout current session",
+                "responses": {
+                    "200": {
+                        "description": "Logged out successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "tags": ["Auth"],
+                "summary": "Get current authenticated user",
+                "responses": {
+                    "200": {
+                        "description": "Current user profile",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/AuthMe" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "tags": ["User"],
+                "summary": "Get all users (admin only)",
+                "responses": {
+                    "200": {
+                        "description": "List of all users",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/StoredUser" }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["User"],
+                "summary": "Create a new user (admin only)",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/User" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User created",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/StoredUser" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Username already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}": {
+            "get": {
+                "tags": ["User"],
+                "summary": "Get a user by ID (admin only)",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/StoredUser" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["User"],
+                "summary": "Update a user (admin only)",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "role": { "type": "string", "enum": ["admin", "user"] },
+                                    "teams": { "type": "array", "items": { "type": "string" } },
+                                    "password": { "type": "string", "minLength": 8, "maxLength": 100 }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/StoredUser" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["User"],
+                "summary": "Delete a user (admin only)",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/tokens": {
+            "get": {
+                "tags": ["User"],
+                "summary": "Get API tokens for a user",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of tokens",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/StoredApiToken" }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["User"],
+                "summary": "Generate a new API token for a user",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ApiToken" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Token created — the plain-text token is only returned once",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/NewApiTokenResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/tokens/{tokenId}": {
+            "delete": {
+                "tags": ["User"],
+                "summary": "Revoke an API token",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token revoked",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User or token not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DefaultResponse" }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "servers": [
@@ -3312,6 +3751,107 @@
                         }
                     }
                 ]
+            },
+            "User": {
+                "required": ["username"],
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 50
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 100
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": ["admin", "user", "team_lead"],
+                        "default": "user"
+                    },
+                    "authProvider": {
+                        "type": "string",
+                        "enum": ["local", "okta"],
+                        "default": "local"
+                    },
+                    "teams": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                }
+            },
+            "StoredUser": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/User" },
+                    {
+                        "properties": {
+                            "_id": { "type": "string" },
+                            "createdAt": { "type": "string", "format": "date-time" },
+                            "updatedAt": { "type": "string", "format": "date-time" }
+                        }
+                    }
+                ]
+            },
+            "ApiToken": {
+                "required": ["name", "expiresInDays"],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "expiresInDays": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 365
+                    }
+                }
+            },
+            "StoredApiToken": {
+                "properties": {
+                    "_id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "expiresAt": { "type": "string", "format": "date-time" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "NewApiTokenResponse": {
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "Plain-text token — only returned once at creation time"
+                    },
+                    "name": { "type": "string" },
+                    "expiresAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "AuthLogin": {
+                "required": ["username", "password"],
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 50
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    }
+                }
+            },
+            "AuthMe": {
+                "properties": {
+                    "_id": { "type": "string" },
+                    "username": { "type": "string" },
+                    "role": { "type": "string", "enum": ["admin", "user", "team_lead"] },
+                    "teams": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "authProvider": { "type": "string", "enum": ["local", "okta"] }
+                }
             }
         }
     }

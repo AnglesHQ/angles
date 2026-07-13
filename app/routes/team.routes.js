@@ -1,8 +1,9 @@
 const { check, param } = require('express-validator');
 const teamController = require('../controllers/team.controller.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 
 module.exports = (app, path) => {
-  app.post(`${path}/team`, [
+  app.post(`${path}/team`, authMiddleware.authorizeAdmin, [
     check('name')
       .exists()
       .exists({ checkFalsy: true })
@@ -44,7 +45,7 @@ module.exports = (app, path) => {
       .withMessage('Component name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.addComponents);
 
-  app.delete(`${path}/team/:teamId`, [
+  app.delete(`${path}/team/:teamId`, authMiddleware.authorizeAdmin, [
     param('teamId').isMongoId(),
   ], teamController.delete);
 };
