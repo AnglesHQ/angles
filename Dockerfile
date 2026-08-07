@@ -1,5 +1,18 @@
-# pull official base image
-FROM node:24.12.0
+# ---- dependencies ----
+# Installed in a separate stage so npm's cache and any transient build files
+# never reach the runtime image.
+FROM node:24.12.0-alpine AS deps
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+# npm install (not ci) because the committed package-lock.json is out of sync
+# with package.json; switch to `npm ci` once the lockfile is regenerated.
+RUN npm install --omit=dev --silent --no-audit --no-fund \
+    && npm cache clean --force
+
+# ---- runtime ----
+FROM node:24.12.0-alpine
 
 # set working directory
 WORKDIR /app
@@ -7,31 +20,31 @@ WORKDIR /app
 EXPOSE 3000/tcp
 
 # variables to configure the swagger doc
-ENV REACT_APP_SWAGGER_ANGLES_API_URL=127.0.0.1:3000
-ENV REACT_APP_SWAGGER_SCHEMES=http
+ENV ANGLES_API_URL=127.0.0.1:3000
+ENV SWAGGER_SCHEMES=http
 
 VOLUME /app/screenshots
 VOLUME /app/compares
 
-# required to setup the clean-up crontab
-RUN apt-get update
-RUN apt-get -y install cron vim jq
-RUN apt-get -y --fix-missing install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+# runtime tools required by the clean-up crontab:
+# bash (clean-up.sh uses readarray), curl + jq (query the API), dcron (scheduler)
+# tini: minimal init so SIGTERM reaches node (node ignores it as PID 1)
+RUN apk add --no-cache bash curl jq dcron tini
 
 # crontab
-COPY cleanup /cleanup
-RUN cp /cleanup/crontab /etc/cron.d/angles_cleanup
-RUN chmod 0644 /etc/cron.d/angles_cleanup
-RUN chmod 0644 /etc/crontab
-RUN crontab /etc/cron.d/angles_cleanup
+COPY cleanup /app/cleanup
+RUN cp /app/cleanup/crontab /etc/crontabs/root \
+    && chmod 0644 /etc/crontabs/root
 
 # install app dependencies
-COPY package.json ./
-COPY package-lock.json ./
-RUN npm install --silent
+COPY --from=deps /app/node_modules ./node_modules
 
 # add app
 COPY . ./
 
 # start app
-CMD sh /app/cleanup/entrypoint.sh && cron && touch /var/log/cron.log && node server.js
+# tini runs as PID 1 and forwards SIGTERM to node; `exec` replaces the startup
+# shell with node so the signal reaches it. Without this, node ignores SIGTERM
+# as PID 1 and `docker stop` SIGKILLs it after the 10s grace period.
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["sh", "-c", "sh /app/cleanup/entrypoint.sh && crond && touch /var/log/cron.log && exec node server.js"]
