@@ -3,7 +3,8 @@ const debug = require('debug');
 const TestExecution = require('../models/execution.js');
 const Build = require('../models/build.js');
 const buildMetricsUtils = require('../utils/build-utils.js');
-const { handleError, NotFoundError } = require('../exceptions/errors.js');
+const authMiddleware = require('../utils/auth-middleware.js');
+const { handleError, NotFoundError, ForbiddenError } = require('../exceptions/errors.js');
 
 const log = debug('execution:controller');
 

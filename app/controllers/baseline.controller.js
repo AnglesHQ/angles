@@ -4,10 +4,12 @@ const Baseline = require('../models/baseline.js');
 const Screenshot = require('../models/screenshot.js');
 const validationUtils = require('../utils/validation-utils.js');
 const baselineUtils = require('../utils/baseline-utils.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 const {
   NotFoundError,
   InvalidRequestError,
   ConflictError,
+  ForbiddenError,
   handleError,
 } = require('../exceptions/errors.js');
 

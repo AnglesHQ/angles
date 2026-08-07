@@ -13,7 +13,7 @@ exports.create = (req, res) => {
   }
   const { name, components } = req.body;
   if (req.user && req.user.role !== 'admin') {
-    return next(new ForbiddenError('Only admins can create teams'));
+    return handleError(new ForbiddenError('Only admins can create teams'), res);
   }
   return Team.findOne({ name }).select('_id').lean().exec()
     .then((foundTeam) => {

@@ -11,10 +11,12 @@ const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
 const validationUtils = require('../utils/validation-utils.js');
 const imageUtils = require('../utils/image-utils.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 const {
   NotFoundError,
   ServerError,
   InvalidRequestError,
+  ForbiddenError,
   handleError,
 } = require('../exceptions/errors.js');
 
