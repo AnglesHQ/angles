@@ -4,8 +4,8 @@ metadata:
   name: angles-backend-config
   namespace: angles
 data:
-  REACT_APP_SWAGGER_ANGLES_API_URL: "127.0.0.1:3002"
-  REACT_APP_SWAGGER_SCHEMES: "http"
+  ANGLES_API_BASE_URL: "127.0.0.1:3000"
+  SWAGGER_SCHEMES: "http"
   PORT: "3002"
   BUILD_CLEAN_UP_AGE_IN_DAYS: "90"
   # change these credentials

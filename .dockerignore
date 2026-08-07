@@ -5,3 +5,17 @@ Dockerfile
 Dockerfile.prod
 screenshots/
 compares/
+
+.git
+.github
+.idea
+.vscode
+.claude
+.agents
+.DS_Store
+test
+.eslintrc.js
+LICENSE
+README.md
+npm-debug.log*
+test-results.json

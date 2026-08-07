@@ -64,7 +64,7 @@ spec:
         - containerPort: 3003
           hostPort: 3003
       env:
-        - name: REACT_APP_ANGLES_API_URL
+        - name: ANGLES_API_BASE_URL
           # this url is what the front-end app should call.
           # value: "http://$(ANGLES_BACKEND_SERVICE_SERVICE_HOST):$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"
           value: "http://127.0.0.1:$(ANGLES_BACKEND_SERVICE_SERVICE_PORT)"

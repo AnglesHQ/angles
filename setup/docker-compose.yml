@@ -26,8 +26,9 @@ services:
     ports:
       - 3000:3000
     environment:
-      - REACT_APP_SWAGGER_ANGLES_API_URL=127.0.0.1:3000
-      - REACT_APP_SWAGGER_SCHEMES=http
+      - ANGLES_API_BASE_URL=http://localhost:3000
+      - ANGLES_API_BASE_PATH=/rest/api/v1.0
+      - SWAGGER_SCHEMES=http
       - PORT=3000
       - BUILD_CLEAN_UP_AGE_IN_DAYS=90
       - MONGO_URL=mongodb://angleshq:%40nglesPassword@mongodb:27017/angles
@@ -47,7 +48,8 @@ services:
     ports:
       - 3001:3001
     environment:
-      - REACT_APP_ANGLES_API_URL=http://127.0.0.1:3000
+      - ANGLES_API_BASE_URL=http://localhost:3000
+      - ANGLES_API_BASE_PATH=/rest/api/v1.0
       - PORT=3001
     depends_on:
       - backend
