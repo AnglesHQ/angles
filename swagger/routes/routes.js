@@ -9,7 +9,11 @@ module.exports = (app) => {
 
   let host = '127.0.0.1:3000';
   if (process.env.ANGLES_API_BASE_URL) {
-    host = process.env.ANGLES_API_BASE_URL;
+    if (process.env.ANGLES_API_BASE_PATH) {
+      host = `${process.env.ANGLES_API_BASE_URL}${process.env.ANGLES_API_BASE_PATH}`;
+    } else {
+      host = process.env.ANGLES_API_BASE_URL;
+    }
   }
 
   const serverUrl = host.startsWith('http') ? host : `${scheme}://${host}`;

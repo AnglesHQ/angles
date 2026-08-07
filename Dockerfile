@@ -20,7 +20,8 @@ WORKDIR /app
 EXPOSE 3000/tcp
 
 # variables to configure the swagger doc
-ENV ANGLES_API_URL=127.0.0.1:3000
+ENV ANGLES_API_BASE_URL=127.0.0.1:3000
+ENV ANGLES_API_BASE_PATH=/rest/api/v1.0
 ENV SWAGGER_SCHEMES=http
 
 VOLUME /app/screenshots

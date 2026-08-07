@@ -27,6 +27,7 @@ services:
       - 3000:3000
     environment:
       - ANGLES_API_BASE_URL=http://localhost:3000
+      - ANGLES_API_BASE_PATH=/rest/api/v1.0
       - SWAGGER_SCHEMES=http
       - PORT=3000
       - BUILD_CLEAN_UP_AGE_IN_DAYS=90
