@@ -8,6 +8,21 @@ const { handleError, NotFoundError, ForbiddenError } = require('../exceptions/er
 
 const log = debug('execution:controller');
 
+/**
+ * An execution belongs to a team only indirectly, through its build. Resolves that team and
+ * throws if the caller has no access to it. Admins pass for everything (see hasTeamAccess).
+ */
+const assertExecutionAccess = async (user, execution) => {
+  const build = await Build.findById(execution.build).select('team').lean();
+  if (!build) {
+    throw new NotFoundError(`No build found for execution with id ${execution._id}`);
+  }
+  if (!authMiddleware.hasTeamAccess(user, build.team)) {
+    throw new ForbiddenError('You do not have access to this execution');
+  }
+  return build;
+};
+
 // Create and save a new test execution
 exports.create = (req, res) => {
   // check the request is valid
@@ -45,11 +60,14 @@ exports.findAll = (req, res) => {
   }
   const { buildId, executionIds } = req.query;
   if (buildId) {
-    return Build.findById(buildId).select('_id').lean()
+    return Build.findById(buildId).select('_id team').lean()
       // .populate('suites.executions')
       .then((buildFound) => {
         if (!buildFound) {
           throw new NotFoundError(`No build found with id ${buildId}`);
+        }
+        if (!authMiddleware.hasTeamAccess(req.user, buildFound.team)) {
+          throw new ForbiddenError('You do not have access to this build');
         }
         const query = { build: buildFound._id };
         if (executionIds) {
@@ -61,9 +79,19 @@ exports.findAll = (req, res) => {
       .then((executionsFound) => res.status(200).send(executionsFound))
       .catch((err) => handleError(err, res));
   }
-  // if no buildId provided
+  // If no buildId was provided the executions are looked up by id alone, so restrict them
+  // to builds belonging to the caller's teams (admins are unrestricted).
   const executionIdArray = executionIds.split(',');
-  return TestExecution.find({ _id: { $in: executionIdArray } }).lean()
+  const isAdmin = req.user && req.user.role === 'admin';
+  const buildQuery = isAdmin ? {} : { team: { $in: (req.user && req.user.teams) || [] } };
+  return Build.find(buildQuery).select('_id').lean()
+    .then((builds) => {
+      const query = { _id: { $in: executionIdArray } };
+      if (!isAdmin) {
+        query.build = { $in: builds.map((build) => build._id) };
+      }
+      return TestExecution.find(query).lean();
+    })
     .then((testExecutions) => res.status(200).send(testExecutions))
     .catch((err) => handleError(err, res));
 };
@@ -75,10 +103,11 @@ exports.findOne = (req, res) => {
   }
   const { executionId } = req.params;
   return TestExecution.findById(executionId).lean()
-    .then((testExecution) => {
+    .then(async (testExecution) => {
       if (!testExecution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
+      await assertExecutionAccess(req.user, testExecution);
       return res.status(200).send(testExecution);
     }).catch((err) => handleError(err, res));
 };
@@ -102,6 +131,10 @@ exports.findHistory = (req, res) => {
       const teamId = testExecution.build ? testExecution.build.team : null;
       if (!teamId) {
         throw new NotFoundError(`No team associated with build for execution ${executionId}`);
+      }
+      // The history spans every build for this team, so the caller must have team access.
+      if (!authMiddleware.hasTeamAccess(req.user, teamId)) {
+        throw new ForbiddenError('You do not have access to this execution');
       }
 
       return Build.find({ team: teamId }).select('_id').lean().exec()
@@ -143,15 +176,17 @@ exports.update = (req, res) => {
   }
   const { executionId } = req.params;
   const { name } = req.body;
-  return TestExecution.findByIdAndUpdate(executionId, {
-    name,
-  }, { new: true })
-    .then((testExecution) => {
-      if (!testExecution) {
+  // Fetch before updating: findByIdAndUpdate would write before access could be checked.
+  return TestExecution.findById(executionId).lean()
+    .then(async (existingExecution) => {
+      if (!existingExecution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      return res.status(200).send(testExecution);
-    }).catch((err) => handleError(err, res));
+      await assertExecutionAccess(req.user, existingExecution);
+      return TestExecution.findByIdAndUpdate(executionId, { name }, { new: true });
+    })
+    .then((testExecution) => res.status(200).send(testExecution))
+    .catch((err) => handleError(err, res));
 };
 
 exports.setPlatform = (req, res) => {
@@ -161,15 +196,17 @@ exports.setPlatform = (req, res) => {
   }
   const { executionId } = req.params;
   const { platforms } = req.body;
-  return TestExecution.findByIdAndUpdate(executionId, {
-    platforms,
-  }, { new: true })
-    .then((execution) => {
-      if (!execution) {
+  // Fetch before updating: findByIdAndUpdate would write before access could be checked.
+  return TestExecution.findById(executionId).lean()
+    .then(async (existingExecution) => {
+      if (!existingExecution) {
         throw new NotFoundError(`Execution not found with id ${executionId}`);
       }
-      return res.status(200).send(execution);
-    }).catch((err) => handleError(err, res));
+      await assertExecutionAccess(req.user, existingExecution);
+      return TestExecution.findByIdAndUpdate(executionId, { platforms }, { new: true });
+    })
+    .then((execution) => res.status(200).send(execution))
+    .catch((err) => handleError(err, res));
 };
 
 exports.delete = (req, res) => {

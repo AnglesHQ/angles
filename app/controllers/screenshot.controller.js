@@ -44,6 +44,34 @@ const extractPlatformDetails = (platformDetails) => {
   return platformToStore;
 };
 
+/**
+ * A screenshot belongs to a team only indirectly, through its build. Resolves that team and
+ * throws if the caller has no access to it. Admins pass for everything (see hasTeamAccess).
+ * @param user - req.user
+ * @param screenshot - a screenshot document or lean object
+ */
+const assertScreenshotAccess = async (user, screenshot) => {
+  const build = await Build.findById(screenshot.build).select('team').lean();
+  // A screenshot whose build has been removed cannot be attributed to a team, so there is
+  // nobody it can safely be shown to.
+  if (!build) {
+    throw new NotFoundError(`No build found for screenshot with id ${screenshot._id}`);
+  }
+  if (!authMiddleware.hasTeamAccess(user, build.team)) {
+    throw new ForbiddenError('You do not have access to this screenshot');
+  }
+  return build;
+};
+
+/**
+ * Returns the list of team ids the user may read, or null for users (admins) who may read
+ * everything. Used to constrain listing queries to the caller's own teams.
+ */
+const readableTeamIds = (user) => {
+  if (user && user.role === 'admin') return null;
+  return (user && user.teams) ? user.teams : [];
+};
+
 exports.create = (req, res) => {
   // run validation here.
   const errors = validationResult(req);
@@ -102,7 +130,12 @@ exports.create = (req, res) => {
     .catch((error) => handleError(error, res));
 };
 
-exports.createFail = (error, req, res) => res.status(400).send({ error: error.message });
+// Express only treats a middleware as an error handler when it declares four parameters,
+// so `next` must stay in the signature even though it is unused - without it multer's
+// rejections (bad mime type, invalid buildId) fell through to the default handler and were
+// returned as a 500 with an HTML stack trace instead of this 400.
+// eslint-disable-next-line no-unused-vars
+exports.createFail = (error, req, res, next) => res.status(400).send({ error: error.message });
 
 // TODO: check query
 exports.findAll = (req, res) => {
@@ -122,31 +155,46 @@ exports.findAll = (req, res) => {
   const options = { skip };
   if (limit > 0) { options.limit = limit; }
 
+  // Screenshots are only reachable through their build, so every branch below is
+  // constrained to builds belonging to the caller's teams. Without this, the no-parameter
+  // case in particular would list every screenshot in the system.
+  const teamIds = readableTeamIds(req.user);
+
   let findScreenshotsPromise;
   // use buildId
   if (buildId) {
-    findScreenshotsPromise = Build.findById(buildId).select('_id').lean()
+    findScreenshotsPromise = Build.findById(buildId).select('_id team').lean()
       .then((buildFound) => {
         if (!buildFound) {
           throw new NotFoundError(`No build found with id ${buildId}`);
+        }
+        if (!authMiddleware.hasTeamAccess(req.user, buildFound.team)) {
+          throw new ForbiddenError('You do not have access to this build');
         }
         const query = { build: mongoose.Types.ObjectId(buildId) };
         if (view) { query.view = view; }
         if (platformId) { query.platformId = platformId; }
         return Screenshot.find(query, null, options).lean();
       });
-  } else if (screenshotIds) {
-    const query = { _id: { $in: screenshotIds.split(',') } };
-    if (view) { query.view = view; }
-    if (platformId) { query.platformId = platformId; }
-    findScreenshotsPromise = Screenshot.find(query, null, options).lean();
   } else {
-    // else use view and platform id to find screenshots
-    const query = {};
-    if (view) { query.view = view; }
-    if (platformId) { query.platformId = platformId; }
-    options.sort = { _id: -1 };
-    findScreenshotsPromise = Screenshot.find(query, null, options).lean();
+    // For the remaining branches the build is not named directly, so restrict to the builds
+    // the caller can actually see (teamIds === null means an admin, i.e. no restriction).
+    const buildQuery = teamIds === null ? {} : { team: { $in: teamIds } };
+    findScreenshotsPromise = Build.find(buildQuery).select('_id').lean()
+      .then((builds) => {
+        const query = {};
+        if (teamIds !== null) {
+          query.build = { $in: builds.map((build) => build._id) };
+        }
+        if (screenshotIds) {
+          query._id = { $in: screenshotIds.split(',') };
+        } else {
+          options.sort = { _id: -1 };
+        }
+        if (view) { query.view = view; }
+        if (platformId) { query.platformId = platformId; }
+        return Screenshot.find(query, null, options).lean();
+      });
   }
 
   return findScreenshotsPromise
@@ -167,7 +215,7 @@ exports.findViewNames = (req, res) => {
   const queryLimit = parseInt(limit, 10) || 10;
 
   return Screenshot.aggregate([
-    { $match: { view: { $regex: `^${partialView}` } } },
+    { $match: { view: { $regex: `^${validationUtils.escapeRegex(partialView)}` } } },
     { $group: { _id: '$view' } },
     { $limit: queryLimit },
     { $group: { _id: 0, views: { $push: '$_id' } } },
@@ -196,7 +244,7 @@ exports.findTagNames = (req, res) => {
 
   return Screenshot.aggregate([
     { $unwind: '$tags' },
-    { $match: { tags: { $regex: `^${partialTag}` } } },
+    { $match: { tags: { $regex: `^${validationUtils.escapeRegex(partialTag)}` } } },
     { $group: { _id: '$tags' } },
     { $limit: queryLimit },
     { $group: { _id: 0, tagsArray: { $push: '$_id' } } },
@@ -226,7 +274,9 @@ exports.retrieveScreenshotMetrics = (req, res) => {
   const limit = parseInt(queryLimit, 10) || 10;
   const aggregateViewQuery = [];
   if (viewString) {
-    aggregateViewQuery.push({ $match: { view: { $regex: `^${viewString}` } } });
+    aggregateViewQuery.push({
+      $match: { view: { $regex: `^${validationUtils.escapeRegex(viewString)}` } },
+    });
   }
   aggregateViewQuery.push({
     $group: {
@@ -304,7 +354,10 @@ exports.retrieveScreenshotMetrics = (req, res) => {
     { $limit: limit },
   );
   if (tagString) {
-    aggregateTagsQuery = [{ $match: { tags: { $regex: `^${tagString}` } } }, ...aggregateTagsQuery];
+    aggregateTagsQuery = [
+      { $match: { tags: { $regex: `^${validationUtils.escapeRegex(tagString)}` } } },
+      ...aggregateTagsQuery,
+    ];
   }
   const promises = [
     Screenshot.aggregate(aggregateViewQuery).exec(),
@@ -373,10 +426,11 @@ exports.findOne = (req, res) => {
   }
   const { screenshotId } = req.params;
   return Screenshot.findById(screenshotId).lean()
-    .then((screenshot) => {
+    .then(async (screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
+      await assertScreenshotAccess(req.user, screenshot);
       return res.status(200).send(screenshot);
     })
     .catch((err) => handleError(err, res));
@@ -389,10 +443,11 @@ exports.findOneImage = (req, res) => {
   }
   const { screenshotId } = req.params;
   return Screenshot.findById(screenshotId).lean()
-    .then((screenshot) => {
+    .then(async (screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
+      await assertScreenshotAccess(req.user, screenshot);
       return res.sendFile(path.resolve(`${screenshot.path}`));
     }).catch((err) => handleError(err, res));
 };
@@ -411,6 +466,13 @@ exports.compareImages = (req, res) => {
   return Promise.all(promises).then(async (results) => {
     const screenshot = results[0];
     const screenshotCompare = results[1];
+    if (!screenshot || !screenshotCompare) {
+      throw new NotFoundError('Unable to retrieve one or both images');
+    }
+    // Both images are returned to the caller (as a mismatch percentage), so access to both
+    // has to be checked, not just the one named first.
+    await assertScreenshotAccess(req.user, screenshot);
+    await assertScreenshotAccess(req.user, screenshotCompare);
     try {
       const data = await imageUtils.compareAndGetResult(
         screenshot.path,
@@ -438,12 +500,15 @@ exports.compareImagesAndReturnImage = (req, res) => {
   const { useCache } = req.query;
 
   return Promise.all(promises)
-    .then((results) => {
+    .then(async (results) => {
       const screenshot = results[0];
       const screenshotToCompare = results[1];
       if (screenshot === null || screenshotToCompare === null) {
         throw new NotFoundError('Unable to retrieve one or both images');
       }
+      // The diff image exposes both source images, so check access to both.
+      await assertScreenshotAccess(req.user, screenshot);
+      await assertScreenshotAccess(req.user, screenshotToCompare);
       return imageUtils.compareImages(screenshot, screenshotToCompare, undefined, useCache);
     })
     .then((tempFileName) => res.sendFile(path.resolve(tempFileName)))
@@ -467,10 +532,12 @@ exports.generateDynamicBaselineImage = async (req, res) => {
   const queryHistory = numberOfImagesToCompare || 5;
   let originalScreenshot;
   return Screenshot.findById(screenshotId)
-    .then((screenshot) => {
+    .then(async (screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
+      // This writes a new screenshot back into the build, so it is not a read-only call.
+      await assertScreenshotAccess(req.user, screenshot);
       originalScreenshot = screenshot;
       const options = { skip: 0 };
       if (queryHistory > 0) {
@@ -508,10 +575,11 @@ exports.compareImageAgainstBaseline = (req, res) => {
   let screenshot;
   const { screenshotId } = req.params;
   return Screenshot.findById(screenshotId).lean()
-    .then((screenshotFound) => {
+    .then(async (screenshotFound) => {
       if (!screenshotFound) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
+      await assertScreenshotAccess(req.user, screenshotFound);
       if (!screenshotFound.view) {
         throw new InvalidRequestError(`Screenshot with id ${screenshotId} does not have a view set, so can not be compared.`);
       }
@@ -575,10 +643,11 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
   const { screenshotId } = req.params;
   let screenshotToCompare;
   return Screenshot.findById(screenshotId).lean()
-    .then((screenshot) => {
+    .then(async (screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
+      await assertScreenshotAccess(req.user, screenshot);
       if (!screenshot.view) {
         throw new InvalidRequestError(`Screenshot with id ${screenshotId} does not have a view set, so can not be compared.`);
       }
@@ -630,10 +699,11 @@ exports.update = (req, res) => {
   const { platform, tags } = req.body;
   const { screenshotId } = req.params;
   return Screenshot.findById(screenshotId)
-    .then((screenshot) => {
+    .then(async (screenshot) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
+      await assertScreenshotAccess(req.user, screenshot);
       const screenshotToModify = screenshot;
       if (tags) screenshotToModify.tags = tags;
       if (platform) {

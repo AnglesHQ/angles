@@ -44,9 +44,11 @@ describe('Screenshot API Tests', () => {
     });
   });
 
-  after(() => {
+  after(async () => {
+    // .exec() (and awaiting it) matters: without it the query is never sent and the
+    // screenshot is left behind as an orphan once its build is removed.
     if (screenshot) {
-      Screenshot.deleteOne({ _id: screenshot._id });
+      await Screenshot.deleteOne({ _id: screenshot._id }).exec();
     }
     testUtils.cleanUp();
   });

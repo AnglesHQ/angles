@@ -13,7 +13,12 @@ const Screenshot = require('../models/screenshot.js');
 const Execution = require('../models/execution.js');
 const Baseline = require('../models/baseline.js');
 const Phase = require('../models/phase.js');
-const { NotFoundError, ForbiddenError, handleError } = require('../exceptions/errors.js');
+const {
+  NotFoundError,
+  ForbiddenError,
+  ConflictError,
+  handleError,
+} = require('../exceptions/errors.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 
 const log = debug('build:controller');
@@ -359,15 +364,37 @@ exports.delete = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { buildId } = req.params;
-  return Build.findById(buildId).then((existingBuild) => {
-    if (!existingBuild) {
-      throw new NotFoundError(`No build found with id ${buildId}`);
-    }
-    if (!authMiddleware.hasTeamLeadAccess(req.user, existingBuild.team)) {
-      throw new ForbiddenError('You do not have permission to delete this build');
-    }
-    return Build.findByIdAndRemove(buildId);
-  })
+  return Build.findById(buildId)
+    .then(async (existingBuild) => {
+      if (!existingBuild) {
+        throw new NotFoundError(`No build found with id ${buildId}`);
+      }
+      if (!authMiddleware.hasTeamLeadAccess(req.user, existingBuild.team)) {
+        throw new ForbiddenError('You do not have permission to delete this build');
+      }
+
+      // Same rule as deleteMany: a build whose screenshots back a baseline is never
+      // deleted, otherwise the baseline would be left pointing at a screenshot that no
+      // longer exists and visual comparison for that view would break.
+      const screenshots = await Screenshot.find({ build: existingBuild._id })
+        .select('_id')
+        .lean();
+      const screenshotIds = screenshots.map((screenshot) => screenshot._id);
+      const baselineCount = await Baseline.countDocuments({
+        screenshot: { $in: screenshotIds },
+      });
+      if (baselineCount > 0) {
+        throw new ConflictError(`Unable to delete build with id ${buildId} as ${baselineCount} of its screenshots are used as baselines.`);
+      }
+
+      // Cascade the same way deleteMany does: image files on disk first, then the
+      // screenshot and execution documents, then the build itself.
+      await imageUtils.removeScreenshotDirectories([existingBuild]);
+      await Screenshot.deleteMany({ build: existingBuild._id }).exec();
+      await Execution.deleteMany({ build: existingBuild._id }).exec();
+      log(`Deleting build ${buildId} along with ${screenshotIds.length} screenshot(s).`);
+      return Build.findByIdAndRemove(buildId);
+    })
     .then((build) => {
       if (!build) {
         throw new NotFoundError(`No build found with id ${buildId}`);
@@ -406,10 +433,14 @@ exports.deleteMany = (req, res) => {
     })
     .then((builds) => {
       allBuildsToDelete = builds;
-      return Screenshot.find({ build: { $in: allBuildsToDelete } });
+      // Query by id rather than by whole document - mongoose casts the latter, but only
+      // incidentally, and it sends every full document into the query.
+      const buildIds = allBuildsToDelete.map((build) => build._id);
+      return Screenshot.find({ build: { $in: buildIds } }).select('_id').lean();
     })
-    .then((screenshotsToDelete) => Baseline.find({ screenshot: { $in: screenshotsToDelete } })
-      .populate('screenshot'))
+    .then((screenshotsToDelete) => Baseline.find({
+      screenshot: { $in: screenshotsToDelete.map((screenshot) => screenshot._id) },
+    }).populate('screenshot'))
     .then((baseLines) => {
       // We keep the builds that contain any baseline screenshots
       const baselineScreenshots = baseLines.map((baseline) => baseline.screenshot);
@@ -424,9 +455,11 @@ exports.deleteMany = (req, res) => {
       };
       const promises = [
         imageUtils.removeScreenshotDirectories(buildsToDelete),
-        Screenshot.remove({ build: { $in: buildsToDelete } })
+        // deleteMany rather than the deprecated remove(): remove() is gone in Mongoose 7,
+        // where it would silently stop cleaning these up.
+        Screenshot.deleteMany({ build: { $in: buildsToDeleteIds } })
           .exec(),
-        Execution.remove({ build: { $in: buildsToDelete } })
+        Execution.deleteMany({ build: { $in: buildsToDeleteIds } })
           .exec(),
         Build.deleteMany({ _id: { $in: buildsToDeleteIds } })
           .exec(),

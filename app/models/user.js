@@ -42,5 +42,10 @@ const UserSchema = mongoose.Schema({
 // but we declare it explicitly for clarity and to match project convention)
 UserSchema.index({ username: 1 }, { unique: true });
 
+// Every API-token-authenticated request looks a user up by token hash (see
+// auth-middleware.isAuthenticated). Without this multikey index that lookup is a full
+// collection scan on the hottest authentication path.
+UserSchema.index({ 'apiTokens.tokenHash': 1 });
+
 module.exports = mongoose.model('User', UserSchema);
 
