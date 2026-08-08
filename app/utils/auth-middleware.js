@@ -1,7 +1,9 @@
-const { ForbiddenError, UnauthorizedError } = require('../exceptions/errors');
+const crypto = require('crypto');
+const debug = require('debug');
 
 const User = require('../models/user');
-const crypto = require('crypto');
+
+const log = debug('auth:middleware');
 
 exports.isAuthenticated = async (req, res, next) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
@@ -24,7 +26,10 @@ exports.isAuthenticated = async (req, res, next) => {
         }
       }
     } catch (err) {
-      // Ignore error and fall through to 401
+      // Fall through to the 401 below - we deliberately do not tell the caller whether the
+      // token was rejected or the lookup itself failed. Log it so a database outage is not
+      // silently indistinguishable from a bad token.
+      log('API token lookup failed: %s', err.message);
     }
   }
 

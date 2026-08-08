@@ -68,5 +68,18 @@ module.exports = (app, path) => {
     query('limit')
       .optional()
       .isNumeric(),
+    // view and tag are interpolated into a $regex in the controller (escaped there), so
+    // bound them here as well rather than leaving them entirely unvalidated.
+    query('view')
+      .optional()
+      .isString()
+      .isLength({ max: 100 }),
+    query('tag')
+      .optional()
+      .isString()
+      .isLength({ max: 100 }),
+    query('thumbnail')
+      .optional()
+      .isBoolean(),
   ], screenshotController.retrieveScreenshotMetrics);
 };

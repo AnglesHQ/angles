@@ -1,6 +1,15 @@
 const validationUtils = {};
 
 /*
+Escapes every regular-expression metacharacter in a string so it can be safely interpolated
+into a MongoDB $regex. Without this, user-supplied input is evaluated as a pattern by the
+database: a value such as "(a+)+$" triggers catastrophic backtracking (a denial of service
+against the database itself), and metacharacters can widen a prefix match to return
+documents the caller was not meant to see.
+ */
+validationUtils.escapeRegex = (value) => `${value}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/*
 This function can be used to ensure the baseline platform and the screenshot platform match.
  */
 validationUtils.doPlatformDetailsMatch = (baseline, screenshot) => {

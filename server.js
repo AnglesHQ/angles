@@ -111,6 +111,12 @@ app.set('view engine', 'pug');
 app.locals.moment = require('moment');
 
 // Setup Session and Passport
+// Behind a TLS-terminating reverse proxy, express needs to trust X-Forwarded-* to know the
+// original request was HTTPS; without it a `secure` session cookie is never set.
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
 app.use(session({
   secret: authConfig.sessionSecret,
   resave: false,
@@ -118,6 +124,13 @@ app.use(session({
   store: MongoStore.create({ mongoUrl: mongoURL }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24, // 1 day
+    httpOnly: true, // keep the cookie away from client-side JavaScript
+    sameSite: 'lax', // do not send the session cookie on cross-site requests
+    // Opt-in rather than derived from NODE_ENV: when the app runs behind a TLS-terminating
+    // proxy, `secure` only works together with the `trust proxy` setting below, and turning
+    // it on unconditionally would stop the cookie being set at all. Deployments that serve
+    // over HTTPS should set SECURE_COOKIES=true.
+    secure: process.env.SECURE_COOKIES === 'true',
   },
 }));
 

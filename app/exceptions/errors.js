@@ -26,6 +26,24 @@ class ConflictError extends Error {
   }
 }
 
+class UnauthorizedError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'UnauthorizedError';
+    this.message = message;
+    this.statusCode = 401;
+  }
+}
+
+class ForbiddenError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ForbiddenError';
+    this.message = message;
+    this.statusCode = 403;
+  }
+}
+
 class ServerError extends Error {
   constructor(message) {
     super(message);
@@ -48,6 +66,8 @@ module.exports = {
   InvalidRequestError,
   NotFoundError,
   ConflictError,
+  UnauthorizedError,
+  ForbiddenError,
   ServerError,
   handleError,
 };

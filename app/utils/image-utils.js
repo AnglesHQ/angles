@@ -3,7 +3,10 @@ const path = require('path');
 const debug = require('debug');
 const fsPromises = require('fs').promises;
 const pixelmatch = require('pixelmatch');
-const rimraf = require('rimraf');
+// rimraf v4+ exports named functions rather than a callable module, so destructure it.
+// Requiring the module itself gives an object and every call throws "rimraf is not a
+// function", which silently broke screenshot directory clean-up.
+const { rimraf } = require('rimraf');
 const jimp = require('jimp');
 const Screenshot = require('../models/screenshot.js');
 
@@ -149,11 +152,18 @@ imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes) => {
   };
 };
 
+const SCREENSHOT_ROOT = path.resolve(__dirname, '../../screenshots');
+
 imageUtils.removeScreenshotDirectories = (buildsToDelete) => {
   const buildIds = buildsToDelete.map((build) => build._id.toString());
   log(`Deleting screenshots for builds with ids ${buildIds}`);
   const promises = buildIds.map((buildId) => {
-    const directoryToRemove = path.join(__dirname, `../../screenshots/${buildId}`);
+    const directoryToRemove = path.join(SCREENSHOT_ROOT, buildId);
+    // This is a recursive delete, so never let a malformed id escape the screenshots root.
+    if (!directoryToRemove.startsWith(SCREENSHOT_ROOT + path.sep)) {
+      log(`Refusing to remove directory outside the screenshot root: ${directoryToRemove}`);
+      return Promise.resolve();
+    }
     return rimraf(directoryToRemove).then(() => {
       log(`Removed directory ${directoryToRemove}`);
     });
