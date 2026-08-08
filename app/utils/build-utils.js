@@ -148,10 +148,10 @@ buildMetricsUtils.determineNewState = (existingState, newState) => {
   return newState;
 };
 
-buildMetricsUtils.createExecution = (req, build) => {
+buildMetricsUtils.buildExecution = (executionDetails, build) => {
   const {
     title, suite, start, end, platforms, tags, meta, actions, feature,
-  } = req.body;
+  } = executionDetails;
 
   const testExecution = new TestExecution({
     title,
@@ -170,6 +170,34 @@ buildMetricsUtils.createExecution = (req, build) => {
     buildMetricsUtils.calculateExecutionMetrics(testExecution);
   }
   return testExecution;
+};
+
+buildMetricsUtils.createExecution = (req, build) => buildMetricsUtils
+  .buildExecution(req.body, build);
+
+/**
+ * Attaches many executions to a build in a single save, grouping them into suites the same way
+ * addExecutionToBuild does one at a time. Used when executions are supplied up-front with the
+ * build, so a run of N tests costs one write instead of N read-modify-writes.
+ */
+buildMetricsUtils.addExecutionsToBuild = async (buildOrId, executions) => {
+  const buildId = buildOrId._id || buildOrId;
+  const build = await Build.findById(buildId).populate('suites.executions');
+  if (!build) {
+    throw new Error(`No build found with id ${buildId}`);
+  }
+  executions.forEach((execution) => {
+    const buildSuite = build.suites
+      .find((suite) => suite.name.toLowerCase() === execution.suite.toLowerCase());
+    if (buildSuite === undefined) {
+      log(`Creating suite ${execution.suite} for build ${build._id} and adding test ${execution._id}`);
+      build.suites.push({ name: execution.suite, executions: [execution] });
+    } else {
+      log(`Adding test ${execution._id} to suite ${execution.suite} for build ${build._id}`);
+      buildSuite.executions.push(execution);
+    }
+  });
+  return buildMetricsUtils.calculateBuildMetrics(build).save();
 };
 
 module.exports = buildMetricsUtils;

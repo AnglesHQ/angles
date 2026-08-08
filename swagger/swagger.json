@@ -3360,11 +3360,59 @@
                         "type": "string",
                         "format": "date-time"
                     },
-                    "suites": {
+                    "executions": {
+                        "type": "array",
+                        "description": "Optional test executions to store with the build, so the whole build can be created in a single call. Executions are grouped into suites by their 'suite' name and the build metrics are calculated from them. Omit this to add executions individually afterwards via POST /execution.",
+                        "items": {
+                            "$ref": "#/components/schemas/BuildExecution"
+                        }
+                    }
+                }
+            },
+            "BuildExecution": {
+                "description": "An execution supplied as part of a POST /build request. Identical to Execution but without 'build', which is the build being created.",
+                "required": [
+                    "title",
+                    "suite"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "suite": {
+                        "type": "string"
+                    },
+                    "feature": {
+                        "type": "string"
+                    },
+                    "actions": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Suite"
+                            "$ref": "#/components/schemas/Action"
                         }
+                    },
+                    "platforms": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Platform"
+                        }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "meta": {
+                        "type": "object"
+                    },
+                    "start": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "end": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 }
             },
@@ -3378,6 +3426,12 @@
                             "_id": {
                                 "type": "string",
                                 "uniqueItems": true
+                            },
+                            "suites": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Suite"
+                                }
                             }
                         }
                     }

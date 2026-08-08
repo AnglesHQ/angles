@@ -78,13 +78,13 @@ exports.create = (req, res) => {
         throw new NotFoundError(`No component found with name ${requestComponent}`);
       }
       // create and save build
-      const { name, start } = req.body;
+      const { name, start, executions } = req.body;
       const build = new Build({
         environment: environmentFound,
         team: teamFound,
         name,
         component: matchComponent,
-        suite: [],
+        suites: [],
         start,
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
@@ -92,13 +92,34 @@ exports.create = (req, res) => {
         build.phase = phaseFound._id;
       }
       buildMetricsUtils.calculateBuildMetrics(build);
-      return build.save();
+      return build.save()
+        .then((savedBuild) => {
+          // Executions are optional; when supplied the whole build is created in one call rather
+          // than requiring a POST /execution per test afterwards.
+          if (!executions || executions.length === 0) {
+            return savedBuild;
+          }
+          const testExecutions = executions
+            .map((execution) => buildMetricsUtils.buildExecution(execution, savedBuild));
+          return Execution.insertMany(testExecutions)
+            .then((savedExecutions) => buildMetricsUtils
+              .addExecutionsToBuild(savedBuild, savedExecutions))
+            .catch(async (err) => {
+              // Don't leave a build behind that only partially reflects the executions posted
+              // with it - the caller retries the whole request instead.
+              log(`Failed to add executions to build ${savedBuild._id}, rolling back: ${err.message}`);
+              await Execution.deleteMany({ build: savedBuild._id }).exec();
+              await Build.deleteOne({ _id: savedBuild._id }).exec();
+              throw err;
+            });
+        });
     })
     .then((savedBuild) => Build
       .findOne({ _id: savedBuild._id })
       .populate('team')
       .populate('environment')
       .populate('phase')
+      .populate('suites.executions')
       .lean()
       .exec())
     .then((savedBuild) => {
