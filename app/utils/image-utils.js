@@ -44,9 +44,11 @@ const performPixelmatch = async (path1, path2, ignoredBoxes) => {
 
   // Make ignoredBoxes regions identical in both images so pixelmatch skips them
   if (ignoredBoxes && ignoredBoxes.length > 0) {
-    ignoredBoxes.forEach(({ left, right, top, bottom }) => {
-      for (let y = Math.floor(top); y < Math.ceil(bottom); y++) {
-        for (let x = Math.floor(left); x < Math.ceil(right); x++) {
+    ignoredBoxes.forEach(({
+      left, right, top, bottom,
+    }) => {
+      for (let y = Math.floor(top); y < Math.ceil(bottom); y += 1) {
+        for (let x = Math.floor(left); x < Math.ceil(right); x += 1) {
           if (x >= 0 && x < w && y >= 0 && y < h) {
             const idx = (y * w + x) * 4;
             data2[idx] = data1[idx];
@@ -113,7 +115,10 @@ imageUtils.compareImagesAndPassResultName = (
           ignoredBoxes,
         );
         // Write diff pixels as a PNG via jimp
-        const diffJimp = new jimp({ data: result.diff, width: result.width, height: result.height });
+        // eslint-disable-next-line new-cap
+        const diffJimp = new jimp({
+          data: result.diff, width: result.width, height: result.height,
+        });
         const diffBuffer = await diffJimp.getBufferAsync(jimp.MIME_PNG);
         await fsPromises.writeFile(path.resolve(fileName), diffBuffer);
         resolve(path.resolve(fileName));
@@ -133,7 +138,8 @@ imageUtils.compareImagesAndPassResultName = (
  * @param {string} path1
  * @param {string} path2
  * @param {Array}  ignoredBoxes
- * @returns {Promise<Object>} { misMatchPercentage, rawMisMatchPercentage, isSameDimensions, dimensionDifference }
+ * @returns {Promise<Object>} { misMatchPercentage, rawMisMatchPercentage,
+ *   isSameDimensions, dimensionDifference }
  */
 imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes) => {
   const start = Date.now();

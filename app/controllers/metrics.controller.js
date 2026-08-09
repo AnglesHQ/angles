@@ -148,10 +148,11 @@ exports.retrieveMetricsPerPhase = (req, res) => {
       return Execution.aggregate(query);
     })
     .then((executionsDetails) => {
+      /* eslint no-param-reassign: ["error", { "props": false }] */
       executionsDetails.forEach((execution) => {
         if (execution.team && execution.team.components && execution.componentId) {
           execution.component = execution.team.components.find(
-            (c) => (c._id ? c._id.toString() : c.id) === execution.componentId
+            (c) => (c._id ? c._id.toString() : c.id) === execution.componentId,
           );
         }
         if (execution.team) {

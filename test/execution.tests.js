@@ -134,7 +134,7 @@ describe('Execution API Tests', () => {
         .end((err, res) => {
           if (err) return done(err);
           const executionId = res.body._id;
-          request
+          return request
             .get(`${baseUrl}execution/${executionId}/history`)
             .set('Accept', 'application/json')
             .expect('Content-Type', /json/)
@@ -144,7 +144,7 @@ describe('Execution API Tests', () => {
               historyRes.body.should.have.property('executions');
               historyRes.body.should.have.property('count');
               historyRes.body.count.should.be.greaterThanOrEqual(1);
-              done();
+              return done();
             });
         });
     });

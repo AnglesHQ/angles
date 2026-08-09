@@ -24,6 +24,26 @@ module.exports = (app, path) => {
     check('start')
       .exists()
       .isISO8601(),
+    // Optional executions, so a whole build can be created in a single call. Mirrors the
+    // validation POST /execution applies, minus 'build' which is the build being created here.
+    check('executions').optional().isArray(),
+    check('executions.*.title')
+      .exists()
+      .isString()
+      .isLength({ max: 150 })
+      .withMessage('Max length for test title is 150 characters'),
+    check('executions.*.suite')
+      .exists()
+      .isString()
+      .isLength({ max: 150 })
+      .withMessage('Max length for suite name is 150 characters'),
+    check('executions.*.platforms').optional().isArray(),
+    check('executions.*.platforms.*.platformName').optional().isString(),
+    check('executions.*.platforms.*.platformVersion').optional().isString(),
+    check('executions.*.platforms.*.browserName').optional().isString(),
+    check('executions.*.platforms.*.browserVersion').optional().isString(),
+    check('executions.*.platforms.*.deviceName').optional().isString(),
+    check('executions.*.platforms.*.userAgent').optional().isString(),
   ], buildController.create);
 
   app.get(`${path}/build`, [

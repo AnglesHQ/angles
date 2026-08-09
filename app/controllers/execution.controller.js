@@ -226,6 +226,6 @@ exports.delete = (req, res) => {
       }
       return TestExecution.findByIdAndRemove(executionId);
     })
-    .then((testExecution) => res.status(200).send({ message: 'Test execution deleted successfully!' }))
+    .then(() => res.status(200).send({ message: 'Test execution deleted successfully!' }))
     .catch((err) => handleError(err, res));
 };

@@ -2,6 +2,7 @@ const should = require('should');
 const pino = require('pino');
 const testUtils = require('./test-utils.js');
 const Build = require('../app/models/build.js');
+const Execution = require('../app/models/execution.js');
 const Environment = require('../app/models/environment.js');
 const Phase = require('../app/models/phase.js');
 const { Team } = require('../app/models/team.js');
@@ -12,6 +13,8 @@ let team;
 let environment;
 let phase;
 let createdBuild;
+let buildWithExecutions;
+let emptyExecutionsBuild;
 let request;
 
 describe('Build API Tests', () => {
@@ -52,6 +55,13 @@ describe('Build API Tests', () => {
     environment.remove();
     phase.remove();
     Build.findOneAndRemove({ _id: createdBuild._id }).exec();
+    if (buildWithExecutions) {
+      Execution.deleteMany({ build: buildWithExecutions._id }).exec();
+      Build.findOneAndRemove({ _id: buildWithExecutions._id }).exec();
+    }
+    if (emptyExecutionsBuild) {
+      Build.findOneAndRemove({ _id: emptyExecutionsBuild._id }).exec();
+    }
   });
 
   describe('POST /build', () => {
@@ -74,6 +84,120 @@ describe('Build API Tests', () => {
           if (err) return done(err);
           res.body._id.should.match(/[a-f\d]{24}/);
           createdBuild = res.body;
+          return done();
+        });
+    });
+  });
+
+  describe('POST /build with executions', () => {
+    it('successfully create build and its executions in a single call', (done) => {
+      const start = new Date();
+      const end = new Date(start.getTime() + 1000);
+      const createBuildRequest = {
+        environment: environment.name,
+        team: team.name,
+        name: 'build-unit-testing-build-with-executions',
+        component: team.components[0].name,
+        start,
+        executions: [
+          {
+            title: 'passing-test',
+            suite: 'suite-one',
+            start,
+            end,
+            actions: [{
+              name: 'action-one',
+              steps: [{
+                name: 'step-one', status: 'PASS', timestamp: start,
+              }],
+            }],
+          },
+          {
+            title: 'failing-test',
+            suite: 'suite-one',
+            start,
+            end,
+            actions: [{
+              name: 'action-one',
+              steps: [{
+                name: 'step-one', status: 'FAIL', timestamp: end,
+              }],
+            }],
+          },
+          {
+            title: 'another-passing-test',
+            suite: 'suite-two',
+            start,
+            end,
+            actions: [{
+              name: 'action-one',
+              steps: [{
+                name: 'step-one', status: 'PASS', timestamp: start,
+              }],
+            }],
+          },
+        ],
+      };
+      request
+        .post(`${baseUrl}build`)
+        .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .end((err, res) => {
+          if (err) return done(err);
+          buildWithExecutions = res.body;
+          res.body._id.should.match(/[a-f\d]{24}/);
+          // executions should be grouped into suites by their suite name
+          res.body.suites.should.have.length(2);
+          const suiteOne = res.body.suites.find((suite) => suite.name === 'suite-one');
+          const suiteTwo = res.body.suites.find((suite) => suite.name === 'suite-two');
+          suiteOne.executions.should.have.length(2);
+          suiteTwo.executions.should.have.length(1);
+          // and the build metrics should be rolled up from them
+          res.body.result.PASS.should.equal(2);
+          res.body.result.FAIL.should.equal(1);
+          res.body.status.should.equal('FAIL');
+          return done();
+        });
+    });
+
+    it('respond with 422 when an execution in the array is missing a suite', (done) => {
+      const createBuildRequest = {
+        environment: environment.name,
+        team: team.name,
+        name: 'build-unit-testing-build-invalid-executions',
+        component: team.components[0].name,
+        start: new Date(),
+        executions: [{ title: 'no-suite-test' }],
+      };
+      request
+        .post(`${baseUrl}build`)
+        .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(422, done);
+    });
+
+    it('successfully create build when executions is an empty array', (done) => {
+      const createBuildRequest = {
+        environment: environment.name,
+        team: team.name,
+        name: 'build-unit-testing-build-empty-executions',
+        component: team.components[0].name,
+        start: new Date(),
+        executions: [],
+      };
+      request
+        .post(`${baseUrl}build`)
+        .send(createBuildRequest)
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .end((err, res) => {
+          if (err) return done(err);
+          emptyExecutionsBuild = res.body;
+          res.body.suites.should.have.length(0);
           return done();
         });
     });
@@ -103,7 +227,7 @@ describe('Build API Tests', () => {
           if (err) return done(err);
           res.text.should.containEql('<html>');
           res.text.should.containEql('build-unit-testing-build');
-          done();
+          return done();
         });
     });
   });

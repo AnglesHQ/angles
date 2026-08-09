@@ -48,4 +48,3 @@ UserSchema.index({ username: 1 }, { unique: true });
 UserSchema.index({ 'apiTokens.tokenHash': 1 });
 
 module.exports = mongoose.model('User', UserSchema);
-

@@ -1,4 +1,3 @@
-const debug = require('debug');
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
 const app = require('../server.js');
@@ -8,7 +7,6 @@ const { Team } = require('../app/models/team.js');
 const Build = require('../app/models/build.js');
 const buildUtils = require('../app/utils/build-utils.js');
 
-const logger = debug('testUtils');
 const baseUrl = '/rest/api/v1.0/';
 
 // Shared admin credentials for the test suites. The admin account used to be seeded by

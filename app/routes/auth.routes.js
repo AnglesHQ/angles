@@ -1,14 +1,14 @@
 const { check, validationResult } = require('express-validator');
 const passport = require('passport');
-const authConfig = require('../../config/auth.config');
-const { isOktaStrategyReady } = require('../utils/passport-setup');
+const authConfig = require('../../config/auth.config.js');
+const { isOktaStrategyReady } = require('../utils/passport-setup.js');
 
 module.exports = (app, path) => {
   // Config
   app.get(`${path}/auth/config`, (req, res) => {
     res.json({
       localAuthEnabled: authConfig.localAuthEnabled !== false,
-      oktaAuthEnabled: authConfig.oktaAuthEnabled === true
+      oktaAuthEnabled: authConfig.oktaAuthEnabled === true,
     });
   });
 
@@ -32,9 +32,14 @@ module.exports = (app, path) => {
       if (!user) {
         return res.status(401).json({ error: info.message || 'Login failed' });
       }
-      req.logIn(user, (err) => {
-        if (err) return next(err);
-        return res.json({ message: 'Logged in successfully', user: { _id: user._id, username: user.username, role: user.role, teams: user.teams } });
+      return req.logIn(user, (loginErr) => {
+        if (loginErr) return next(loginErr);
+        return res.json({
+          message: 'Logged in successfully',
+          user: {
+            _id: user._id, username: user.username, role: user.role, teams: user.teams,
+          },
+        });
       });
     })(req, res, next);
   });
@@ -53,23 +58,27 @@ module.exports = (app, path) => {
     return next();
   };
 
-  app.get(`${path}/auth/okta`,
+  app.get(
+    `${path}/auth/okta`,
     oktaGuard,
-    (req, res, next) => passport.authenticate('oidc')(req, res, next));
+    (req, res, next) => passport.authenticate('oidc')(req, res, next),
+  );
 
-  app.get(`${path}/auth/okta/callback`,
+  app.get(
+    `${path}/auth/okta/callback`,
     oktaGuard,
     (req, res, next) => passport.authenticate('oidc', { failureRedirect: '/login?error=true' })(req, res, next),
     (req, res) => {
       // Successful authentication, redirect home.
       res.redirect('/');
-    });
+    },
+  );
 
   // Common Logout
   app.post(`${path}/auth/logout`, (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
-      res.json({ message: 'Logged out successfully' });
+      return res.json({ message: 'Logged out successfully' });
     });
   });
 

@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
-const settingsService = require('../utils/auth-settings-service');
-const { configureOktaStrategy } = require('../utils/passport-setup');
+const settingsService = require('../utils/auth-settings-service.js');
+const { configureOktaStrategy } = require('../utils/passport-setup.js');
 const { handleError } = require('../exceptions/errors.js');
 
 const log = debug('settings:controller');

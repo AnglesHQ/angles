@@ -54,7 +54,7 @@ exports.create = (req, res) => {
       if (teamFound === null || teamFound === undefined) {
         throw new NotFoundError(`No team found with name ${team}`);
       }
-      
+
       if (!authMiddleware.hasTeamAccess(req.user, teamFound._id)) {
         throw new ForbiddenError('You do not have access to this team');
       }
@@ -78,13 +78,13 @@ exports.create = (req, res) => {
         throw new NotFoundError(`No component found with name ${requestComponent}`);
       }
       // create and save build
-      const { name, start } = req.body;
+      const { name, start, executions } = req.body;
       const build = new Build({
         environment: environmentFound,
         team: teamFound,
         name,
         component: matchComponent,
-        suite: [],
+        suites: [],
         start,
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
@@ -92,13 +92,34 @@ exports.create = (req, res) => {
         build.phase = phaseFound._id;
       }
       buildMetricsUtils.calculateBuildMetrics(build);
-      return build.save();
+      return build.save()
+        .then((savedBuild) => {
+          // Executions are optional; when supplied the whole build is created in one call rather
+          // than requiring a POST /execution per test afterwards.
+          if (!executions || executions.length === 0) {
+            return savedBuild;
+          }
+          const testExecutions = executions
+            .map((execution) => buildMetricsUtils.buildExecution(execution, savedBuild));
+          return Execution.insertMany(testExecutions)
+            .then((savedExecutions) => buildMetricsUtils
+              .addExecutionsToBuild(savedBuild, savedExecutions))
+            .catch(async (err) => {
+              // Don't leave a build behind that only partially reflects the executions posted
+              // with it - the caller retries the whole request instead.
+              log(`Failed to add executions to build ${savedBuild._id}, rolling back: ${err.message}`);
+              await Execution.deleteMany({ build: savedBuild._id }).exec();
+              await Build.deleteOne({ _id: savedBuild._id }).exec();
+              throw err;
+            });
+        });
     })
     .then((savedBuild) => Build
       .findOne({ _id: savedBuild._id })
       .populate('team')
       .populate('environment')
       .populate('phase')
+      .populate('suites.executions')
       .lean()
       .exec())
     .then((savedBuild) => {
@@ -255,9 +276,8 @@ exports.getReport = (req, res) => {
       const query = { build: mongoose.Types.ObjectId(build._id) };
       return Screenshot.find(query).lean();
     })
-    .then((screenshots) =>
-      // eslint-disable-next-line global-require
-      res.render('index', { build, screenshots, moment: require('moment') }))
+    // eslint-disable-next-line global-require
+    .then((screenshots) => res.render('index', { build, screenshots, moment: require('moment') }))
     .catch((err) => handleError(err, res));
 };
 
@@ -278,11 +298,12 @@ exports.update = (req, res) => {
     if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
       throw new ForbiddenError('You do not have access to this build');
     }
-    // if team is being updated, check if user has access to new team. (team comes as name or id? assume id for update)
+    // if team is being updated, check if user has access to new team.
+    // (team comes as name or id? assume id for update)
     if (team && existingBuild.team.toString() !== team.toString()) {
-       if (!authMiddleware.hasTeamAccess(req.user, team)) {
-         throw new ForbiddenError('You do not have access to the new team');
-       }
+      if (!authMiddleware.hasTeamAccess(req.user, team)) {
+        throw new ForbiddenError('You do not have access to the new team');
+      }
     }
     return Build.findByIdAndUpdate(buildId, {
       team,
@@ -339,9 +360,9 @@ exports.setArtifacts = (req, res) => {
     return Build.findByIdAndUpdate(buildId, {
       artifacts: req.body.artifacts,
     }, { new: true })
-    .populate('team')
-    .populate('environment')
-    .populate('phase');
+      .populate('team')
+      .populate('environment')
+      .populate('phase');
   })
     .then((build) => {
       if (!build) {

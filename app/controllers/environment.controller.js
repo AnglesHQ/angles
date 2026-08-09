@@ -36,9 +36,7 @@ exports.findAll = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   return Environment.find().lean()
-    .then((environments) => {
-      return res.status(200).send(environments);
-    })
+    .then((environments) => res.status(200).send(environments))
     .catch((err) => handleError(err, res));
 };
 

@@ -5,8 +5,12 @@ const bodyParser = require('body-parser');
 const pino = require('pino');
 const expressPino = require('express-pino-logger');
 const session = require('express-session');
+// connect-mongo exports differently across versions; support both shapes.
+// eslint-disable-next-line global-require
 const MongoStore = require('connect-mongo').default || require('connect-mongo');
 const passport = require('passport');
+const mongoose = require('mongoose');
+const path = require('path');
 const authConfig = require('./config/auth.config.js');
 // requiring passport-setup registers the passport strategies (side effect) and exposes
 // the Okta strategy (re)configuration helper used after the DB settings load.
@@ -14,8 +18,6 @@ const { configureOktaStrategy } = require('./app/utils/passport-setup.js');
 const authSettingsService = require('./app/utils/auth-settings-service.js');
 const adminSeedService = require('./app/utils/admin-seed-service.js');
 // mongo db config
-const mongoose = require('mongoose');
-const path = require('path');
 const dbConfig = require('./config/database.config.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
@@ -28,7 +30,7 @@ const app = express();
 
 const corsOptionsDelegate = (req, callback) => {
   const origin = req.header('Origin');
-  let corsOptions = {
+  const corsOptions = {
     credentials: true,
   };
 
@@ -36,7 +38,8 @@ const corsOptionsDelegate = (req, callback) => {
     try {
       const originUrl = new URL(origin);
       const isLocal = (host) => host === 'localhost' || host === '127.0.0.1';
-      const isSameHost = originUrl.hostname === req.hostname || (isLocal(originUrl.hostname) && isLocal(req.hostname));
+      const isSameHost = originUrl.hostname === req.hostname
+        || (isLocal(originUrl.hostname) && isLocal(req.hostname));
 
       if (isSameHost) {
         corsOptions.origin = true;
@@ -145,6 +148,7 @@ require('./app/routes/auth.routes.js')(app, '/rest/api/v1.0');
 
 // Global authentication middleware for API routes
 const authMiddleware = require('./app/utils/auth-middleware.js');
+
 app.use('/rest/api/v1.0', authMiddleware.isAuthenticated);
 
 // Add user routes

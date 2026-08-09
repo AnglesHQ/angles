@@ -1,7 +1,9 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
 const { Team, Component } = require('../models/team.js');
-const { ConflictError, NotFoundError, ForbiddenError, handleError } = require('../exceptions/errors.js');
+const {
+  ConflictError, NotFoundError, ForbiddenError, handleError,
+} = require('../exceptions/errors.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 
 const log = debug('team:controller');
@@ -25,7 +27,8 @@ exports.create = (req, res) => {
         components,
       });
       return team.save();
-    }).then((savedTeam) => {
+    })
+    .then((savedTeam) => {
       log(`Created team "${savedTeam.name}" with id: "${savedTeam._id}"`);
       return res.status(201).send(savedTeam);
     })
@@ -37,7 +40,7 @@ exports.findAll = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  
+
   let query = {};
   if (req.user && req.user.role !== 'admin') {
     query = { _id: { $in: req.user.teams } };
@@ -54,7 +57,7 @@ exports.findOne = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { teamId } = req.params;
-  
+
   if (!authMiddleware.hasTeamAccess(req.user, teamId)) {
     return res.status(403).json({ error: 'Forbidden. You do not have access to this team.' });
   }
@@ -88,7 +91,8 @@ exports.update = (req, res) => {
       return Team.findByIdAndUpdate(teamId, {
         name: req.body.name,
       }, { new: true });
-    }).then((team) => {
+    })
+    .then((team) => {
       if (!team) {
         throw new NotFoundError(`Team not found with id ${teamId}`);
       }
@@ -104,7 +108,7 @@ exports.addComponents = (req, res) => {
   }
   const { teamId } = req.params;
   const { components } = req.body;
-  
+
   if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
     return res.status(403).json({ error: 'Forbidden. You do not have permission to add components to this team.' });
   }
@@ -129,7 +133,7 @@ exports.delete = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { teamId } = req.params;
-  
+
   if (req.user && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Forbidden. Only admins can delete teams.' });
   }
