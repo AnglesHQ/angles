@@ -1,7 +1,7 @@
 const { check, param } = require('express-validator');
-const users = require('../controllers/user.controller');
-const authMiddleware = require('../utils/auth-middleware');
-const { passwordStrength } = require('../utils/password-policy');
+const users = require('../controllers/user.controller.js');
+const authMiddleware = require('../utils/auth-middleware.js');
+const { passwordStrength } = require('../utils/password-policy.js');
 
 module.exports = (app, path) => {
   // Prevent token auth for all user routes

@@ -227,7 +227,7 @@ describe('Build API Tests', () => {
           if (err) return done(err);
           res.text.should.containEql('<html>');
           res.text.should.containEql('build-unit-testing-build');
-          done();
+          return done();
         });
     });
   });

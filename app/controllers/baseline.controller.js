@@ -94,12 +94,8 @@ exports.findAll = (req, res) => {
   return Baseline.find(baseLineQuery)
     .populate('screenshot')
     .lean()
-    .then((baselines) => {
-      return res.status(200).send(baselines);
-    })
-    .catch((err) => {
-      return handleError(err, res);
-    });
+    .then((baselines) => res.status(200).send(baselines))
+    .catch((err) => handleError(err, res));
 };
 
 exports.findOne = (req, res) => {
@@ -156,12 +152,8 @@ exports.update = (req, res) => {
       return baselineFound.save();
     })
     .then((savedBaseline) => savedBaseline.populate('screenshot'))
-    .then((savedBaselineWithScreenshot) => {
-      return res.status(200).send(savedBaselineWithScreenshot);
-    })
-    .catch((err) => {
-      return handleError(err, res);
-    });
+    .then((savedBaselineWithScreenshot) => res.status(200).send(savedBaselineWithScreenshot))
+    .catch((err) => handleError(err, res));
 };
 
 exports.delete = (req, res) => {
@@ -184,8 +176,6 @@ exports.delete = (req, res) => {
       }
       return Baseline.findByIdAndRemove(baselineId);
     })
-    .then((baseline) => res.status(200).send({ message: 'Baseline deleted successfully!' }))
-    .catch((err) => {
-      return handleError(err, res);
-    });
+    .then(() => res.status(200).send({ message: 'Baseline deleted successfully!' }))
+    .catch((err) => handleError(err, res));
 };

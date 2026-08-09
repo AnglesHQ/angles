@@ -1,4 +1,4 @@
-const authConfig = require('../../config/auth.config');
+const authConfig = require('../../config/auth.config.js');
 
 /**
  * Ordered highest-privilege first, so a user who belongs to more than one mapped

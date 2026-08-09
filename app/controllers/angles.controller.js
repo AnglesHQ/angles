@@ -21,7 +21,5 @@ exports.versions = (req, res) => {
         angles: version,
       };
       return res.status(200).send(response);
-    }).catch((err) => {
-      return handleError(err, res);
-    });
+    }).catch((err) => handleError(err, res));
 };

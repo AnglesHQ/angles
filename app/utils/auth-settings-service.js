@@ -1,6 +1,6 @@
 const debug = require('debug');
-const AuthSettings = require('../models/auth-settings');
-const authConfig = require('../../config/auth.config');
+const AuthSettings = require('../models/auth-settings.js');
+const authConfig = require('../../config/auth.config.js');
 
 const log = debug('auth:settings');
 
@@ -103,7 +103,9 @@ const updateAuthSettings = async (payload = {}) => {
   const settings = await AuthSettings.findOneAndUpdate(
     { singleton: 'auth' },
     { $set: update, $setOnInsert: { singleton: 'auth' } },
-    { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
+    {
+      new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true,
+    },
   ).select('+oktaClientSecret');
 
   applyToRuntime(settings);

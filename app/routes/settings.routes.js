@@ -1,6 +1,6 @@
 const { check } = require('express-validator');
-const settings = require('../controllers/settings.controller');
-const authMiddleware = require('../utils/auth-middleware');
+const settings = require('../controllers/settings.controller.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 
 module.exports = (app, path) => {
   // Settings are admin-only and cannot be managed with an API token.

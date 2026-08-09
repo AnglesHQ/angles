@@ -54,7 +54,7 @@ exports.create = (req, res) => {
       if (teamFound === null || teamFound === undefined) {
         throw new NotFoundError(`No team found with name ${team}`);
       }
-      
+
       if (!authMiddleware.hasTeamAccess(req.user, teamFound._id)) {
         throw new ForbiddenError('You do not have access to this team');
       }
@@ -276,9 +276,8 @@ exports.getReport = (req, res) => {
       const query = { build: mongoose.Types.ObjectId(build._id) };
       return Screenshot.find(query).lean();
     })
-    .then((screenshots) =>
-      // eslint-disable-next-line global-require
-      res.render('index', { build, screenshots, moment: require('moment') }))
+    // eslint-disable-next-line global-require
+    .then((screenshots) => res.render('index', { build, screenshots, moment: require('moment') }))
     .catch((err) => handleError(err, res));
 };
 
@@ -299,11 +298,12 @@ exports.update = (req, res) => {
     if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
       throw new ForbiddenError('You do not have access to this build');
     }
-    // if team is being updated, check if user has access to new team. (team comes as name or id? assume id for update)
+    // if team is being updated, check if user has access to new team.
+    // (team comes as name or id? assume id for update)
     if (team && existingBuild.team.toString() !== team.toString()) {
-       if (!authMiddleware.hasTeamAccess(req.user, team)) {
-         throw new ForbiddenError('You do not have access to the new team');
-       }
+      if (!authMiddleware.hasTeamAccess(req.user, team)) {
+        throw new ForbiddenError('You do not have access to the new team');
+      }
     }
     return Build.findByIdAndUpdate(buildId, {
       team,
@@ -360,9 +360,9 @@ exports.setArtifacts = (req, res) => {
     return Build.findByIdAndUpdate(buildId, {
       artifacts: req.body.artifacts,
     }, { new: true })
-    .populate('team')
-    .populate('environment')
-    .populate('phase');
+      .populate('team')
+      .populate('environment')
+      .populate('phase');
   })
     .then((build) => {
       if (!build) {

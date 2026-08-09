@@ -4,7 +4,6 @@ const debug = require('debug');
 const path = require('path');
 const mongoose = require('mongoose');
 
-const sizeOf = require('image-size');
 const jimp = require('jimp');
 const Screenshot = require('../models/screenshot.js');
 const Build = require('../models/build.js');
@@ -737,5 +736,6 @@ exports.delete = (req, res) => {
     .then((screenshot) => {
       fs.unlinkSync(screenshot.path);
       return res.status(200).send({ message: 'Screenshot deleted successfully!' });
-    }).catch((err) => handleError(err, res));
+    })
+    .catch((err) => handleError(err, res));
 };

@@ -2,10 +2,11 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const { Issuer, Strategy: OpenIDConnectStrategy } = require('openid-client');
 const bcrypt = require('bcryptjs');
-const User = require('../models/user');
-const authConfig = require('../../config/auth.config');
-const { resolveRoleFromGroups } = require('./role-mapper');
 const debug = require('debug');
+const User = require('../models/user.js');
+const authConfig = require('../../config/auth.config.js');
+const { resolveRoleFromGroups } = require('./role-mapper.js');
+
 const log = debug('auth:passport');
 
 // Serialize user ID to session

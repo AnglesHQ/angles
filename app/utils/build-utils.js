@@ -9,6 +9,9 @@ buildMetricsUtils.executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
 buildMetricsUtils.defaultResultMap = new Map([['PASS', 0], ['FAIL', 0], ['ERROR', 0], ['SKIPPED', 0]]);
 const [defaultStatus] = buildMetricsUtils.executionStates;
 
+// Each attempt below must observe the result of the previous one before retrying, so the
+// awaits in this optimistic-concurrency loop are deliberately sequential.
+/* eslint-disable no-await-in-loop */
 buildMetricsUtils.addExecutionToBuild = async (buildOrId, execution, retries = 5) => {
   const buildId = buildOrId._id || buildOrId;
   for (let attempt = 1; attempt <= retries; attempt += 1) {
@@ -47,7 +50,6 @@ buildMetricsUtils.addExecutionToBuild = async (buildOrId, execution, retries = 5
       const isVersionError = error.name === 'VersionError' || error.message.includes('No document found for query');
       if (isVersionError && attempt < retries) {
         log(`Version conflict for build ${buildId}, retrying attempt ${attempt + 1}...`);
-        // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => {
           setTimeout(resolve, 5 + Math.random() * 45);
         });
@@ -59,6 +61,7 @@ buildMetricsUtils.addExecutionToBuild = async (buildOrId, execution, retries = 5
   }
   throw new Error(`Failed to add execution to build ${buildId} after ${retries} attempts due to write conflicts.`);
 };
+/* eslint-enable no-await-in-loop */
 
 buildMetricsUtils.calculateBuildMetrics = (build) => {
   build.result = new Map(buildMetricsUtils.defaultResultMap);

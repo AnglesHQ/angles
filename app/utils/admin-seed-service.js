@@ -1,7 +1,7 @@
 const debug = require('debug');
 const bcrypt = require('bcryptjs');
-const User = require('../models/user');
-const { getPasswordViolations } = require('./password-policy');
+const User = require('../models/user.js');
+const { getPasswordViolations } = require('./password-policy.js');
 
 const log = debug('admin:seed');
 
@@ -14,7 +14,8 @@ const BCRYPT_ROUNDS = 10;
 
 /**
  * Ensures a local admin user exists, creating it from environment variables on first run.
- * @returns {Promise<{ seeded: boolean, username?: string, reason?: string, violations?: string[] }>}
+ * @returns {Promise<{ seeded: boolean, username?: string, reason?: string,
+ *   violations?: string[] }>}
  * result of the attempt: seeded true when a user was created; otherwise reason is
  * 'no-password' (env var unset), 'weak-password' (fails the strength policy, with the unmet
  * requirements in violations), or 'exists' (admin already present).

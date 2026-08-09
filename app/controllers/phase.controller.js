@@ -28,7 +28,8 @@ exports.create = (req, res) => {
     .then((data) => {
       log(`Created phase "${name}" with id: "${data._id}"`);
       return res.status(201).send(data);
-    }).catch((err) => handleError(err, res));
+    })
+    .catch((err) => handleError(err, res));
 };
 
 exports.findAll = (req, res) => {

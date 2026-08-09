@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const debug = require('debug');
 
-const User = require('../models/user');
+const User = require('../models/user.js');
 
 const log = debug('auth:middleware');
 
@@ -9,16 +9,16 @@ exports.isAuthenticated = async (req, res, next) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
     return next();
   }
-  
+
   // Check for API Key
   const apiKey = req.headers['x-api-key'];
   if (apiKey) {
     try {
       const tokenHash = crypto.createHash('sha256').update(apiKey).digest('hex');
       const user = await User.findOne({ 'apiTokens.tokenHash': tokenHash });
-      
+
       if (user) {
-        const token = user.apiTokens.find(t => t.tokenHash === tokenHash);
+        const token = user.apiTokens.find((t) => t.tokenHash === tokenHash);
         if (token && new Date(token.expiresAt) > new Date()) {
           req.user = user;
           req.isTokenAuth = true;
@@ -55,9 +55,9 @@ exports.hasTeamAccess = (user, teamId) => {
   if (!user) return false;
   if (user.role === 'admin') return true;
   if (!user.teams) return false;
-  
+
   const teamIdStr = teamId.toString();
-  return user.teams.some(t => t.toString() === teamIdStr);
+  return user.teams.some((t) => t.toString() === teamIdStr);
 };
 
 /**
@@ -72,7 +72,7 @@ exports.hasTeamLeadAccess = (user, teamId) => {
   if (user.role === 'admin') return true;
   if (user.role === 'team_lead' && user.teams) {
     const teamIdStr = teamId.toString();
-    return user.teams.some(t => t.toString() === teamIdStr);
+    return user.teams.some((t) => t.toString() === teamIdStr);
   }
   return false;
 };

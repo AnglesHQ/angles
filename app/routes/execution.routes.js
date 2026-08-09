@@ -56,7 +56,6 @@ module.exports = (app, path) => {
       .isNumeric(),
   ], executionController.findHistory);
 
-
   app.put(`${path}/execution/:executionId`, [
     param('executionId').isMongoId(),
   ], executionController.update);

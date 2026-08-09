@@ -2,7 +2,7 @@ const { validationResult } = require('express-validator');
 const debug = require('debug');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const User = require('../models/user');
+const User = require('../models/user.js');
 const { handleError, NotFoundError, ConflictError } = require('../exceptions/errors.js');
 
 const log = debug('user:controller');
@@ -13,7 +13,9 @@ exports.create = async (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
 
-  const { username, password, role, teams, authProvider } = req.body;
+  const {
+    username, password, role, teams, authProvider,
+  } = req.body;
 
   try {
     const existing = await User.findOne({ username: username.toLowerCase() }).select('_id').lean();
