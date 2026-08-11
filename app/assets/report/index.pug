@@ -53,7 +53,9 @@ html
         table(class="table")
             thead(class="thead-dark")
                 tr
-                    th(scope="col" colspan="100%" class="caps")= `Build Summary - ${build.name}`
+                    th(scope="col" colspan="100%" class="caps")
+                        span= `Build Summary - ${build.name}`
+                        span(class=`status-label status-${build.status}`)= build.status
             tbody
                 tr
                     th(scope="row" ) Team
@@ -109,8 +111,9 @@ html
             table(class="table suite-table")
                 thead(class="thead-dark")
                     tr
-                        th(scope="col" class="caps")= `Suite: ${suite.name}`
-                        th(scope="col" id=`suite-result-` + build.status)= build.status
+                        th(scope="col" class="caps")
+                            span= `Suite: ${suite.name}`
+                            span(class=`status-label status-${suite.status}`)= suite.status
                         th(scope="col" class="caps")= `Duration: ${moment.utc(moment(suite.end).diff(moment(suite.start))).format("HH:mm:ss")}`
                         th(scope="col")= `Total: ${suite.executions.length}`
                         th(scope="col")= `Pass: ${Object.fromEntries(suite.result).PASS}`
