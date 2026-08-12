@@ -2208,6 +2208,17 @@
         "/screenshot/{screenshotId}/compare/{screenshotCompareId}": {
             "parameters": [
                 {
+                    "name": "threshold",
+                    "in": "query",
+                    "required": false,
+                    "description": "Per-pixel colour-distance threshold for the pixel comparison (0-1). Lower is stricter. Defaults to 0.5.",
+                    "schema": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
+                {
                     "name": "screenshotId",
                     "in": "path",
                     "required": true,
@@ -2267,6 +2278,17 @@
         },
         "/screenshot/{screenshotId}/compare/{screenshotCompareId}/image": {
             "parameters": [
+                {
+                    "name": "threshold",
+                    "in": "query",
+                    "required": false,
+                    "description": "Per-pixel colour-distance threshold for the pixel comparison (0-1). Lower is stricter. Defaults to 0.5.",
+                    "schema": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
                 {
                     "name": "screenshotId",
                     "in": "path",
@@ -2725,6 +2747,17 @@
         },
         "/screenshot/{screenshotId}/baseline/compare": {
             "parameters": [
+                {
+                    "name": "threshold",
+                    "in": "query",
+                    "required": false,
+                    "description": "Per-pixel colour-distance threshold for the pixel comparison (0-1). Lower is stricter. Defaults to 0.5.",
+                    "schema": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
                 {
                     "name": "screenshotId",
                     "in": "path",

@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const jimp = require('jimp');
-const templateMatching = require('../app/utils/template-matching.js');
+const templateMatching = require('../app/image-engine/template-match.js');
 const { InvalidRequestError } = require('../app/exceptions/errors.js');
 
 // These tests exercise the matching engine directly with generated fixtures; they do not

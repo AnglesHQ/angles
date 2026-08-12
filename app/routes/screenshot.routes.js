@@ -145,11 +145,14 @@ module.exports = (app, path) => {
     param('screenshotId').exists().isMongoId(),
     param('screenshotCompareId').exists().isMongoId(),
     query('useCache').optional().isBoolean(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
   ], screenshotController.compareImages);
 
   app.get(`${path}/screenshot/:screenshotId/compare/:screenshotCompareId/image`, [
     param('screenshotId').exists().isMongoId(),
     param('screenshotCompareId').exists().isMongoId(),
+    query('useCache').optional().isBoolean(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
   ], screenshotController.compareImagesAndReturnImage);
 
   app.post(
@@ -177,10 +180,13 @@ module.exports = (app, path) => {
 
   app.get(`${path}/screenshot/:screenshotId/baseline/compare`, [
     param('screenshotId').exists().isMongoId(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
   ], screenshotController.compareImageAgainstBaseline);
 
   app.get(`${path}/screenshot/:screenshotId/baseline/compare/image`, [
     param('screenshotId').exists().isMongoId(),
+    query('useCache').optional().isBoolean(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
   ], screenshotController.compareImageAgainstBaselineAndReturnImage);
 
   app.put(`${path}/screenshot/:screenshotId`, [

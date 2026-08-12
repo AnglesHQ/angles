@@ -181,4 +181,51 @@ describe('Screenshot API Tests', () => {
         .end((err) => done(err));
     });
   });
+
+  describe('compare screenshots', () => {
+    it('letterboxes different dimensions instead of stretching', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}`)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body.isSameDimensions.should.be.false();
+          // 2560x1334 fixture vs the 400x240 crop uploaded as the template screenshot.
+          res.body.dimensionDifference.should.deepEqual({ width: 2160, height: 1094 });
+          res.body.rawMisMatchPercentage.should.be.within(0, 100);
+          return done();
+        });
+    });
+
+    it('honours the threshold query parameter', function test(done) {
+      this.timeout(60000);
+      // threshold=1 is maximally lenient: no colour distance can exceed it.
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}?threshold=1`)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body.rawMisMatchPercentage.should.equal(0);
+          return done();
+        });
+    });
+
+    it('rejects an out-of-range threshold', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}?threshold=2`)
+        .expect(422)
+        .end((err) => done(err));
+    });
+
+    it('returns a diff image for mismatched dimensions', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}/image?useCache=false`)
+        .expect(200)
+        .expect('Content-Type', /png/)
+        .end((err) => done(err));
+    });
+  });
 });
