@@ -15,14 +15,33 @@
     display: block;
 }
 
-#suite-result-PASS {
+.status-label {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
     font-weight: bold;
-    color: #98dc79;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    vertical-align: middle;
+    color: white;
 }
 
-#suite-result-FAIL {
-    font-weight: bold;
-    color: #c61410;
+.status-PASS {
+    background-color: #98dc79;
+}
+
+.status-FAIL {
+    background-color: #c61410;
+}
+
+.status-ERROR {
+    background-color: #e8a33d;
+}
+
+.status-SKIPPED {
+    background-color: #b0b0b0;
 }
 
 .test-row {
