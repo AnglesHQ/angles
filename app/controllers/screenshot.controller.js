@@ -2,7 +2,6 @@ const { validationResult } = require('express-validator');
 const fs = require('fs');
 const debug = require('debug');
 const path = require('path');
-const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const jimp = require('jimp');
@@ -11,7 +10,11 @@ const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
 const validationUtils = require('../utils/validation-utils.js');
 const imageUtils = require('../utils/image-utils.js');
-const templateMatching = require('../utils/template-matching.js');
+// Searches run on the image-engine worker pool; annotateMatches stays on the main
+// thread because it is I/O-bound rather than CPU-bound.
+const imageEngine = require('../image-engine/index.js');
+const templateMatching = require('../image-engine/template-match.js');
+const { optionsHash } = require('../image-engine/cache.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
   NotFoundError,
@@ -73,6 +76,16 @@ const readableTeamIds = (user) => {
   return (user && user.teams) ? user.teams : [];
 };
 
+// Compare options arrive as strings; undefined fields mean "use the engine default"
+// (pixel algorithm, threshold 0.5, no regions).
+const parseCompareOptions = (query) => {
+  const options = {};
+  if (query.threshold !== undefined) options.threshold = parseFloat(query.threshold);
+  if (query.algorithm !== undefined) options.algorithm = query.algorithm;
+  if (query.regions !== undefined) options.regions = query.regions === 'true';
+  return options;
+};
+
 exports.create = (req, res) => {
   // run validation here.
   const errors = validationResult(req);
@@ -95,21 +108,28 @@ exports.create = (req, res) => {
       return jimp.read(req.file.path)
         .then((image) => {
           const { width, height } = image.bitmap;
+          // The hash has to be taken before scaleToFit mutates the image.
+          const phash = image.hash();
           return image
             .scaleToFit(300, 300)
             .quality(72)
             .getBase64Async(image.getMIME())
-            .then((thumbnail) => ({ thumbnail, width, height }));
+            .then((thumbnail) => ({
+              thumbnail, width, height, phash,
+            }));
         });
     })
     .then((result) => {
-      const { thumbnail, width, height } = result;
+      const {
+        thumbnail, width, height, phash,
+      } = result;
       const screenshot = new Screenshot({
         build: build._id,
         timestamp,
         thumbnail,
         height,
         width,
+        phash,
         path: req.file.path,
         type: 'DEFAULT',
         view,
@@ -479,6 +499,7 @@ exports.compareImages = (req, res) => {
         screenshot.path,
         screenshotCompare.path,
         undefined,
+        parseCompareOptions(req.query),
       );
       return res.status(200).send(data);
     } catch (err) {
@@ -510,7 +531,13 @@ exports.compareImagesAndReturnImage = (req, res) => {
       // The diff image exposes both source images, so check access to both.
       await assertScreenshotAccess(req.user, screenshot);
       await assertScreenshotAccess(req.user, screenshotToCompare);
-      return imageUtils.compareImages(screenshot, screenshotToCompare, undefined, useCache);
+      return imageUtils.compareImages(
+        screenshot,
+        screenshotToCompare,
+        undefined,
+        useCache,
+        parseCompareOptions(req.query),
+      );
     })
     .then((tempFileName) => res.sendFile(path.resolve(tempFileName)))
     .catch((err) => handleError(err, res));
@@ -562,7 +589,7 @@ exports.findImageInScreenshot = async (req, res) => {
       screenshotId,
       templateId,
     );
-    const result = await templateMatching.findTemplate(
+    const result = await imageEngine.findTemplate(
       screenshot.path,
       template.path,
       parseFindOptions(req.query),
@@ -586,11 +613,10 @@ exports.findImageInScreenshotAndReturnImage = async (req, res) => {
       templateId,
     );
     const options = parseFindOptions(req.query);
-    const result = await templateMatching.findTemplate(screenshot.path, template.path, options);
+    const result = await imageEngine.findTemplate(screenshot.path, template.path, options);
     // The annotated image depends on the search options, so the options are part of the
     // cached filename; the same search served twice reuses the file it wrote the first time.
-    const optionsHash = crypto.createHash('md5').update(JSON.stringify(options)).digest('hex').substring(0, 8);
-    const fileName = `compares/${screenshotId}_${templateId}-find-${optionsHash}.png`;
+    const fileName = `compares/${screenshotId}_${templateId}-find-${optionsHash(options)}.png`;
     const annotatedImagePath = await templateMatching.annotateMatches(
       screenshot.path,
       result.matches,
@@ -617,7 +643,7 @@ exports.findUploadedImageInScreenshot = async (req, res) => {
       throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
     }
     await assertScreenshotAccess(req.user, screenshot);
-    const result = await templateMatching.findTemplate(
+    const result = await imageEngine.findTemplate(
       screenshot.path,
       req.file.buffer,
       parseFindOptions(req.query),
@@ -738,6 +764,7 @@ exports.compareImageAgainstBaseline = (req, res) => {
           screenshot.path,
           baseline.screenshot.path,
           ignoredBoxes.length > 0 ? ignoredBoxes : undefined,
+          parseCompareOptions(req.query),
         );
         return res.status(200).send(data);
       } catch (err) {
@@ -798,7 +825,13 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
         ignoreBox.bottom = height * (1 - (baselineIgnoreBox.bottom / 100));
         ignoredBoxes.push(ignoreBox);
       });
-      return imageUtils.compareImages(screenshot, screenshotToCompare, ignoredBoxes, useCache);
+      return imageUtils.compareImages(
+        screenshot,
+        screenshotToCompare,
+        ignoredBoxes,
+        useCache,
+        parseCompareOptions(req.query),
+      );
     })
     .then((tempFileName) => res.sendFile(tempFileName))
     .catch((err) => handleError(err, res));

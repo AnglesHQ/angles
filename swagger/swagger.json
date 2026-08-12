@@ -2208,6 +2208,40 @@
         "/screenshot/{screenshotId}/compare/{screenshotCompareId}": {
             "parameters": [
                 {
+                    "name": "algorithm",
+                    "in": "query",
+                    "required": false,
+                    "description": "Comparison algorithm: pixel (default), ssim (perceptual structural similarity), or phash (fast perceptual-hash distance).",
+                    "schema": {
+                        "type": "string",
+                        "enum": [
+                            "pixel",
+                            "ssim",
+                            "phash"
+                        ]
+                    }
+                },
+                {
+                    "name": "regions",
+                    "in": "query",
+                    "required": false,
+                    "description": "When true (pixel algorithm only), clusters changed pixels into bounding regions returned as 'regions'.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                },
+                {
+                    "name": "threshold",
+                    "in": "query",
+                    "required": false,
+                    "description": "Per-pixel colour-distance threshold for the pixel comparison (0-1). Lower is stricter. Defaults to 0.5.",
+                    "schema": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
+                {
                     "name": "screenshotId",
                     "in": "path",
                     "required": true,
@@ -2267,6 +2301,30 @@
         },
         "/screenshot/{screenshotId}/compare/{screenshotCompareId}/image": {
             "parameters": [
+                {
+                    "name": "algorithm",
+                    "in": "query",
+                    "required": false,
+                    "description": "Comparison algorithm for the diff image: pixel (default) or ssim. phash cannot produce an image.",
+                    "schema": {
+                        "type": "string",
+                        "enum": [
+                            "pixel",
+                            "ssim"
+                        ]
+                    }
+                },
+                {
+                    "name": "threshold",
+                    "in": "query",
+                    "required": false,
+                    "description": "Per-pixel colour-distance threshold for the pixel comparison (0-1). Lower is stricter. Defaults to 0.5.",
+                    "schema": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
                 {
                     "name": "screenshotId",
                     "in": "path",
@@ -2725,6 +2783,40 @@
         },
         "/screenshot/{screenshotId}/baseline/compare": {
             "parameters": [
+                {
+                    "name": "algorithm",
+                    "in": "query",
+                    "required": false,
+                    "description": "Comparison algorithm: pixel (default), ssim (perceptual structural similarity), or phash (fast perceptual-hash distance).",
+                    "schema": {
+                        "type": "string",
+                        "enum": [
+                            "pixel",
+                            "ssim",
+                            "phash"
+                        ]
+                    }
+                },
+                {
+                    "name": "regions",
+                    "in": "query",
+                    "required": false,
+                    "description": "When true (pixel algorithm only), clusters changed pixels into bounding regions returned as 'regions'.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                },
+                {
+                    "name": "threshold",
+                    "in": "query",
+                    "required": false,
+                    "description": "Per-pixel colour-distance threshold for the pixel comparison (0-1). Lower is stricter. Defaults to 0.5.",
+                    "schema": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
                 {
                     "name": "screenshotId",
                     "in": "path",

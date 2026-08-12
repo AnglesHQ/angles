@@ -1,102 +1,52 @@
 const fs = require('fs');
 const path = require('path');
 const debug = require('debug');
-const fsPromises = require('fs').promises;
-const pixelmatch = require('pixelmatch');
 // rimraf v4+ exports named functions rather than a callable module, so destructure it.
 // Requiring the module itself gives an object and every call throws "rimraf is not a
 // function", which silently broke screenshot directory clean-up.
 const { rimraf } = require('rimraf');
 const jimp = require('jimp');
 const Screenshot = require('../models/screenshot.js');
+const engine = require('../image-engine/index.js');
+const { optionsHash } = require('../image-engine/cache.js');
 
 const imageUtils = {};
 
 const log = debug('screenshot:utility');
 
-/**
- * Internal helper: compare two image files using pixelmatch.
- * Handles dimension mismatches and ignoredBoxes masking.
- * @param {string} path1 - path to the first image (screenshotToCompare)
- * @param {string} path2 - path to the second image (screenshot)
- * @param {Array}  ignoredBoxes - array of { left, right, top, bottom } pixel coords to ignore
- * @returns {Promise<Object>} comparison result
- */
-const performPixelmatch = async (path1, path2, ignoredBoxes) => {
-  const [img1, img2] = await Promise.all([jimp.read(path1), jimp.read(path2)]);
-
-  const w1 = img1.bitmap.width;
-  const h1 = img1.bitmap.height;
-  const isSameDimensions = w1 === img2.bitmap.width && h1 === img2.bitmap.height;
-  const dimensionDifference = {
-    width: w1 - img2.bitmap.width,
-    height: h1 - img2.bitmap.height,
-  };
-
-  // Resize img2 to img1 dimensions if they differ
-  if (!isSameDimensions) {
-    img2.resize(w1, h1);
-  }
-
-  const { width: w, height: h } = img1.bitmap;
-  const data1 = img1.bitmap.data;
-  const data2 = img2.bitmap.data;
-
-  // Make ignoredBoxes regions identical in both images so pixelmatch skips them
-  if (ignoredBoxes && ignoredBoxes.length > 0) {
-    ignoredBoxes.forEach(({
-      left, right, top, bottom,
-    }) => {
-      for (let y = Math.floor(top); y < Math.ceil(bottom); y += 1) {
-        for (let x = Math.floor(left); x < Math.ceil(right); x += 1) {
-          if (x >= 0 && x < w && y >= 0 && y < h) {
-            const idx = (y * w + x) * 4;
-            data2[idx] = data1[idx];
-            data2[idx + 1] = data1[idx + 1];
-            data2[idx + 2] = data1[idx + 2];
-            data2[idx + 3] = data1[idx + 3];
-          }
-        }
-      }
-    });
-  }
-
-  const diff = Buffer.alloc(w * h * 4);
-  const numDiffPixels = pixelmatch(data1, data2, diff, w, h, {
-    threshold: 0.5,
-    diffColor: [255, 0, 255],
-    alpha: 0.3,
-  });
-  const rawMisMatchPercentage = (numDiffPixels / (w * h)) * 100;
-
-  return {
-    isSameDimensions,
-    dimensionDifference,
-    rawMisMatchPercentage,
-    misMatchPercentage: rawMisMatchPercentage.toFixed(2),
-    diff,
-    width: w,
-    height: h,
-  };
-};
+// Baseline compares pass lean objects (no mongoose `id` getter), so fall back to _id.
+// Without this every lean compare cached to the same "undefined_undefined" filename and
+// could serve one comparison's diff image for a completely different pair of screenshots.
+const screenshotId = (screenshot) => screenshot.id || screenshot._id;
 
 /**
  * Compare two screenshot objects and return the path to the diff image file.
- * Wraps compareImagesAndPassResultName with a standard filename.
+ * The cached filename embeds the comparison options, so a request with a different
+ * algorithm, ignore boxes or threshold never reuses a diff generated with other settings.
+ * @param {Object} [compareOptions] - { algorithm, threshold }
  */
-imageUtils.compareImages = (screenshot, screenshotToCompare, ignoredBoxes, useCache) => {
-  const fileName = `compares/${screenshotToCompare.id}_${screenshot.id}-compare.png`;
+imageUtils.compareImages = (
+  screenshot,
+  screenshotToCompare,
+  ignoredBoxes,
+  useCache,
+  compareOptions,
+) => {
+  const cacheKey = optionsHash({ ignoredBoxes, ...compareOptions });
+  const fileName = `compares/${screenshotId(screenshotToCompare)}_${screenshotId(screenshot)}-compare-${cacheKey}.png`;
   return imageUtils.compareImagesAndPassResultName(
     screenshot,
     screenshotToCompare,
     useCache,
     fileName,
     ignoredBoxes,
+    compareOptions,
   );
 };
 
 /**
- * Compare two screenshot objects, write the diff PNG to fileName, and resolve with the file path.
+ * Compare two screenshot objects, write the diff PNG to fileName, and resolve with the
+ * absolute file path. The comparison itself runs on the image-engine worker pool.
  */
 imageUtils.compareImagesAndPassResultName = (
   screenshot,
@@ -104,30 +54,23 @@ imageUtils.compareImagesAndPassResultName = (
   useCache,
   fileName,
   ignoredBoxes,
+  compareOptions,
 ) => new Promise((resolve, reject) => {
-  fs.access(fileName, fs.constants.F_OK, async (err) => {
-    // File doesn't exist, or cache disabled — generate the diff
+  const absolutePath = path.resolve(fileName);
+  fs.access(absolutePath, fs.constants.F_OK, (err) => {
+    // File doesn't exist, or cache disabled - generate the diff
     if (err || useCache === 'false' || useCache === false) {
-      try {
-        const result = await performPixelmatch(
-          screenshotToCompare.path,
-          screenshot.path,
-          ignoredBoxes,
-        );
-        // Write diff pixels as a PNG via jimp
-        // eslint-disable-next-line new-cap
-        const diffJimp = new jimp({
-          data: result.diff, width: result.width, height: result.height,
-        });
-        const diffBuffer = await diffJimp.getBufferAsync(jimp.MIME_PNG);
-        await fsPromises.writeFile(path.resolve(fileName), diffBuffer);
-        resolve(path.resolve(fileName));
-      } catch (e) {
-        reject(e);
-      }
+      engine.compareAndWriteDiff(
+        screenshotToCompare.path,
+        screenshot.path,
+        absolutePath,
+        { ...compareOptions, ignoredBoxes },
+      )
+        .then(() => resolve(absolutePath))
+        .catch(reject);
     } else {
       // File exists and cache is enabled
-      resolve(path.resolve(fileName));
+      resolve(absolutePath);
     }
   });
 });
@@ -138,24 +81,15 @@ imageUtils.compareImagesAndPassResultName = (
  * @param {string} path1
  * @param {string} path2
  * @param {Array}  ignoredBoxes
- * @returns {Promise<Object>} { misMatchPercentage, rawMisMatchPercentage,
- *   isSameDimensions, dimensionDifference }
+ * @param {Object} [compareOptions] - { algorithm ('pixel'|'ssim'|'phash'), threshold
+ *   (pixel only), regions (pixel only) }
+ * @returns {Promise<Object>} { algorithm, misMatchPercentage, rawMisMatchPercentage,
+ *   isSameDimensions, dimensionDifference, analysisTime, ... algorithm extras }
  */
-imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes) => {
+imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes, compareOptions) => {
   const start = Date.now();
-  const {
-    misMatchPercentage,
-    rawMisMatchPercentage,
-    isSameDimensions,
-    dimensionDifference,
-  } = await performPixelmatch(path1, path2, ignoredBoxes);
-  return {
-    misMatchPercentage,
-    rawMisMatchPercentage,
-    isSameDimensions,
-    dimensionDifference,
-    analysisTime: Date.now() - start,
-  };
+  const stats = await engine.compareStats(path1, path2, { ...compareOptions, ignoredBoxes });
+  return { ...stats, analysisTime: Date.now() - start };
 };
 
 const SCREENSHOT_ROOT = path.resolve(__dirname, '../../screenshots');
@@ -204,6 +138,8 @@ imageUtils.generateDynamicBaseline = async (screenshot, screenshots) => {
   }
   // once dynamic image is ready generate thumbnail
   const image = await jimp.read(dynamicBaselinePath);
+  // The hash has to be taken before scaleToFit mutates the image.
+  currentScreenshot.phash = image.hash();
   const thumbnail = await image
     .scaleToFit(300, 300)
     .quality(72)

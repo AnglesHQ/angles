@@ -145,11 +145,18 @@ module.exports = (app, path) => {
     param('screenshotId').exists().isMongoId(),
     param('screenshotCompareId').exists().isMongoId(),
     query('useCache').optional().isBoolean(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
+    query('algorithm').optional().isIn(['pixel', 'ssim', 'phash']),
+    query('regions').optional().isBoolean(),
   ], screenshotController.compareImages);
 
   app.get(`${path}/screenshot/:screenshotId/compare/:screenshotCompareId/image`, [
     param('screenshotId').exists().isMongoId(),
     param('screenshotCompareId').exists().isMongoId(),
+    query('useCache').optional().isBoolean(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
+    // phash cannot produce a comparison image, so it is not accepted here.
+    query('algorithm').optional().isIn(['pixel', 'ssim']),
   ], screenshotController.compareImagesAndReturnImage);
 
   app.post(
@@ -177,10 +184,17 @@ module.exports = (app, path) => {
 
   app.get(`${path}/screenshot/:screenshotId/baseline/compare`, [
     param('screenshotId').exists().isMongoId(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
+    query('algorithm').optional().isIn(['pixel', 'ssim', 'phash']),
+    query('regions').optional().isBoolean(),
   ], screenshotController.compareImageAgainstBaseline);
 
   app.get(`${path}/screenshot/:screenshotId/baseline/compare/image`, [
     param('screenshotId').exists().isMongoId(),
+    query('useCache').optional().isBoolean(),
+    query('threshold').optional().isFloat({ min: 0, max: 1 }),
+    // phash cannot produce a comparison image, so it is not accepted here.
+    query('algorithm').optional().isIn(['pixel', 'ssim']),
   ], screenshotController.compareImageAgainstBaselineAndReturnImage);
 
   app.put(`${path}/screenshot/:screenshotId`, [
