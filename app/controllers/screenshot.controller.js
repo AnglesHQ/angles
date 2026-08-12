@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const fs = require('fs');
 const debug = require('debug');
 const path = require('path');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const jimp = require('jimp');
@@ -10,6 +11,7 @@ const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
 const validationUtils = require('../utils/validation-utils.js');
 const imageUtils = require('../utils/image-utils.js');
+const templateMatching = require('../utils/template-matching.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
   NotFoundError,
@@ -512,6 +514,118 @@ exports.compareImagesAndReturnImage = (req, res) => {
     })
     .then((tempFileName) => res.sendFile(path.resolve(tempFileName)))
     .catch((err) => handleError(err, res));
+};
+
+// Query parameters arrive as strings; express-validator has already checked their shape,
+// so this only converts the ones that were supplied.
+const parseFindOptions = (query) => {
+  const options = {};
+  if (query.minConfidence !== undefined) options.minConfidence = parseFloat(query.minConfidence);
+  if (query.scaleMin !== undefined) options.scaleMin = parseFloat(query.scaleMin);
+  if (query.scaleMax !== undefined) options.scaleMax = parseFloat(query.scaleMax);
+  if (query.maxMatches !== undefined) options.maxMatches = parseInt(query.maxMatches, 10);
+  if (query.grayscale !== undefined) options.grayscale = query.grayscale === 'true';
+  return options;
+};
+
+// Both the screenshot being searched and the template come back to the caller (as match
+// regions), so access to both has to be checked, mirroring the compare endpoints.
+const loadScreenshotAndTemplate = async (user, screenshotId, templateId) => {
+  const [screenshot, template] = await Promise.all([
+    Screenshot.findById(screenshotId).lean(),
+    Screenshot.findById(templateId).lean(),
+  ]);
+  if (!screenshot || !template) {
+    throw new NotFoundError('Unable to retrieve one or both screenshots');
+  }
+  await assertScreenshotAccess(user, screenshot);
+  await assertScreenshotAccess(user, template);
+  return { screenshot, template };
+};
+
+const handleFindError = (error, res) => {
+  if (error.statusCode) {
+    return handleError(error, res);
+  }
+  return handleError(new ServerError(`Something went wrong searching for the template image [${error}]`), res);
+};
+
+exports.findImageInScreenshot = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { screenshotId, templateId } = req.params;
+  try {
+    const { screenshot, template } = await loadScreenshotAndTemplate(
+      req.user,
+      screenshotId,
+      templateId,
+    );
+    const result = await templateMatching.findTemplate(
+      screenshot.path,
+      template.path,
+      parseFindOptions(req.query),
+    );
+    return res.status(200).send(result);
+  } catch (error) {
+    return handleFindError(error, res);
+  }
+};
+
+exports.findImageInScreenshotAndReturnImage = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { screenshotId, templateId } = req.params;
+  try {
+    const { screenshot, template } = await loadScreenshotAndTemplate(
+      req.user,
+      screenshotId,
+      templateId,
+    );
+    const options = parseFindOptions(req.query);
+    const result = await templateMatching.findTemplate(screenshot.path, template.path, options);
+    // The annotated image depends on the search options, so the options are part of the
+    // cached filename; the same search served twice reuses the file it wrote the first time.
+    const optionsHash = crypto.createHash('md5').update(JSON.stringify(options)).digest('hex').substring(0, 8);
+    const fileName = `compares/${screenshotId}_${templateId}-find-${optionsHash}.png`;
+    const annotatedImagePath = await templateMatching.annotateMatches(
+      screenshot.path,
+      result.matches,
+      fileName,
+    );
+    return res.sendFile(annotatedImagePath);
+  } catch (error) {
+    return handleFindError(error, res);
+  }
+};
+
+exports.findUploadedImageInScreenshot = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  if (!req.file || !req.file.buffer) {
+    return handleError(new InvalidRequestError('A template image file is required (multipart field "template")'), res);
+  }
+  const { screenshotId } = req.params;
+  try {
+    const screenshot = await Screenshot.findById(screenshotId).lean();
+    if (!screenshot) {
+      throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
+    }
+    await assertScreenshotAccess(req.user, screenshot);
+    const result = await templateMatching.findTemplate(
+      screenshot.path,
+      req.file.buffer,
+      parseFindOptions(req.query),
+    );
+    return res.status(200).send(result);
+  } catch (error) {
+    return handleFindError(error, res);
+  }
 };
 
 exports.generateDynamicBaselineImage = async (req, res) => {

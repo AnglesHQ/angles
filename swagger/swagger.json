@@ -2273,6 +2273,393 @@
                 }
             }
         },
+        "/screenshot/{screenshotId}/find": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the screenshot to search in",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Finds an uploaded template image within the stored screenshot (multi-scale template matching)",
+                "parameters": [
+                    {
+                        "name": "minConfidence",
+                        "in": "query",
+                        "required": false,
+                        "description": "Minimum confidence (0-1) for a region to count as a match. Defaults to 0.8.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    },
+                    {
+                        "name": "scaleMin",
+                        "in": "query",
+                        "required": false,
+                        "description": "Lower bound of the template scale sweep (0.2-3). Defaults to 0.75.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0.2,
+                            "maximum": 3
+                        }
+                    },
+                    {
+                        "name": "scaleMax",
+                        "in": "query",
+                        "required": false,
+                        "description": "Upper bound of the template scale sweep (0.2-3). Defaults to 1.25.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0.2,
+                            "maximum": 3
+                        }
+                    },
+                    {
+                        "name": "maxMatches",
+                        "in": "query",
+                        "required": false,
+                        "description": "Maximum number of matches to return (1-25). Defaults to 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 25
+                        }
+                    },
+                    {
+                        "name": "grayscale",
+                        "in": "query",
+                        "required": false,
+                        "description": "Match on luminance only, which is more tolerant of colour differences between devices.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "template"
+                                ],
+                                "properties": {
+                                    "template": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "The template image to search for"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Search completed and matches returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageFindResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid search request (e.g. template larger than the screenshot, or a flat-colour template)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot(s) not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}/find/{templateId}": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the screenshot to search in",
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "templateId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the screenshot to use as the template to search for",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Finds a stored screenshot (template) within another stored screenshot (multi-scale template matching)",
+                "parameters": [
+                    {
+                        "name": "minConfidence",
+                        "in": "query",
+                        "required": false,
+                        "description": "Minimum confidence (0-1) for a region to count as a match. Defaults to 0.8.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    },
+                    {
+                        "name": "scaleMin",
+                        "in": "query",
+                        "required": false,
+                        "description": "Lower bound of the template scale sweep (0.2-3). Defaults to 0.75.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0.2,
+                            "maximum": 3
+                        }
+                    },
+                    {
+                        "name": "scaleMax",
+                        "in": "query",
+                        "required": false,
+                        "description": "Upper bound of the template scale sweep (0.2-3). Defaults to 1.25.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0.2,
+                            "maximum": 3
+                        }
+                    },
+                    {
+                        "name": "maxMatches",
+                        "in": "query",
+                        "required": false,
+                        "description": "Maximum number of matches to return (1-25). Defaults to 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 25
+                        }
+                    },
+                    {
+                        "name": "grayscale",
+                        "in": "query",
+                        "required": false,
+                        "description": "Match on luminance only, which is more tolerant of colour differences between devices.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search completed and matches returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageFindResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid search request (e.g. template larger than the screenshot, or a flat-colour template)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot(s) not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/screenshot/{screenshotId}/find/{templateId}/image": {
+            "parameters": [
+                {
+                    "name": "screenshotId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the screenshot to search in",
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "templateId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the screenshot to use as the template to search for",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Screenshot"
+                ],
+                "summary": "Finds a stored screenshot (template) within another stored screenshot and returns the annotated image",
+                "parameters": [
+                    {
+                        "name": "minConfidence",
+                        "in": "query",
+                        "required": false,
+                        "description": "Minimum confidence (0-1) for a region to count as a match. Defaults to 0.8.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    },
+                    {
+                        "name": "scaleMin",
+                        "in": "query",
+                        "required": false,
+                        "description": "Lower bound of the template scale sweep (0.2-3). Defaults to 0.75.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0.2,
+                            "maximum": 3
+                        }
+                    },
+                    {
+                        "name": "scaleMax",
+                        "in": "query",
+                        "required": false,
+                        "description": "Upper bound of the template scale sweep (0.2-3). Defaults to 1.25.",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0.2,
+                            "maximum": 3
+                        }
+                    },
+                    {
+                        "name": "maxMatches",
+                        "in": "query",
+                        "required": false,
+                        "description": "Maximum number of matches to return (1-25). Defaults to 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 25
+                        }
+                    },
+                    {
+                        "name": "grayscale",
+                        "in": "query",
+                        "required": false,
+                        "description": "Match on luminance only, which is more tolerant of colour differences between devices.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search completed; screenshot returned with matched regions outlined",
+                        "content": {
+                            "image/png": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid search request (e.g. template larger than the screenshot, or a flat-colour template)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot(s) not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpressValidatorError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/screenshot/{screenshotId}/baseline/compare": {
             "parameters": [
                 {
@@ -3199,6 +3586,74 @@
             }
         },
         "schemas": {
+            "ImageFindMatch": {
+                "type": "object",
+                "properties": {
+                    "x": {
+                        "type": "integer",
+                        "description": "Left edge of the matched region, in original screenshot pixels"
+                    },
+                    "y": {
+                        "type": "integer",
+                        "description": "Top edge of the matched region, in original screenshot pixels"
+                    },
+                    "width": {
+                        "type": "integer"
+                    },
+                    "height": {
+                        "type": "integer"
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "description": "Normalized cross-correlation score (0-1)"
+                    },
+                    "scale": {
+                        "type": "number",
+                        "description": "Template scale at which the match was found"
+                    }
+                }
+            },
+            "ImageFindResponse": {
+                "type": "object",
+                "properties": {
+                    "matches": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ImageFindMatch"
+                        }
+                    },
+                    "bestMatch": {
+                        "$ref": "#/components/schemas/ImageFindMatch",
+                        "nullable": true
+                    },
+                    "imageDimensions": {
+                        "type": "object",
+                        "properties": {
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "templateDimensions": {
+                        "type": "object",
+                        "properties": {
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "analysisTime": {
+                        "type": "integer",
+                        "description": "Search duration in milliseconds"
+                    }
+                }
+            },
             "DefaultResponse": {
                 "required": [
                     "message"
