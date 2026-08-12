@@ -8,11 +8,14 @@ const pool = require('./worker-pool.js');
  */
 const engine = {};
 
-/** Pixel comparison (pixelmatch) - statistics only. Options: { ignoredBoxes, threshold }. */
-engine.compareStats = (path1, path2, options) => pool.runTask('pixel-compare', { path1, path2, options });
+/**
+ * Image comparison - statistics only. Options: { algorithm: 'pixel'|'ssim'|'phash'
+ * (default 'pixel'), ignoredBoxes, threshold (pixel only), regions (pixel only) }.
+ */
+engine.compareStats = (path1, path2, options) => pool.runTask('compare-stats', { path1, path2, options });
 
-/** Pixel comparison that also writes the diff PNG to outputFile. */
-engine.compareAndWriteDiff = (path1, path2, outputFile, options) => pool.runTask('pixel-compare-image', {
+/** Image comparison that also writes the diff PNG to outputFile (pixel or ssim). */
+engine.compareAndWriteDiff = (path1, path2, outputFile, options) => pool.runTask('compare-image', {
   path1, path2, outputFile, options,
 });
 

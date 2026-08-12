@@ -21,11 +21,18 @@ const screenshotId = (screenshot) => screenshot.id || screenshot._id;
 
 /**
  * Compare two screenshot objects and return the path to the diff image file.
- * The cached filename embeds the comparison options, so a request with different
- * ignore boxes or threshold never reuses a diff generated with other settings.
+ * The cached filename embeds the comparison options, so a request with a different
+ * algorithm, ignore boxes or threshold never reuses a diff generated with other settings.
+ * @param {Object} [compareOptions] - { algorithm, threshold }
  */
-imageUtils.compareImages = (screenshot, screenshotToCompare, ignoredBoxes, useCache, threshold) => {
-  const cacheKey = optionsHash({ ignoredBoxes, threshold });
+imageUtils.compareImages = (
+  screenshot,
+  screenshotToCompare,
+  ignoredBoxes,
+  useCache,
+  compareOptions,
+) => {
+  const cacheKey = optionsHash({ ignoredBoxes, ...compareOptions });
   const fileName = `compares/${screenshotId(screenshotToCompare)}_${screenshotId(screenshot)}-compare-${cacheKey}.png`;
   return imageUtils.compareImagesAndPassResultName(
     screenshot,
@@ -33,7 +40,7 @@ imageUtils.compareImages = (screenshot, screenshotToCompare, ignoredBoxes, useCa
     useCache,
     fileName,
     ignoredBoxes,
-    threshold,
+    compareOptions,
   );
 };
 
@@ -47,7 +54,7 @@ imageUtils.compareImagesAndPassResultName = (
   useCache,
   fileName,
   ignoredBoxes,
-  threshold,
+  compareOptions,
 ) => new Promise((resolve, reject) => {
   const absolutePath = path.resolve(fileName);
   fs.access(absolutePath, fs.constants.F_OK, (err) => {
@@ -57,7 +64,7 @@ imageUtils.compareImagesAndPassResultName = (
         screenshotToCompare.path,
         screenshot.path,
         absolutePath,
-        { ignoredBoxes, threshold },
+        { ...compareOptions, ignoredBoxes },
       )
         .then(() => resolve(absolutePath))
         .catch(reject);
@@ -74,25 +81,15 @@ imageUtils.compareImagesAndPassResultName = (
  * @param {string} path1
  * @param {string} path2
  * @param {Array}  ignoredBoxes
- * @param {number} [threshold] - per-pixel colour-distance threshold (0-1)
- * @returns {Promise<Object>} { misMatchPercentage, rawMisMatchPercentage,
- *   isSameDimensions, dimensionDifference, analysisTime }
+ * @param {Object} [compareOptions] - { algorithm ('pixel'|'ssim'|'phash'), threshold
+ *   (pixel only), regions (pixel only) }
+ * @returns {Promise<Object>} { algorithm, misMatchPercentage, rawMisMatchPercentage,
+ *   isSameDimensions, dimensionDifference, analysisTime, ... algorithm extras }
  */
-imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes, threshold) => {
+imageUtils.compareAndGetResult = async (path1, path2, ignoredBoxes, compareOptions) => {
   const start = Date.now();
-  const {
-    misMatchPercentage,
-    rawMisMatchPercentage,
-    isSameDimensions,
-    dimensionDifference,
-  } = await engine.compareStats(path1, path2, { ignoredBoxes, threshold });
-  return {
-    misMatchPercentage,
-    rawMisMatchPercentage,
-    isSameDimensions,
-    dimensionDifference,
-    analysisTime: Date.now() - start,
-  };
+  const stats = await engine.compareStats(path1, path2, { ...compareOptions, ignoredBoxes });
+  return { ...stats, analysisTime: Date.now() - start };
 };
 
 const SCREENSHOT_ROOT = path.resolve(__dirname, '../../screenshots');
@@ -141,6 +138,8 @@ imageUtils.generateDynamicBaseline = async (screenshot, screenshots) => {
   }
   // once dynamic image is ready generate thumbnail
   const image = await jimp.read(dynamicBaselinePath);
+  // The hash has to be taken before scaleToFit mutates the image.
+  currentScreenshot.phash = image.hash();
   const thumbnail = await image
     .scaleToFit(300, 300)
     .quality(72)

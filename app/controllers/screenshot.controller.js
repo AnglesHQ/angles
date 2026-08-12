@@ -76,10 +76,15 @@ const readableTeamIds = (user) => {
   return (user && user.teams) ? user.teams : [];
 };
 
-// The pixelmatch threshold arrives as a string; undefined means "use the engine default".
-const parseThreshold = (query) => (
-  query.threshold === undefined ? undefined : parseFloat(query.threshold)
-);
+// Compare options arrive as strings; undefined fields mean "use the engine default"
+// (pixel algorithm, threshold 0.5, no regions).
+const parseCompareOptions = (query) => {
+  const options = {};
+  if (query.threshold !== undefined) options.threshold = parseFloat(query.threshold);
+  if (query.algorithm !== undefined) options.algorithm = query.algorithm;
+  if (query.regions !== undefined) options.regions = query.regions === 'true';
+  return options;
+};
 
 exports.create = (req, res) => {
   // run validation here.
@@ -103,21 +108,28 @@ exports.create = (req, res) => {
       return jimp.read(req.file.path)
         .then((image) => {
           const { width, height } = image.bitmap;
+          // The hash has to be taken before scaleToFit mutates the image.
+          const phash = image.hash();
           return image
             .scaleToFit(300, 300)
             .quality(72)
             .getBase64Async(image.getMIME())
-            .then((thumbnail) => ({ thumbnail, width, height }));
+            .then((thumbnail) => ({
+              thumbnail, width, height, phash,
+            }));
         });
     })
     .then((result) => {
-      const { thumbnail, width, height } = result;
+      const {
+        thumbnail, width, height, phash,
+      } = result;
       const screenshot = new Screenshot({
         build: build._id,
         timestamp,
         thumbnail,
         height,
         width,
+        phash,
         path: req.file.path,
         type: 'DEFAULT',
         view,
@@ -487,7 +499,7 @@ exports.compareImages = (req, res) => {
         screenshot.path,
         screenshotCompare.path,
         undefined,
-        parseThreshold(req.query),
+        parseCompareOptions(req.query),
       );
       return res.status(200).send(data);
     } catch (err) {
@@ -524,7 +536,7 @@ exports.compareImagesAndReturnImage = (req, res) => {
         screenshotToCompare,
         undefined,
         useCache,
-        parseThreshold(req.query),
+        parseCompareOptions(req.query),
       );
     })
     .then((tempFileName) => res.sendFile(path.resolve(tempFileName)))
@@ -752,7 +764,7 @@ exports.compareImageAgainstBaseline = (req, res) => {
           screenshot.path,
           baseline.screenshot.path,
           ignoredBoxes.length > 0 ? ignoredBoxes : undefined,
-          parseThreshold(req.query),
+          parseCompareOptions(req.query),
         );
         return res.status(200).send(data);
       } catch (err) {
@@ -818,7 +830,7 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
         screenshotToCompare,
         ignoredBoxes,
         useCache,
-        parseThreshold(req.query),
+        parseCompareOptions(req.query),
       );
     })
     .then((tempFileName) => res.sendFile(tempFileName))

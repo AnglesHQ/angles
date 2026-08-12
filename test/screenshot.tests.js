@@ -227,5 +227,74 @@ describe('Screenshot API Tests', () => {
         .expect('Content-Type', /png/)
         .end((err) => done(err));
     });
+
+    it('stores a perceptual hash at upload', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}`)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body.phash.should.be.a.String();
+          res.body.phash.length.should.be.above(0);
+          return done();
+        });
+    });
+
+    it('compares using the ssim algorithm when requested', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}?algorithm=ssim`)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body.algorithm.should.equal('ssim');
+          res.body.ssim.should.be.a.Number();
+          return done();
+        });
+    });
+
+    it('compares using the phash algorithm when requested', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}?algorithm=phash`)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body.algorithm.should.equal('phash');
+          res.body.distance.should.be.a.Number();
+          return done();
+        });
+    });
+
+    it('rejects phash on the image endpoint', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}/image?algorithm=phash`)
+        .expect(422)
+        .end((err) => done(err));
+    });
+
+    it('returns clustered diff regions when requested', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}?regions=true`)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          res.body.algorithm.should.equal('pixel');
+          res.body.regions.should.be.an.Array();
+          return done();
+        });
+    });
+
+    it('returns an ssim diff image', function test(done) {
+      this.timeout(60000);
+      request
+        .get(`${baseUrl}screenshot/${screenshot._id}/compare/${templateScreenshot._id}/image?useCache=false&algorithm=ssim`)
+        .expect(200)
+        .expect('Content-Type', /png/)
+        .end((err) => done(err));
+    });
   });
 });

@@ -6,6 +6,8 @@ const os = require('os');
 const path = require('path');
 const jimp = require('jimp');
 const pixel = require('../app/image-engine/pixel.js');
+const ssim = require('../app/image-engine/ssim.js');
+const phash = require('../app/image-engine/phash.js');
 const engine = require('../app/image-engine/index.js');
 const { optionsHash } = require('../app/image-engine/cache.js');
 const { InvalidRequestError } = require('../app/exceptions/errors.js');
@@ -108,6 +110,100 @@ describe('Image engine', () => {
     });
   });
 
+  describe('pixel diff regions', () => {
+    it('clusters changed pixels into distinct bounding regions', async () => {
+      const a = await writeImage('regions-a.png', 300, 200, paintCheckerboard);
+      const b = await writeImage('regions-b.png', 300, 200, (image) => {
+        paintCheckerboard(image);
+        // Two separate changes, far apart.
+        for (let x = 20; x < 60; x += 1) {
+          for (let y = 20; y < 50; y += 1) image.setPixelColor(0xff0000ff, x, y);
+        }
+        for (let x = 220; x < 260; x += 1) {
+          for (let y = 140; y < 170; y += 1) image.setPixelColor(0x00ff00ff, x, y);
+        }
+      });
+      const result = await pixel.compareStats(a, b, { threshold: 0.1, regions: true });
+      result.regions.length.should.equal(2);
+      const sorted = [...result.regions].sort((r1, r2) => r1.x - r2.x);
+      sorted[0].x.should.be.belowOrEqual(20);
+      (sorted[0].x + sorted[0].width).should.be.aboveOrEqual(60);
+      sorted[1].x.should.be.belowOrEqual(220);
+      sorted[0].pixels.should.be.above(0);
+    });
+
+    it('returns no regions for identical images', async () => {
+      const a = await writeImage('regions-same-a.png', 100, 100, paintCheckerboard);
+      const b = await writeImage('regions-same-b.png', 100, 100, paintCheckerboard);
+      const result = await pixel.compareStats(a, b, { regions: true });
+      result.regions.length.should.equal(0);
+    });
+  });
+
+  describe('ssim comparison', () => {
+    it('scores identical images as fully similar', async () => {
+      const a = await writeImage('ssim-a.png', 120, 90, paintCheckerboard);
+      const b = await writeImage('ssim-b.png', 120, 90, paintCheckerboard);
+      const result = await ssim.compareStats(a, b);
+      result.algorithm.should.equal('ssim');
+      result.ssim.should.equal(1);
+      result.rawMisMatchPercentage.should.equal(0);
+    });
+
+    it('tolerates subtle uniform shifts better than a strict pixel compare', async () => {
+      const a = await writeImage('ssim-shift-a.png', 120, 90, paintCheckerboard);
+      const b = await writeImage('ssim-shift-b.png', 120, 90, (image) => {
+        paintCheckerboard(image);
+        image.color([{ apply: 'lighten', params: [4] }]);
+      });
+      const ssimResult = await ssim.compareStats(a, b);
+      const strictPixel = await pixel.compareStats(a, b, { threshold: 0 });
+      // The uniform lighten floods a strict pixel compare but barely moves SSIM.
+      strictPixel.rawMisMatchPercentage.should.be.above(50);
+      ssimResult.rawMisMatchPercentage.should.be.below(5);
+    });
+
+    it('letterboxes mismatched dimensions and writes a diff image', async () => {
+      const a = await writeImage('ssim-lb-a.png', 120, 90, paintCheckerboard);
+      const b = await writeImage('ssim-lb-b.png', 120, 140, paintCheckerboard);
+      const outputFile = path.join(fixtureDir, 'ssim-diff.png');
+      const result = await ssim.compareAndWriteDiff(a, b, outputFile);
+      result.isSameDimensions.should.be.false();
+      fs.existsSync(result.diffPath).should.be.true();
+      const diffImage = await jimp.read(result.diffPath);
+      diffImage.bitmap.height.should.equal(140);
+    });
+  });
+
+  describe('phash comparison', () => {
+    it('reports near-zero distance for a resized copy of the same image', async () => {
+      const a = await writeImage('phash-a.png', 200, 150, paintCheckerboard);
+      const original = await jimp.read(a);
+      const resizedPath = path.join(fixtureDir, 'phash-a-resized.png');
+      await original.resize(100, 75).writeAsync(resizedPath);
+      const result = await phash.compareStats(a, resizedPath);
+      result.algorithm.should.equal('phash');
+      result.distance.should.be.below(0.1);
+      result.isSameDimensions.should.be.false();
+    });
+
+    it('reports a clear distance for different content', async () => {
+      // pHash captures low-frequency structure, so the second image needs a genuinely
+      // different layout (asymmetric blocks), not just a different repeating texture.
+      const a = await writeImage('phash-diff-a.png', 100, 100, paintCheckerboard);
+      const b = await writeImage('phash-diff-b.png', 100, 100, (image) => {
+        for (let x = 0; x < 45; x += 1) {
+          for (let y = 0; y < 70; y += 1) image.setPixelColor(0x111111ff, x, y);
+        }
+        for (let x = 60; x < 100; x += 1) {
+          for (let y = 80; y < 100; y += 1) image.setPixelColor(0x666666ff, x, y);
+        }
+      });
+      const result = await phash.compareStats(a, b);
+      result.distance.should.be.above(0.15);
+    });
+  });
+
   describe('worker pool facade', () => {
     it('runs pixel comparisons on the pool', async function test() {
       this.timeout(30000);
@@ -131,6 +227,26 @@ describe('Image engine', () => {
       ]);
       same.rawMisMatchPercentage.should.equal(0);
       different.rawMisMatchPercentage.should.be.above(40);
+    });
+
+    it('routes algorithm selection through the pool', async function test() {
+      this.timeout(30000);
+      const a = await writeImage('pool-algo-a.png', 100, 100, paintCheckerboard);
+      const b = await writeImage('pool-algo-b.png', 100, 100, paintCheckerboard);
+      const result = await engine.compareStats(a, b, { algorithm: 'ssim' });
+      result.algorithm.should.equal('ssim');
+      result.ssim.should.equal(1);
+    });
+
+    it('rejects an unknown algorithm with a 400 statusCode', async function test() {
+      this.timeout(30000);
+      const a = await writeImage('pool-bad-algo.png', 50, 50, paintCheckerboard);
+      try {
+        await engine.compareStats(a, a, { algorithm: 'nope' });
+        throw new Error('expected compareStats to reject');
+      } catch (error) {
+        error.statusCode.should.equal(400);
+      }
     });
 
     it('preserves statusCode on errors crossing the thread boundary', async function test() {

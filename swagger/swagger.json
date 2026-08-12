@@ -2208,6 +2208,29 @@
         "/screenshot/{screenshotId}/compare/{screenshotCompareId}": {
             "parameters": [
                 {
+                    "name": "algorithm",
+                    "in": "query",
+                    "required": false,
+                    "description": "Comparison algorithm: pixel (default), ssim (perceptual structural similarity), or phash (fast perceptual-hash distance).",
+                    "schema": {
+                        "type": "string",
+                        "enum": [
+                            "pixel",
+                            "ssim",
+                            "phash"
+                        ]
+                    }
+                },
+                {
+                    "name": "regions",
+                    "in": "query",
+                    "required": false,
+                    "description": "When true (pixel algorithm only), clusters changed pixels into bounding regions returned as 'regions'.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                },
+                {
                     "name": "threshold",
                     "in": "query",
                     "required": false,
@@ -2278,6 +2301,19 @@
         },
         "/screenshot/{screenshotId}/compare/{screenshotCompareId}/image": {
             "parameters": [
+                {
+                    "name": "algorithm",
+                    "in": "query",
+                    "required": false,
+                    "description": "Comparison algorithm for the diff image: pixel (default) or ssim. phash cannot produce an image.",
+                    "schema": {
+                        "type": "string",
+                        "enum": [
+                            "pixel",
+                            "ssim"
+                        ]
+                    }
+                },
                 {
                     "name": "threshold",
                     "in": "query",
@@ -2747,6 +2783,29 @@
         },
         "/screenshot/{screenshotId}/baseline/compare": {
             "parameters": [
+                {
+                    "name": "algorithm",
+                    "in": "query",
+                    "required": false,
+                    "description": "Comparison algorithm: pixel (default), ssim (perceptual structural similarity), or phash (fast perceptual-hash distance).",
+                    "schema": {
+                        "type": "string",
+                        "enum": [
+                            "pixel",
+                            "ssim",
+                            "phash"
+                        ]
+                    }
+                },
+                {
+                    "name": "regions",
+                    "in": "query",
+                    "required": false,
+                    "description": "When true (pixel algorithm only), clusters changed pixels into bounding regions returned as 'regions'.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                },
                 {
                     "name": "threshold",
                     "in": "query",

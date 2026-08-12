@@ -42,6 +42,11 @@ const ScreenshotSchema = mongoose.Schema({
     type: String,
     required: false,
   },
+  // Perceptual hash computed at upload; cheap near-duplicate detection and change gating.
+  phash: {
+    type: String,
+    required: false,
+  },
   tags: [{
     type: String,
     required: false,

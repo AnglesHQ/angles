@@ -2,6 +2,7 @@ const path = require('path');
 const fsPromises = require('fs').promises;
 const jimp = require('jimp');
 const pixelmatch = require('pixelmatch');
+const images = require('./images.js');
 
 const pixel = {};
 
@@ -11,144 +12,149 @@ const DEFAULT_THRESHOLD = 0.5;
 const DIFF_COLOR = [255, 0, 255];
 const DIFF_ALPHA = 0.3;
 
+// Diff pixels are clustered on a coarse grid: cells this size are marked when they
+// contain a changed pixel, and connected marked cells become one region. Coarse enough
+// to merge speckle from the same visual change, fine enough to keep separate changes apart.
+const REGION_CELL_SIZE = 16;
+const MAX_REGIONS = 50;
+
 /**
- * Make the ignoredBoxes regions identical in both images so pixelmatch skips them.
- * Boxes are absolute pixel coords { left, right, top, bottom } within the compared area.
+ * Cluster changed pixels (exact diff-colour matches in the pixelmatch output) into
+ * bounding boxes via connected components on a coarse grid.
+ * @returns {Array<Object>} [{ x, y, width, height, pixels }] sorted by pixels desc.
  */
-const applyIgnoredBoxes = (img1, img2, ignoredBoxes) => {
-  if (!ignoredBoxes || ignoredBoxes.length === 0) return;
-  const { width, height } = img1.bitmap;
-  const data1 = img1.bitmap.data;
-  const data2 = img2.bitmap.data;
-  ignoredBoxes.forEach(({
-    left, right, top, bottom,
-  }) => {
-    for (let y = Math.floor(top); y < Math.ceil(bottom); y += 1) {
-      for (let x = Math.floor(left); x < Math.ceil(right); x += 1) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
-          const idx = (y * width + x) * 4;
-          data2[idx] = data1[idx];
-          data2[idx + 1] = data1[idx + 1];
-          data2[idx + 2] = data1[idx + 2];
-          data2[idx + 3] = data1[idx + 3];
+const clusterDiffRegions = (diffBuffer, width, height) => {
+  const cellsWide = Math.ceil(width / REGION_CELL_SIZE);
+  const cellsHigh = Math.ceil(height / REGION_CELL_SIZE);
+  const cellCounts = new Uint32Array(cellsWide * cellsHigh);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const idx = (y * width + x) * 4;
+      if (diffBuffer[idx] === DIFF_COLOR[0]
+        && diffBuffer[idx + 1] === DIFF_COLOR[1]
+        && diffBuffer[idx + 2] === DIFF_COLOR[2]) {
+        const cellX = Math.floor(x / REGION_CELL_SIZE);
+        cellCounts[Math.floor(y / REGION_CELL_SIZE) * cellsWide + cellX] += 1;
+      }
+    }
+  }
+
+  const visited = new Uint8Array(cellsWide * cellsHigh);
+  const regions = [];
+  for (let cell = 0; cell < cellCounts.length; cell += 1) {
+    if (cellCounts[cell] === 0 || visited[cell]) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    // Breadth-first flood fill over the 8-connected marked cells.
+    let minX = cellsWide;
+    let minY = cellsHigh;
+    let maxX = 0;
+    let maxY = 0;
+    let pixels = 0;
+    const queue = [cell];
+    visited[cell] = 1;
+    while (queue.length > 0) {
+      const current = queue.pop();
+      const cx = current % cellsWide;
+      const cy = Math.floor(current / cellsWide);
+      pixels += cellCounts[current];
+      if (cx < minX) minX = cx;
+      if (cy < minY) minY = cy;
+      if (cx > maxX) maxX = cx;
+      if (cy > maxY) maxY = cy;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          const neighbour = ny * cellsWide + nx;
+          if (nx >= 0 && nx < cellsWide && ny >= 0 && ny < cellsHigh
+            && cellCounts[neighbour] > 0 && !visited[neighbour]) {
+            visited[neighbour] = 1;
+            queue.push(neighbour);
+          }
         }
       }
     }
-  });
-};
-
-// Same luma coefficients pixelmatch uses when it fades unchanged pixels, so letterboxed
-// areas (present in only one of the two images) read the same way in the diff image.
-const fadedGray = (r, g, b) => {
-  const luma = 0.29889531 * r + 0.58662247 * g + 0.11448223 * b;
-  return Math.round(255 + (luma - 255) * DIFF_ALPHA);
-};
-
-/**
- * Paint the parts of `source` that fall outside the shared (compared) region into the
- * union-sized diff image as faded grayscale, so the viewer can see what only exists in
- * one of the two images without it being counted as a pixel difference.
- */
-const paintOutsideSharedRegion = (diffImage, source, sharedWidth, sharedHeight) => {
-  const { width, height, data } = source.bitmap;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (x < sharedWidth && y < sharedHeight) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-      const idx = (y * width + x) * 4;
-      const gray = fadedGray(data[idx], data[idx + 1], data[idx + 2]);
-      diffImage.setPixelColor(jimp.rgbaToInt(gray, gray, gray, 255), x, y);
-    }
+    regions.push({
+      x: minX * REGION_CELL_SIZE,
+      y: minY * REGION_CELL_SIZE,
+      width: Math.min((maxX + 1) * REGION_CELL_SIZE, width) - minX * REGION_CELL_SIZE,
+      height: Math.min((maxY + 1) * REGION_CELL_SIZE, height) - minY * REGION_CELL_SIZE,
+      pixels,
+    });
   }
+  return regions.sort((a, b) => b.pixels - a.pixels).slice(0, MAX_REGIONS);
 };
 
 /**
- * Compare two images with pixelmatch. Images of different sizes are letterboxed, never
- * stretched: the comparison (and the mismatch percentage) covers only the shared
- * top-left region, because resizing one image to the other's dimensions distorts it and
- * manufactures diff noise - exactly the mobile-vs-desktop case.
- * @param {string} path1
- * @param {string} path2
- * @param {Object} [options] - { ignoredBoxes, threshold }
+ * Compare two images with pixelmatch over the letterboxed shared region.
+ * @param {Object} [options] - { ignoredBoxes, threshold, regions }
  * @param {boolean} [buildDiffImage] - also build the union-sized diff image
- * @returns {Promise<Object>} stats, plus diffImage (jimp) when buildDiffImage is set
  */
 const compare = async (path1, path2, options = {}, buildDiffImage = false) => {
   const threshold = options.threshold === undefined ? DEFAULT_THRESHOLD : options.threshold;
-  const [img1, img2] = await Promise.all([jimp.read(path1), jimp.read(path2)]);
-  const width1 = img1.bitmap.width;
-  const height1 = img1.bitmap.height;
-  const width2 = img2.bitmap.width;
-  const height2 = img2.bitmap.height;
-  const isSameDimensions = width1 === width2 && height1 === height2;
-  const dimensionDifference = { width: width1 - width2, height: height1 - height2 };
-  const sharedWidth = Math.min(width1, width2);
-  const sharedHeight = Math.min(height1, height2);
-  const unionWidth = Math.max(width1, width2);
-  const unionHeight = Math.max(height1, height2);
+  const pair = await images.loadPair(path1, path2);
+  images.applyIgnoredBoxes(pair.shared1, pair.shared2, options.ignoredBoxes);
 
-  const shared1 = isSameDimensions ? img1 : img1.clone().crop(0, 0, sharedWidth, sharedHeight);
-  const shared2 = isSameDimensions ? img2 : img2.clone().crop(0, 0, sharedWidth, sharedHeight);
-  applyIgnoredBoxes(shared1, shared2, options.ignoredBoxes);
-
-  const diffBuffer = Buffer.alloc(sharedWidth * sharedHeight * 4);
+  const diffBuffer = Buffer.alloc(pair.sharedWidth * pair.sharedHeight * 4);
   const numDiffPixels = pixelmatch(
-    shared1.bitmap.data,
-    shared2.bitmap.data,
+    pair.shared1.bitmap.data,
+    pair.shared2.bitmap.data,
     diffBuffer,
-    sharedWidth,
-    sharedHeight,
+    pair.sharedWidth,
+    pair.sharedHeight,
     { threshold, diffColor: DIFF_COLOR, alpha: DIFF_ALPHA },
   );
-  const rawMisMatchPercentage = (numDiffPixels / (sharedWidth * sharedHeight)) * 100;
+  const rawMisMatchPercentage = (numDiffPixels / (pair.sharedWidth * pair.sharedHeight)) * 100;
 
   const result = {
-    isSameDimensions,
-    dimensionDifference,
+    algorithm: 'pixel',
+    isSameDimensions: pair.isSameDimensions,
+    dimensionDifference: pair.dimensionDifference,
     rawMisMatchPercentage,
     misMatchPercentage: rawMisMatchPercentage.toFixed(2),
-    width: unionWidth,
-    height: unionHeight,
+    width: pair.unionWidth,
+    height: pair.unionHeight,
   };
+  if (options.regions) {
+    result.regions = clusterDiffRegions(diffBuffer, pair.sharedWidth, pair.sharedHeight);
+  }
 
   if (buildDiffImage) {
     // eslint-disable-next-line new-cap
     const sharedDiffImage = new jimp({
-      data: diffBuffer, width: sharedWidth, height: sharedHeight,
+      data: diffBuffer, width: pair.sharedWidth, height: pair.sharedHeight,
     });
-    if (isSameDimensions) {
-      result.diffImage = sharedDiffImage;
-    } else {
-      // eslint-disable-next-line new-cap
-      const unionDiffImage = new jimp(unionWidth, unionHeight, 0xffffffff);
-      paintOutsideSharedRegion(unionDiffImage, img1, sharedWidth, sharedHeight);
-      paintOutsideSharedRegion(unionDiffImage, img2, sharedWidth, sharedHeight);
-      unionDiffImage.composite(sharedDiffImage, 0, 0);
-      result.diffImage = unionDiffImage;
-    }
+    result.diffImage = images.buildUnionDiffImage(sharedDiffImage, pair);
   }
   return result;
 };
 
-/**
- * Compare two image files and return the comparison statistics.
- */
-pixel.compareStats = async (path1, path2, options) => {
+const statsOf = (result) => {
   const {
+    algorithm,
     isSameDimensions,
     dimensionDifference,
     rawMisMatchPercentage,
     misMatchPercentage,
-  } = await compare(path1, path2, options, false);
-  return {
+    regions,
+  } = result;
+  const stats = {
+    algorithm,
     isSameDimensions,
     dimensionDifference,
     rawMisMatchPercentage,
     misMatchPercentage,
   };
+  if (regions) stats.regions = regions;
+  return stats;
 };
+
+/** Compare two image files and return the comparison statistics. */
+pixel.compareStats = async (path1, path2, options) => (
+  statsOf(await compare(path1, path2, options, false))
+);
 
 /**
  * Compare two image files, write the diff PNG to outputFile, and return the statistics
@@ -159,19 +165,7 @@ pixel.compareAndWriteDiff = async (path1, path2, outputFile, options) => {
   const buffer = await result.diffImage.getBufferAsync(jimp.MIME_PNG);
   const absolutePath = path.resolve(outputFile);
   await fsPromises.writeFile(absolutePath, buffer);
-  const {
-    isSameDimensions,
-    dimensionDifference,
-    rawMisMatchPercentage,
-    misMatchPercentage,
-  } = result;
-  return {
-    isSameDimensions,
-    dimensionDifference,
-    rawMisMatchPercentage,
-    misMatchPercentage,
-    diffPath: absolutePath,
-  };
+  return { ...statsOf(result), diffPath: absolutePath };
 };
 
 module.exports = pixel;
