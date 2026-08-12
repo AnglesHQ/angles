@@ -141,6 +141,35 @@ module.exports = (app, path) => {
       .isBoolean(),
   ], buildController.setKeep);
 
+  app.put(`${path}/build/:buildId/executions`, [
+    param('buildId')
+      .exists()
+      .isMongoId(),
+    // Mirrors the validation POST /build applies to its optional executions array, but here
+    // at least one execution is required as adding nothing to an existing build is a no-op.
+    check('executions')
+      .exists()
+      .custom((executionsArray) => Array.isArray(executionsArray) && executionsArray.length > 0)
+      .withMessage('At least one execution is required'),
+    check('executions.*.title')
+      .exists()
+      .isString()
+      .isLength({ max: 150 })
+      .withMessage('Max length for test title is 150 characters'),
+    check('executions.*.suite')
+      .exists()
+      .isString()
+      .isLength({ max: 150 })
+      .withMessage('Max length for suite name is 150 characters'),
+    check('executions.*.platforms').optional().isArray(),
+    check('executions.*.platforms.*.platformName').optional().isString(),
+    check('executions.*.platforms.*.platformVersion').optional().isString(),
+    check('executions.*.platforms.*.browserName').optional().isString(),
+    check('executions.*.platforms.*.browserVersion').optional().isString(),
+    check('executions.*.platforms.*.deviceName').optional().isString(),
+    check('executions.*.platforms.*.userAgent').optional().isString(),
+  ], buildController.addExecutions);
+
   app.put(`${path}/build/:buildId/artifacts`, [
     param('buildId').isMongoId(),
     check('artifacts')

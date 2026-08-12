@@ -1139,6 +1139,69 @@
                 }
             }
         },
+        "/build/{buildId}/executions": {
+            "parameters": [
+                {
+                    "name": "buildId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of build that we want to add the executions to.",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "put": {
+                "summary": "Adds test executions to the build with the given ID",
+                "description": "Stores all the given test executions against an existing build in a single call. Executions are grouped into suites by their 'suite' name and the build metrics are recalculated. Use this to report a whole test run at the end, once any screenshots have been uploaded individually.",
+                "tags": [
+                    "Build"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "executions"
+                                ],
+                                "properties": {
+                                    "executions": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "$ref": "#/components/schemas/BuildExecution"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "Executions you want to store against the build with the given ID."
+                },
+                "responses": {
+                    "200": {
+                        "description": "Build is updated with the given executions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredBuild"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Build not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/build/{buildId}/artifacts": {
             "parameters": [
                 {
