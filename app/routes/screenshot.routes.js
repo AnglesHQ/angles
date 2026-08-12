@@ -6,7 +6,27 @@ const {
   checkSchema,
 } = require('express-validator');
 const multerConfig = require('../utils/multer-config-screenshots.js');
+const multerTemplateConfig = require('../utils/multer-config-template.js');
 const screenshotController = require('../controllers/screenshot.controller.js');
+
+// Shared by every "find template in screenshot" route.
+const findOptionValidators = [
+  query('minConfidence')
+    .optional()
+    .isFloat({ min: 0, max: 1 }),
+  query('scaleMin')
+    .optional()
+    .isFloat({ min: 0.2, max: 3 }),
+  query('scaleMax')
+    .optional()
+    .isFloat({ min: 0.2, max: 3 }),
+  query('maxMatches')
+    .optional()
+    .isInt({ min: 1, max: 25 }),
+  query('grayscale')
+    .optional()
+    .isBoolean(),
+];
 
 module.exports = (app, path) => {
   app.post(
@@ -131,6 +151,29 @@ module.exports = (app, path) => {
     param('screenshotId').exists().isMongoId(),
     param('screenshotCompareId').exists().isMongoId(),
   ], screenshotController.compareImagesAndReturnImage);
+
+  app.post(
+    `${path}/screenshot/:screenshotId/find`,
+    multerTemplateConfig.single('template'),
+    [
+      param('screenshotId').exists().isMongoId(),
+      ...findOptionValidators,
+    ],
+    screenshotController.findUploadedImageInScreenshot,
+    screenshotController.createFail,
+  );
+
+  app.get(`${path}/screenshot/:screenshotId/find/:templateId`, [
+    param('screenshotId').exists().isMongoId(),
+    param('templateId').exists().isMongoId(),
+    ...findOptionValidators,
+  ], screenshotController.findImageInScreenshot);
+
+  app.get(`${path}/screenshot/:screenshotId/find/:templateId/image`, [
+    param('screenshotId').exists().isMongoId(),
+    param('templateId').exists().isMongoId(),
+    ...findOptionValidators,
+  ], screenshotController.findImageInScreenshotAndReturnImage);
 
   app.get(`${path}/screenshot/:screenshotId/baseline/compare`, [
     param('screenshotId').exists().isMongoId(),
