@@ -318,6 +318,50 @@ exports.update = (req, res) => {
     }).catch((err) => handleError(err, res));
 };
 
+exports.addExecutions = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { buildId } = req.params;
+  const { executions } = req.body;
+  return Build.findById(buildId)
+    .then((existingBuild) => {
+      if (!existingBuild) {
+        throw new NotFoundError(`No build found with id ${buildId}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, existingBuild.team)) {
+        throw new ForbiddenError('You do not have access to this build');
+      }
+      const testExecutions = executions
+        .map((execution) => buildMetricsUtils.buildExecution(execution, existingBuild));
+      return Execution.insertMany(testExecutions)
+        .then((savedExecutions) => buildMetricsUtils
+          .addExecutionsToBuild(existingBuild, savedExecutions))
+        .catch(async (err) => {
+          // Unlike create, the build may already hold executions and screenshots, so only the
+          // executions from this failed batch are removed - the caller retries the batch.
+          log(`Failed to add executions to build ${buildId}, rolling back batch: ${err.message}`);
+          const batchIds = testExecutions.map((execution) => execution._id);
+          await Execution.deleteMany({ _id: { $in: batchIds } }).exec();
+          throw err;
+        });
+    })
+    .then(() => Build
+      .findOne({ _id: buildId })
+      .populate('team')
+      .populate('environment')
+      .populate('phase')
+      .populate('suites.executions')
+      .lean()
+      .exec())
+    .then((updatedBuild) => {
+      log(`Added ${executions.length} execution(s) to build ${buildId}`);
+      return res.status(200).send(updatedBuild);
+    })
+    .catch((err) => handleError(err, res));
+};
+
 exports.setKeep = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
