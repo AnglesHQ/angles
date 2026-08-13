@@ -41,6 +41,10 @@
         {
             "name": "User",
             "description": "API for managing users and API tokens"
+        },
+        {
+            "name": "Monitoring",
+            "description": "Prometheus scrape endpoint for resource and application metrics"
         }
     ],
     "security": [
@@ -3282,6 +3286,39 @@
                 }
             }
         },
+        "/metrics": {
+            "get": {
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Prometheus metrics (scrape endpoint)",
+                "description": "Exposes resource usage (CPU, memory, disk, event loop lag) and Angles application metrics (builds, executions, screenshots, HTTP requests) in the Prometheus text exposition format.\n\n**Served from the server root, not the API base path**: the real URL is `GET /metrics`, not `GET /rest/api/v1.0/metrics`. It is mounted outside the API base path because Prometheus cannot hold a session cookie, so it authenticates with its own bearer token instead. ('Try it out' below will target the wrong URL for this reason.)\n\nThe endpoint returns 404 unless one of these is configured:\n- `ANGLES_METRICS_TOKEN` - require this token, sent as `Authorization: Bearer <token>` or in the `x-metrics-token` header (recommended).\n- `ANGLES_METRICS_PUBLIC=true` - no authentication; only appropriate when the port is unreachable from outside the deployment network.\n\nRelated settings: `ANGLES_METRICS_CACHE_TTL_MS` (default 60000) caches the database aggregations between scrapes, `ANGLES_METRICS_MAX_SERIES` (default 200) caps per-team label cardinality, and `ANGLES_METRICS_DISK_USAGE=true` additionally walks the screenshot and compare directories to report how much disk Angles itself is using.",
+                "security": [
+                    {
+                        "MetricsBearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Metrics in the Prometheus text exposition format",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "example": "# HELP angles_builds Number of builds stored, by status.\n# TYPE angles_builds gauge\nangles_builds{status=\"PASS\"} 26\n"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid metrics token"
+                    },
+                    "404": {
+                        "description": "The metrics endpoint is disabled (neither ANGLES_METRICS_TOKEN nor ANGLES_METRICS_PUBLIC is set)"
+                    }
+                }
+            }
+        },
         "/auth/config": {
             "get": {
                 "tags": ["Auth"],
@@ -3738,6 +3775,11 @@
                 "in": "header",
                 "name": "x-api-key",
                 "description": "API token issued via 'POST /users/{userId}/tokens'. Paste the raw token value (only shown once, at creation time) to authorise the 'Try it out' requests."
+            },
+            "MetricsBearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Value of the ANGLES_METRICS_TOKEN environment variable, used only by the Prometheus scrape endpoint."
             }
         },
         "schemas": {

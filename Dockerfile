@@ -24,6 +24,14 @@ ENV ANGLES_API_BASE_URL=127.0.0.1:3000
 ENV ANGLES_API_BASE_PATH=/rest/api/v1.0
 ENV SWAGGER_SCHEMES=http
 
+# The Prometheus scrape endpoint (GET /metrics) is disabled unless one of
+# ANGLES_METRICS_TOKEN (require a bearer token - recommended) or
+# ANGLES_METRICS_PUBLIC=true (no auth; only when the port is not externally reachable)
+# is set at runtime. Deliberately not defaulted here: the scrape body carries team and
+# environment names, so exposing it has to be a deliberate act.
+# Optional: ANGLES_METRICS_CACHE_TTL_MS, ANGLES_METRICS_MAX_SERIES,
+# ANGLES_METRICS_DISK_USAGE.
+
 VOLUME /app/screenshots
 VOLUME /app/compares
 
