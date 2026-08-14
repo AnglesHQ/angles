@@ -42,6 +42,11 @@ scrape_configs:
 Keep `scrape_interval` at or above `ANGLES_METRICS_CACHE_TTL_MS`; scraping faster only re-renders
 the same cached database numbers.
 
+## Grafana
+
+A ready-to-import dashboard covering everything below lives in
+[`grafana/angles-dashboard.json`](grafana/README.md).
+
 ## Metrics
 
 ### Resource usage
