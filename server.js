@@ -61,6 +61,13 @@ const corsOptionsDelegate = (req, callback) => {
 app.use(cors(corsOptionsDelegate));
 app.use(compression());
 
+// Request instrumentation for the Prometheus endpoint. Registered before the routes so it
+// observes every request, and before the body parsers so the recorded duration includes
+// the time spent reading and parsing the body (which is most of a screenshot upload).
+const httpMetrics = require('./app/utils/http-metrics.js');
+
+app.use(httpMetrics.middleware);
+
 // parse requests of content-type - application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -142,6 +149,15 @@ app.use(passport.session());
 
 // Add swagger routes
 require('./swagger/routes/routes.js')(app);
+
+// Prometheus scrape endpoint. Mounted at the root and registered before the
+// `/rest/api/v1.0` authentication middleware, because Prometheus authenticates with its
+// own bearer token rather than a session; the route applies that check itself. Disabled
+// unless ANGLES_METRICS_TOKEN or ANGLES_METRICS_PUBLIC is set.
+require('./app/routes/prometheus.routes.js')(app);
+
+// Start sampling event loop lag (an unref()ed interval, so it never holds the process open)
+require('./app/utils/resource-metrics.js').startEventLoopMonitor();
 
 // Add auth routes (unprotected)
 require('./app/routes/auth.routes.js')(app, '/rest/api/v1.0');
