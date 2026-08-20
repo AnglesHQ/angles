@@ -4,65 +4,104 @@ const authConfig = require('../../config/auth.config.js');
 
 const log = debug('auth:settings');
 
-// Non-secret fields that are safe to return to the admin UI. The Okta client secret is
-// deliberately excluded - it is write-only (see toPublic / updateAuthSettings below).
-const PUBLIC_FIELDS = [
-  'localAuthEnabled',
-  'oktaAuthEnabled',
-  'oktaDomain',
-  'oktaClientId',
-  'oktaIssuer',
-  'oktaAdminGroup',
-  'oktaTeamLeadGroup',
-  'oktaUserGroup',
-];
+// Secret paths, per provider type. These are `select: false` on the model and are
+// write-only through the API: their values are never returned, only a boolean flag
+// reporting whether one is set.
+const SECRET_PATHS = {
+  oidc: ['clientSecret'],
+  saml: ['privateKey'],
+  ldap: ['bindCredentials'],
+};
+
+// The mongoose `.select()` projection needed to read every provider secret back.
+const SECRET_SELECT = Object.entries(SECRET_PATHS)
+  .flatMap(([type, fields]) => fields.map((field) => `+providers.${type}.${field}`))
+  .join(' ');
 
 /**
- * Reduces a settings document to the plain, client-safe object returned by the API. The
- * client secret value is never included; instead a boolean flag reports whether one is
- * configured so the UI can prompt appropriately.
+ * The callback/ACS URL for a provider, derived from the configured public base URL.
+ * Not stored: deriving it keeps it correct when the deployment moves, and it must match
+ * what is registered with the IdP.
  */
-const toPublic = (settings) => {
-  const result = PUBLIC_FIELDS.reduce((acc, field) => {
-    acc[field] = settings[field];
-    return acc;
-  }, {});
-  result.oktaClientSecretSet = Boolean(settings.oktaClientSecret);
+const callbackUrlFor = (providerId) => `${authConfig.baseUrl}/rest/api/v1.0/auth/sso/${providerId}/callback`;
+
+exports.callbackUrlFor = callbackUrlFor;
+
+/**
+ * Reduces one provider subdocument to its client-safe form: configuration minus every
+ * secret value, plus a `<field>Set` boolean so the UI can show "configured" and prompt
+ * appropriately without ever receiving the secret itself.
+ */
+const providerToPublic = (provider) => {
+  const plain = typeof provider.toObject === 'function'
+    ? provider.toObject()
+    : { ...provider };
+
+  const result = {
+    id: plain.id,
+    name: plain.name,
+    type: plain.type,
+    enabled: plain.enabled,
+    roleMappings: (plain.roleMappings || []).map((mapping) => ({
+      value: mapping.value,
+      role: mapping.role,
+    })),
+    defaultRole: plain.defaultRole || '',
+  };
+
+  // Only the config block matching the provider's type is returned, so the payload
+  // reflects what is actually in use rather than every unused default.
+  const config = { ...(plain[plain.type] || {}) };
+  (SECRET_PATHS[plain.type] || []).forEach((field) => {
+    result[`${field}Set`] = Boolean(config[field]);
+    delete config[field];
+  });
+  result[plain.type] = config;
+
+  // SSO providers are browser redirect flows; LDAP is a credential post. The UI needs to
+  // know which to render, so hand it the URL rather than have it rebuild the convention.
+  if (plain.type === 'ldap') {
+    result.loginUrl = `/rest/api/v1.0/auth/sso/${plain.id}/login`;
+  } else {
+    result.loginUrl = `/rest/api/v1.0/auth/sso/${plain.id}`;
+    result.callbackUrl = callbackUrlFor(plain.id);
+  }
+
   return result;
 };
 
 /**
- * Mirrors the persisted settings onto the live in-memory authConfig object so that
- * call-time consumers (role-mapper, the /auth/config endpoint) and strategy
- * (re)configuration read the current values without a restart.
+ * Reduces a settings document to the plain, client-safe object returned by the API.
+ */
+const toPublic = (settings) => ({
+  localAuthEnabled: settings.localAuthEnabled,
+  providers: (settings.providers || []).map(providerToPublic),
+});
+
+/**
+ * Mirrors the persisted settings onto the live in-memory authConfig so call-time
+ * consumers (the strategy registry, the /auth/config endpoint) read current values
+ * without a restart. Secrets are included here - this object stays in memory and is
+ * never serialised to a client.
  */
 const applyToRuntime = (settings) => {
-  authConfig.localAuthEnabled = settings.localAuthEnabled;
-  authConfig.oktaAuthEnabled = settings.oktaAuthEnabled;
-  authConfig.authType = settings.oktaAuthEnabled ? 'okta' : 'local';
-  authConfig.okta.domain = settings.oktaDomain || '';
-  authConfig.okta.issuer = settings.oktaIssuer || '';
-  authConfig.okta.clientID = settings.oktaClientId || '';
-  authConfig.okta.clientSecret = settings.oktaClientSecret || '';
-  authConfig.okta.adminGroup = settings.oktaAdminGroup || '';
-  authConfig.okta.teamLeadGroup = settings.oktaTeamLeadGroup || '';
-  authConfig.okta.userGroup = settings.oktaUserGroup || '';
+  authConfig.localAuthEnabled = settings.localAuthEnabled !== false;
+  authConfig.providers = (settings.providers || []).map((provider) => (
+    typeof provider.toObject === 'function' ? provider.toObject() : provider
+  ));
 };
 
 /**
- * Loads the settings document (including the select:false client secret, needed to
- * configure the strategy). On first run it creates a bare document from the schema
- * defaults (local auth on, Okta off/unconfigured); all authentication configuration is
- * managed exclusively through the admin UI, never from environment variables.
- * @returns {Promise<Object>} the settings document, with oktaClientSecret populated
+ * Loads the settings document, including the select:false secrets needed to configure the
+ * strategies. On first run it creates a bare document from the schema defaults (local
+ * auth on, no providers).
  */
 const loadDoc = async () => {
-  let settings = await AuthSettings.findOne({ singleton: 'auth' }).select('+oktaClientSecret');
-  if (!settings) {
-    settings = await AuthSettings.create({ singleton: 'auth' });
-    log('Created default auth settings document.');
-  }
-  return settings;
+  const settings = await AuthSettings.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
+  if (settings) return settings;
+
+  log('Created default auth settings document.');
+  return AuthSettings.create({ singleton: 'auth' });
 };
 
 /**
@@ -75,7 +114,7 @@ const loadAuthSettings = async () => {
 };
 
 /**
- * Returns the current client-safe settings (no secret value), seeding on first access.
+ * Returns the current client-safe settings (no secret values), seeding on first access.
  */
 const getAuthSettings = async () => {
   const settings = await loadDoc();
@@ -83,31 +122,68 @@ const getAuthSettings = async () => {
 };
 
 /**
+ * Merges an incoming provider payload onto the stored provider.
+ *
+ * Secrets are write-only in both directions: a secret is updated only when a non-empty
+ * string is supplied, so saving the form with a blank secret field preserves the stored
+ * value rather than wiping it. Config fields are merged rather than replaced so a partial
+ * update does not reset unspecified fields to their schema defaults.
+ */
+const mergeProvider = (existing, payload) => {
+  const target = existing || {};
+  const type = payload.type || target.type;
+  const merged = {
+    id: payload.id !== undefined ? payload.id : target.id,
+    name: payload.name !== undefined ? payload.name : target.name,
+    type,
+    enabled: payload.enabled !== undefined ? payload.enabled : (target.enabled || false),
+    roleMappings: payload.roleMappings !== undefined
+      ? payload.roleMappings
+      : (target.roleMappings || []),
+    defaultRole: payload.defaultRole !== undefined ? payload.defaultRole : (target.defaultRole || ''),
+  };
+
+  const existingConfig = (target[type] && typeof target[type].toObject === 'function')
+    ? target[type].toObject()
+    : { ...(target[type] || {}) };
+  const incomingConfig = { ...(payload[type] || {}) };
+
+  (SECRET_PATHS[type] || []).forEach((field) => {
+    const supplied = incomingConfig[field];
+    if (typeof supplied !== 'string' || supplied.length === 0) {
+      // Not supplied (or blank): keep whatever is stored.
+      delete incomingConfig[field];
+    }
+  });
+
+  merged[type] = { ...existingConfig, ...incomingConfig };
+  return merged;
+};
+
+/**
  * Persists the provided settings (upserting the singleton document), mirrors them onto
- * the live authConfig, and returns the client-safe result. Only known fields are
- * accepted. The client secret is write-only: it is updated only when a non-empty string
- * is supplied, so saving the form with a blank secret field preserves the existing value.
+ * the live authConfig, and returns the client-safe result.
+ *
+ * `providers` is treated as the full desired set: providers absent from the payload are
+ * removed. Each supplied provider is merged onto its stored counterpart by `id`.
  */
 const updateAuthSettings = async (payload = {}) => {
-  const update = PUBLIC_FIELDS.reduce((acc, field) => {
-    if (payload[field] !== undefined) {
-      acc[field] = payload[field];
-    }
-    return acc;
-  }, {});
+  const settings = await loadDoc();
 
-  if (typeof payload.oktaClientSecret === 'string' && payload.oktaClientSecret.length > 0) {
-    update.oktaClientSecret = payload.oktaClientSecret;
+  if (payload.localAuthEnabled !== undefined) {
+    settings.localAuthEnabled = payload.localAuthEnabled;
   }
 
-  const settings = await AuthSettings.findOneAndUpdate(
-    { singleton: 'auth' },
-    { $set: update, $setOnInsert: { singleton: 'auth' } },
-    {
-      new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true,
-    },
-  ).select('+oktaClientSecret');
+  if (payload.providers !== undefined) {
+    const existingById = new Map(
+      (settings.providers || []).map((provider) => [provider.id, provider]),
+    );
+    settings.providers = payload.providers.map(
+      (provider) => mergeProvider(existingById.get(provider.id), provider),
+    );
+  }
 
+  await settings.save();
   applyToRuntime(settings);
   log('Auth settings updated.');
   return toPublic(settings);
@@ -119,5 +195,8 @@ module.exports = {
   updateAuthSettings,
   applyToRuntime,
   toPublic,
-  PUBLIC_FIELDS,
+  providerToPublic,
+  callbackUrlFor,
+  SECRET_PATHS,
+  SECRET_SELECT,
 };

@@ -32,6 +32,13 @@ services:
       - PORT=3000
       - BUILD_CLEAN_UP_AGE_IN_DAYS=90
       - MONGO_URL=mongodb://angleshq:%40nglesPassword@mongodb:27017/angles
+      # Public origin of this instance. Each SSO provider's redirect/callback URL is
+      # derived from it, and must match what is registered with the identity provider,
+      # so set this to the URL users actually reach Angles on.
+      - ANGLES_BASE_URL=${ANGLES_BASE_URL:-http://localhost:3000}
+      # Signs session cookies. Required when NODE_ENV=production; anyone who knows it can
+      # forge a session for any account, so generate a random value per deployment.
+      - SESSION_SECRET=${SESSION_SECRET:-}
       # Initial admin account is seeded on first startup from this password.
       # Set via the deployment environment; change before deploying.
       - ANGLES_ADMIN_PASSWORD=${ANGLES_ADMIN_PASSWORD:-ChangeMe!1}

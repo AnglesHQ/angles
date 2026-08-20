@@ -2,6 +2,21 @@ const { check, param } = require('express-validator');
 const users = require('../controllers/user.controller.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const { passwordStrength } = require('../utils/password-policy.js');
+const authConfig = require('../../config/auth.config.js');
+
+/**
+ * `authProvider` is either 'local' or the id of a configured SSO provider. The valid set
+ * is not fixed at startup - an admin can add a provider at runtime - so it is checked
+ * against the live configuration rather than a hard-coded enum.
+ */
+const validateAuthProvider = (value) => {
+  const providerIds = (authConfig.providers || []).map((provider) => provider.id);
+  const allowed = ['local', ...providerIds];
+  if (!allowed.includes(value)) {
+    throw new Error(`authProvider must be one of: ${allowed.join(', ')}.`);
+  }
+  return true;
+};
 
 module.exports = (app, path) => {
   // Prevent token auth for all user routes
@@ -61,8 +76,7 @@ module.exports = (app, path) => {
       .withMessage('Role must be one of: admin, user, team_lead.'),
     check('authProvider')
       .optional()
-      .isIn(['local', 'okta'])
-      .withMessage('authProvider must be one of: local, okta.'),
+      .custom(validateAuthProvider),
     check('teams')
       .optional()
       .isArray()

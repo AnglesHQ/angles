@@ -6,8 +6,7 @@ const bcrypt = require('bcryptjs');
 const app = require('../server.js');
 const User = require('../app/models/user.js');
 const authMiddleware = require('../app/utils/auth-middleware.js');
-const authConfig = require('../config/auth.config.js');
-const { resolveRoleFromGroups } = require('../app/utils/role-mapper.js');
+const { resolveRole } = require('../app/utils/role-mapper.js');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const baseUrl = '/rest/api/v1.0/';
@@ -573,54 +572,61 @@ describe('User & Auth API Tests', () => {
     });
   });
 
-  describe('role-mapper.resolveRoleFromGroups', () => {
-    let originalOktaGroups;
-
-    before(() => {
-      originalOktaGroups = {
-        adminGroup: authConfig.okta.adminGroup,
-        teamLeadGroup: authConfig.okta.teamLeadGroup,
-        userGroup: authConfig.okta.userGroup,
-      };
-      authConfig.okta.adminGroup = 'angles-admins';
-      authConfig.okta.teamLeadGroup = 'angles-team-leads';
-      authConfig.okta.userGroup = 'angles-users';
-    });
-
-    after(() => {
-      Object.assign(authConfig.okta, originalOktaGroups);
-    });
+  describe('role-mapper.resolveRole', () => {
+    const mappings = [
+      { value: 'angles-admins', role: 'admin' },
+      { value: 'angles-team-leads', role: 'team_lead' },
+      { value: 'angles-users', role: 'user' },
+    ];
 
     it('maps the admin group to the admin role', () => {
-      should.equal(resolveRoleFromGroups(['angles-admins']), 'admin');
+      should.equal(resolveRole(['angles-admins'], mappings), 'admin');
     });
 
     it('maps the team lead group to the team_lead role', () => {
-      should.equal(resolveRoleFromGroups(['angles-team-leads']), 'team_lead');
+      should.equal(resolveRole(['angles-team-leads'], mappings), 'team_lead');
     });
 
     it('maps the user group to the user role', () => {
-      should.equal(resolveRoleFromGroups(['angles-users']), 'user');
+      should.equal(resolveRole(['angles-users'], mappings), 'user');
     });
 
     it('grants the highest-privilege role when a user is in multiple groups', () => {
-      should.equal(resolveRoleFromGroups(['angles-users', 'angles-team-leads', 'angles-admins']), 'admin');
-      should.equal(resolveRoleFromGroups(['angles-users', 'angles-team-leads']), 'team_lead');
+      should.equal(resolveRole(['angles-users', 'angles-team-leads', 'angles-admins'], mappings), 'admin');
+      should.equal(resolveRole(['angles-users', 'angles-team-leads'], mappings), 'team_lead');
     });
 
     it('returns null when the user is in none of the configured groups', () => {
-      should.equal(resolveRoleFromGroups(['some-other-group']), null);
+      should.equal(resolveRole(['some-other-group'], mappings), null);
     });
 
     it('returns null for an empty or missing group list', () => {
-      should.equal(resolveRoleFromGroups([]), null);
-      should.equal(resolveRoleFromGroups(), null);
+      should.equal(resolveRole([], mappings), null);
+      should.equal(resolveRole(undefined, mappings), null);
     });
 
-    it('ignores unconfigured group mappings', () => {
-      authConfig.okta.teamLeadGroup = undefined;
-      should.equal(resolveRoleFromGroups(['angles-team-leads']), null);
-      authConfig.okta.teamLeadGroup = 'angles-team-leads';
+    it('returns null when no mappings are configured', () => {
+      should.equal(resolveRole(['angles-admins'], []), null);
+      should.equal(resolveRole(['angles-admins']), null);
+    });
+
+    it('matches case-insensitively, because directories are inconsistent about casing', () => {
+      should.equal(resolveRole(['ANGLES-Admins'], mappings), 'admin');
+      should.equal(resolveRole(['angles-admins'], [{ value: 'ANGLES-ADMINS', role: 'admin' }]), 'admin');
+    });
+
+    it('accepts a scalar group value, as SAML attributes often supply', () => {
+      should.equal(resolveRole('angles-admins', mappings), 'admin');
+    });
+
+    it('falls back to defaultRole only when nothing matches', () => {
+      should.equal(resolveRole(['unmapped'], mappings, 'user'), 'user');
+      should.equal(resolveRole(['angles-admins'], mappings, 'user'), 'admin');
+      should.equal(resolveRole([], mappings, 'team_lead'), 'team_lead');
+    });
+
+    it('ignores malformed mapping entries', () => {
+      should.equal(resolveRole(['angles-admins'], [null, {}, { value: 'angles-admins', role: 'admin' }]), 'admin');
     });
   });
 });
