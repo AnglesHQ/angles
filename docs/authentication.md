@@ -101,23 +101,3 @@ LDAP uses a credential POST rather than a browser redirect:
 POST /rest/api/v1.0/auth/sso/{id}/login
 { "username": "...", "password": "..." }
 ```
-
-## Upgrading from the single-Okta configuration
-
-Releases up to 2.0.30 stored one Okta configuration as flat `okta*` fields. On first
-startup after upgrading, that is migrated automatically into a provider with id `okta`,
-including the client secret, and the legacy fields are removed. The migration is
-idempotent, and no admin action is required.
-
-The API shape changed with it:
-
-| Before | Now |
-| --- | --- |
-| `oktaAuthEnabled`, `oktaIssuer`, … on `/settings/auth` | `providers[]` |
-| `GET /auth/okta` | `GET /auth/sso/{id}` |
-| `GET /auth/okta/callback` | `GET /auth/sso/{id}/callback` |
-| `oktaAuthEnabled` on `/auth/config` | `providers[]` |
-
-The migrated provider keeps the id `okta`, so its callback URL becomes
-`/rest/api/v1.0/auth/sso/okta/callback`. **Update the redirect URI registered in Okta**
-to match, or logins will fail at the callback.

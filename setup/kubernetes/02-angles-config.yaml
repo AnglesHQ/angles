@@ -14,6 +14,20 @@ data:
   # Initial admin account is seeded on first startup from this password. Change it before
   # deploying (ideally move it to a Secret referenced via envFrom).
   ANGLES_ADMIN_PASSWORD: "ChangeMe!1"
+  # Public origin users actually reach Angles on, without a trailing slash.
+  #
+  # Only needed for SSO, but required as soon as any provider is configured: each
+  # provider's redirect/callback URL is derived from it and must match what is registered
+  # with the identity provider. The port below is the backend's hostPort; behind an
+  # Ingress or LoadBalancer set this to that public URL instead
+  # (e.g. "https://angles.example.com").
+  ANGLES_BASE_URL: "http://127.0.0.1:3002"
+  # Signs session cookies. Startup fails without it when NODE_ENV=production.
+  #
+  # Anyone who knows this value can forge a session cookie for any account, including an
+  # admin, so generate a random value per deployment and keep it out of source control -
+  # e.g. `openssl rand -hex 32`, stored in a Secret rather than here.
+  SESSION_SECRET: "ChangeMeToARandomValue"
 
 ---
 

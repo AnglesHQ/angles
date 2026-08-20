@@ -17,7 +17,7 @@ const UserSchema = mongoose.Schema({
   },
   password: {
     type: String,
-    required: false, // Optional because Okta users don't have passwords stored locally
+    required: false, // Optional because SSO users have no password stored locally
   },
   role: {
     type: String,

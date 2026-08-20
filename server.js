@@ -101,10 +101,9 @@ mongoose.connect(mongoURL, {
   } catch (err) {
     logger.error('Could not seed admin user', err);
   }
-  // Load persisted auth settings (migrating a legacy single-Okta document on first run)
-  // and build the strategy for every enabled provider so database-managed values take
-  // effect. A provider that fails to configure is logged and left unregistered rather
-  // than preventing startup.
+  // Load persisted auth settings and build the strategy for every enabled provider so
+  // database-managed values take effect. A provider that fails to configure is logged
+  // and left unregistered rather than preventing startup.
   try {
     await authSettingsService.loadAuthSettings();
     const providerResults = await configureProviders();

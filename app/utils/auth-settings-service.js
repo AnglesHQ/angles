@@ -4,22 +4,6 @@ const authConfig = require('../../config/auth.config.js');
 
 const log = debug('auth:settings');
 
-// The model every function below reads and writes through. Indirected via a variable
-// solely so the migration tests can point it at their own collection - the settings
-// singleton is global state shared by the whole app, and rewriting it repeatedly (as
-// those tests must) otherwise races every other suite.
-let Model = AuthSettings;
-
-/**
- * Test seam: swaps the model this service uses and returns a function restoring it.
- * Not used outside the test suite.
- */
-const setModelForTesting = (replacement) => {
-  const previous = Model;
-  Model = replacement || AuthSettings;
-  return () => { Model = previous; };
-};
-
 // Secret paths, per provider type. These are `select: false` on the model and are
 // write-only through the API: their values are never returned, only a boolean flag
 // reporting whether one is set.
@@ -108,90 +92,16 @@ const applyToRuntime = (settings) => {
 };
 
 /**
- * Migrates a pre-multi-provider settings document in place.
- *
- * Releases up to 2.0.30 stored a single Okta configuration as flat `okta*` fields. Those
- * are folded into one `oidc` provider with id `okta` so existing deployments keep working
- * without an admin re-entering the configuration (including the client secret, which they
- * would have no way to recover from the UI). The legacy fields are then unset.
- *
- * @returns {boolean} whether anything was migrated
- */
-const LEGACY_OKTA_FIELDS = [
-  'oktaAuthEnabled', 'oktaDomain', 'oktaClientId', 'oktaClientSecret',
-  'oktaIssuer', 'oktaAdminGroup', 'oktaTeamLeadGroup', 'oktaUserGroup',
-];
-
-const migrateLegacyOkta = (settings) => {
-  // The legacy fields are no longer in the schema, so they must be read with
-  // `strict: false` - a plain property access returns undefined for an off-schema path.
-  const readLegacy = (field) => settings.get(field, null, { strict: false });
-  const raw = LEGACY_OKTA_FIELDS.reduce((acc, field) => {
-    acc[field] = readLegacy(field);
-    return acc;
-  }, {});
-
-  const hasLegacy = raw.oktaIssuer || raw.oktaClientId || raw.oktaAuthEnabled !== undefined;
-  if (!hasLegacy) return false;
-
-  // Do not migrate on top of an already-migrated document.
-  if ((settings.providers || []).some((provider) => provider.id === 'okta')) {
-    return false;
-  }
-
-  const roleMappings = [
-    { value: raw.oktaAdminGroup, role: 'admin' },
-    { value: raw.oktaTeamLeadGroup, role: 'team_lead' },
-    { value: raw.oktaUserGroup, role: 'user' },
-  ].filter((mapping) => mapping.value);
-
-  settings.providers.push({
-    id: 'okta',
-    name: 'Okta',
-    type: 'oidc',
-    enabled: Boolean(raw.oktaAuthEnabled),
-    oidc: {
-      issuer: raw.oktaIssuer || '',
-      clientId: raw.oktaClientId || '',
-      clientSecret: raw.oktaClientSecret || '',
-      // The previous implementation always requested these scopes.
-      scopes: 'openid profile email groups',
-      groupsClaim: 'groups',
-      usernameClaim: 'email',
-    },
-    roleMappings,
-    defaultRole: '',
-  });
-
-  // $unset the legacy fields so the persisted document is left clean. Setting them to
-  // undefined marks them for removal on save.
-  LEGACY_OKTA_FIELDS.forEach((field) => {
-    settings.set(field, undefined, { strict: false });
-  });
-  settings.markModified('providers');
-
-  log('Migrated legacy Okta settings into the providers array.');
-  return true;
-};
-
-/**
- * Loads the settings document (including the select:false secrets, needed to configure
- * the strategies), migrating a legacy Okta document on the way. On first run it creates a
- * bare document from the schema defaults (local auth on, no providers).
+ * Loads the settings document, including the select:false secrets needed to configure the
+ * strategies. On first run it creates a bare document from the schema defaults (local
+ * auth on, no providers).
  */
 const loadDoc = async () => {
-  let settings = await Model.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
-  if (!settings) {
-    settings = await Model.create({ singleton: 'auth' });
-    log('Created default auth settings document.');
-    return settings;
-  }
-  if (migrateLegacyOkta(settings)) {
-    await settings.save();
-    // Re-read so the saved document is clean and the secrets are selected consistently.
-    settings = await Model.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
-  }
-  return settings;
+  const settings = await AuthSettings.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
+  if (settings) return settings;
+
+  log('Created default auth settings document.');
+  return AuthSettings.create({ singleton: 'auth' });
 };
 
 /**
@@ -289,6 +199,4 @@ module.exports = {
   callbackUrlFor,
   SECRET_PATHS,
   SECRET_SELECT,
-  // eslint-disable-next-line no-underscore-dangle
-  __setModelForTesting: setModelForTesting,
 };
