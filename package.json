@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/AnglesHQ/angles#readme",
   "dependencies": {
+    "@node-saml/passport-saml": "^5.1.0",
     "@techstark/opencv-js": "^5.0.0-release.1",
     "ansi-regex": ">=6.0.1",
     "bcryptjs": "^3.0.3",
@@ -82,6 +83,7 @@
     "mocha": "^11.7.5",
     "pino-pretty": "^7.6.1",
     "should": "^13.2.3",
-    "supertest": "^6.2.3"
+    "supertest": "^6.2.3",
+    "xml-crypto": "^6.1.2"
   }
 }

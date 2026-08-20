@@ -5,6 +5,7 @@ const debug = require('debug');
 const User = require('../models/user.js');
 const authConfig = require('../../config/auth.config.js');
 const oidcStrategy = require('./strategies/oidc-strategy.js');
+const samlStrategy = require('./strategies/saml-strategy.js');
 
 const log = debug('auth:passport');
 
@@ -12,6 +13,7 @@ const log = debug('auth:passport');
 // exports `build(provider)` - the registry, routes and settings API need no changes.
 const BUILDERS = {
   oidc: oidcStrategy,
+  saml: samlStrategy,
 };
 
 // Serialize user ID to session
@@ -61,7 +63,7 @@ passport.use(new LocalStrategy({
  * unreachable. The routes consult this registry rather than the settings, so they never
  * invoke an unregistered strategy.
  *
- * @type {Map<string, {provider: Object, error: string|null}>}
+ * @type {Map<string, {provider: Object, strategy: Object}>}
  */
 const registry = new Map();
 
@@ -117,7 +119,7 @@ const configureProviders = async () => {
     try {
       const strategy = await builder.build(provider);
       passport.use(strategyName(provider.id), strategy);
-      registry.set(provider.id, { provider, error: null });
+      registry.set(provider.id, { provider, strategy });
       log('Configured %s strategy for provider %s', provider.type, provider.id);
       return { id: provider.id, ok: true, error: null };
     } catch (err) {
@@ -144,6 +146,17 @@ const getReadyProvider = (providerId) => {
 };
 
 /**
+ * The registered strategy instance. Exposed so routes that need to call a
+ * strategy-specific method (SAML metadata generation) can do so without reaching into
+ * passport's internals.
+ * @returns {Object|null}
+ */
+const getStrategy = (providerId) => {
+  const entry = registry.get(providerId);
+  return entry ? entry.strategy : null;
+};
+
+/**
  * The enabled providers, as the login page needs them: no secrets, no configuration -
  * just what is required to render and start a login.
  */
@@ -164,6 +177,7 @@ module.exports = {
   configureProviders,
   isProviderReady,
   getReadyProvider,
+  getStrategy,
   listEnabledProviders,
   strategyName,
   BUILDERS,

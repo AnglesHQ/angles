@@ -27,6 +27,7 @@ const CONFIG_RULES = {
     groupsAttribute: { type: 'string', max: 255 },
     usernameAttribute: { type: 'string', max: 255 },
     allowUnsolicited: { type: 'boolean' },
+    wantAuthnResponseSigned: { type: 'boolean' },
   },
   ldap: {
     url: { type: 'string', max: 2048 },

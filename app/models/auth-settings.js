@@ -51,6 +51,11 @@ const SamlConfigSchema = mongoose.Schema({
   // Assertion attribute holding group membership, and the one holding the username.
   groupsAttribute: { type: String, default: 'groups' },
   usernameAttribute: { type: String, default: '' },
+  // Require a signature over the whole SAML Response, not just the assertion inside it.
+  // Defaults to true (the stricter posture, and node-saml's default). Some IdPs sign only
+  // the assertion, so this can be relaxed - the assertion signature is always required
+  // either way, so a relaxed Response check never leaves the login unauthenticated.
+  wantAuthnResponseSigned: { type: Boolean, default: true },
   // IdP-initiated login lets the IdP POST an unsolicited assertion to our ACS endpoint.
   // Off by default: it has no request to correlate against, which removes the CSRF
   // protection that RelayState/InResponseTo provide in the SP-initiated flow.
