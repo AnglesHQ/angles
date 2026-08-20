@@ -1,23 +1,60 @@
-const authConfig = require('../../config/auth.config.js');
+/**
+ * Resolves an Angles role from the group/attribute values supplied by an identity
+ * provider. Shared by every SSO provider type: OIDC passes the groups claim, SAML the
+ * groups attribute, and LDAP the resolved group names.
+ */
+
+// Highest privilege first, so a subject matching several mappings gets the strongest role.
+const ROLE_PRECEDENCE = ['admin', 'team_lead', 'user'];
 
 /**
- * Ordered highest-privilege first, so a user who belongs to more than one mapped
- * group is granted the strongest role. Groups that have not been configured are
- * filtered out and therefore never match.
- * @returns {Array<{ group: string, role: string }>}
+ * Normalises a provider-supplied groups value into an array of strings. Providers are
+ * inconsistent here: a single group may arrive as a bare string rather than an array,
+ * and SAML attributes in particular are frequently scalar when there is one value.
+ * @param {*} groups - raw value from the claim/attribute
+ * @returns {string[]}
  */
-const roleMappings = () => [
-  { group: authConfig.okta.adminGroup, role: 'admin' },
-  { group: authConfig.okta.teamLeadGroup, role: 'team_lead' },
-  { group: authConfig.okta.userGroup, role: 'user' },
-].filter((mapping) => mapping.group);
-
-/**
- * Resolves an Angles role from the list of Okta groups a user belongs to.
- * @param {string[]} groups - group names from the Okta profile claim
- * @returns {string|null} the mapped role, or null if the user is in none of the configured groups
- */
-exports.resolveRoleFromGroups = (groups = []) => {
-  const match = roleMappings().find((mapping) => groups.includes(mapping.group));
-  return match ? match.role : null;
+const toGroupArray = (groups) => {
+  if (Array.isArray(groups)) {
+    return groups.filter((group) => typeof group === 'string' || typeof group === 'number')
+      .map((group) => String(group));
+  }
+  if (typeof groups === 'string' && groups.length > 0) {
+    return [groups];
+  }
+  if (typeof groups === 'number') {
+    return [String(groups)];
+  }
+  return [];
 };
+
+/**
+ * Resolves a role from the provider's role mappings.
+ *
+ * Matching is case-insensitive because directories are inconsistent about casing
+ * (Active Directory group names and SAML attribute values in particular), and an admin
+ * typing "Angles-Admins" into the UI should still match "angles-admins" from the wire.
+ *
+ * @param {string[]|string} groups - group values from the provider
+ * @param {Array<{value: string, role: string}>} roleMappings - configured mappings
+ * @param {string} [defaultRole] - role granted when nothing matches; empty/absent denies
+ * @returns {string|null} the mapped role, or null when access should be denied
+ */
+exports.resolveRole = (groups, roleMappings = [], defaultRole = '') => {
+  const groupList = toGroupArray(groups).map((group) => group.toLowerCase());
+
+  const matched = (roleMappings || [])
+    .filter((mapping) => mapping && mapping.value && mapping.role)
+    .filter((mapping) => groupList.includes(String(mapping.value).toLowerCase()))
+    .map((mapping) => mapping.role);
+
+  if (matched.length > 0) {
+    // Grant the strongest role the subject qualifies for.
+    return ROLE_PRECEDENCE.find((role) => matched.includes(role)) || null;
+  }
+
+  return defaultRole || null;
+};
+
+exports.toGroupArray = toGroupArray;
+exports.ROLE_PRECEDENCE = ROLE_PRECEDENCE;

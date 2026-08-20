@@ -12,9 +12,9 @@ const passport = require('passport');
 const mongoose = require('mongoose');
 const path = require('path');
 const authConfig = require('./config/auth.config.js');
-// requiring passport-setup registers the passport strategies (side effect) and exposes
-// the Okta strategy (re)configuration helper used after the DB settings load.
-const { configureOktaStrategy } = require('./app/utils/passport-setup.js');
+// requiring passport-setup registers the local strategy (side effect) and exposes the
+// provider strategy registry, (re)configured after the DB settings load.
+const { configureProviders } = require('./app/utils/passport-setup.js');
 const authSettingsService = require('./app/utils/auth-settings-service.js');
 const adminSeedService = require('./app/utils/admin-seed-service.js');
 // mongo db config
@@ -101,12 +101,17 @@ mongoose.connect(mongoURL, {
   } catch (err) {
     logger.error('Could not seed admin user', err);
   }
-  // Load persisted auth settings (seeding from env on first run) and (re)configure the
-  // Okta strategy so database-managed values take effect.
+  // Load persisted auth settings (migrating a legacy single-Okta document on first run)
+  // and build the strategy for every enabled provider so database-managed values take
+  // effect. A provider that fails to configure is logged and left unregistered rather
+  // than preventing startup.
   try {
     await authSettingsService.loadAuthSettings();
-    await configureOktaStrategy();
-    logger.info('Auth settings loaded');
+    const providerResults = await configureProviders();
+    providerResults.filter((result) => result.error).forEach((result) => {
+      logger.warn('Auth provider "%s" could not be configured: %s', result.id, result.error);
+    });
+    logger.info('Auth settings loaded (%d provider(s) active)', providerResults.filter((r) => r.ok).length);
   } catch (err) {
     logger.error('Could not load auth settings', err);
   }

@@ -1,14 +1,19 @@
 const { check, validationResult } = require('express-validator');
 const passport = require('passport');
 const authConfig = require('../../config/auth.config.js');
-const { isOktaStrategyReady } = require('../utils/passport-setup.js');
+const {
+  isProviderReady,
+  getReadyProvider,
+  listEnabledProviders,
+  strategyName,
+} = require('../utils/passport-setup.js');
 
 module.exports = (app, path) => {
-  // Config
+  // Config. Drives the login page: which sign-in methods to offer, and where each goes.
   app.get(`${path}/auth/config`, (req, res) => {
     res.json({
       localAuthEnabled: authConfig.localAuthEnabled !== false,
-      oktaAuthEnabled: authConfig.oktaAuthEnabled === true,
+      providers: listEnabledProviders(),
     });
   });
 
@@ -27,6 +32,9 @@ module.exports = (app, path) => {
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.array() });
     }
+    if (authConfig.localAuthEnabled === false) {
+      return res.status(404).json({ error: 'Local authentication is not enabled.' });
+    }
     return passport.authenticate('local', (err, user, info) => {
       if (err) return next(err);
       if (!user) {
@@ -44,35 +52,45 @@ module.exports = (app, path) => {
     })(req, res, next);
   });
 
-  // Okta Authentication. The routes are always registered because Okta can be enabled at
-  // runtime from the admin settings; they only function once an admin has enabled and
-  // configured Okta (at which point the OIDC strategy is registered). passport.authenticate
-  // is invoked per-request so it picks up the currently-registered strategy.
-  const oktaGuard = (req, res, next) => {
-    if (!authConfig.oktaAuthEnabled) {
-      return res.status(404).json({ error: 'Okta authentication is not enabled.' });
+  // SSO. The routes are registered once and resolve the provider per request, because
+  // providers can be added, enabled and reconfigured at runtime from the admin settings.
+  // The registry (not the settings) is consulted, so an enabled-but-unconfigured provider
+  // reports 503 rather than passport throwing on an unregistered strategy.
+  const ssoGuard = (req, res, next) => {
+    const provider = (authConfig.providers || [])
+      .find((candidate) => candidate.id === req.params.providerId);
+
+    if (!provider || !provider.enabled) {
+      return res.status(404).json({ error: 'Unknown or disabled authentication provider.' });
     }
-    if (!isOktaStrategyReady()) {
-      return res.status(503).json({ error: 'Okta authentication is enabled but not configured correctly.' });
+    if (!isProviderReady(provider.id)) {
+      return res.status(503).json({
+        error: 'This authentication provider is enabled but not configured correctly.',
+      });
     }
+    req.ssoProvider = getReadyProvider(provider.id);
     return next();
   };
 
+  // Begin an SSO login (redirect flows: OIDC, SAML).
   app.get(
-    `${path}/auth/okta`,
-    oktaGuard,
-    (req, res, next) => passport.authenticate('oidc')(req, res, next),
+    `${path}/auth/sso/:providerId`,
+    ssoGuard,
+    (req, res, next) => passport.authenticate(strategyName(req.params.providerId))(req, res, next),
   );
 
-  app.get(
-    `${path}/auth/okta/callback`,
-    oktaGuard,
-    (req, res, next) => passport.authenticate('oidc', { failureRedirect: '/login?error=true' })(req, res, next),
-    (req, res) => {
-      // Successful authentication, redirect home.
-      res.redirect('/');
-    },
-  );
+  // SSO callback / assertion consumer service.
+  const ssoCallback = (req, res, next) => passport.authenticate(
+    strategyName(req.params.providerId),
+    { failureRedirect: '/login?error=true' },
+  )(req, res, next);
+
+  const ssoCallbackSuccess = (req, res) => {
+    // Successful authentication, redirect home.
+    res.redirect('/');
+  };
+
+  app.get(`${path}/auth/sso/:providerId/callback`, ssoGuard, ssoCallback, ssoCallbackSuccess);
 
   // Common Logout
   app.post(`${path}/auth/logout`, (req, res, next) => {

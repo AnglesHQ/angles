@@ -1,13 +1,18 @@
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
-const { Issuer, Strategy: OpenIDConnectStrategy } = require('openid-client');
 const bcrypt = require('bcryptjs');
 const debug = require('debug');
 const User = require('../models/user.js');
 const authConfig = require('../../config/auth.config.js');
-const { resolveRoleFromGroups } = require('./role-mapper.js');
+const oidcStrategy = require('./strategies/oidc-strategy.js');
 
 const log = debug('auth:passport');
+
+// Strategy builders by provider type. Adding a protocol means adding a module here that
+// exports `build(provider)` - the registry, routes and settings API need no changes.
+const BUILDERS = {
+  oidc: oidcStrategy,
+};
 
 // Serialize user ID to session
 passport.serializeUser((user, done) => {
@@ -47,127 +52,119 @@ passport.use(new LocalStrategy({
   }
 }));
 
-// Tracks whether the OIDC strategy is currently registered and usable. Because
-// configuration is asynchronous (OIDC discovery), Okta can be enabled in settings while
-// the strategy is momentarily unavailable (e.g. discovery failed); the auth routes use
-// this to avoid invoking an unregistered strategy.
-let oktaStrategyReady = false;
+/**
+ * Registered SSO strategies, keyed by the passport strategy name (`sso:<providerId>`).
+ *
+ * Configuration is asynchronous for some provider types (OIDC discovery performs a
+ * network request), so a provider can be enabled in settings while its strategy is
+ * momentarily unavailable - for example when discovery fails because the IdP is
+ * unreachable. The routes consult this registry rather than the settings, so they never
+ * invoke an unregistered strategy.
+ *
+ * @type {Map<string, {provider: Object, error: string|null}>}
+ */
+const registry = new Map();
 
-const removeOktaStrategy = () => {
-  oktaStrategyReady = false;
+const strategyName = (providerId) => `sso:${providerId}`;
+
+/**
+ * Removes a provider's strategy from passport and the registry.
+ */
+const unregister = (providerId) => {
+  registry.delete(providerId);
   try {
-    passport.unuse('oidc');
+    passport.unuse(strategyName(providerId));
   } catch (err) {
     // Strategy was not registered; nothing to remove.
   }
 };
 
-// Verify callback shared by every Okta strategy registration. openid-client invokes this
-// with the validated token set and the userinfo response.
-const oktaVerify = async (tokenSet, userInfo, done) => {
-  try {
-    const claims = tokenSet.claims();
-    const profile = userInfo || {};
+/**
+ * (Re)builds every enabled provider's strategy from the current authConfig.
+ *
+ * Safe to call at startup and again whenever an admin updates the auth settings, so
+ * changes take effect without a restart. Providers are rebuilt wholesale rather than
+ * diffed: the set is small, and rebuilding avoids stale clients after a config edit.
+ *
+ * A provider that fails to build is left unregistered with its error recorded, so the
+ * admin UI can surface why, and one broken provider never prevents the others from
+ * working.
+ *
+ * @returns {Promise<Array<{id: string, ok: boolean, error: string|null}>>}
+ */
+const configureProviders = async () => {
+  const providers = authConfig.providers || [];
 
-    // Prefer the email claim; fall back to preferred_username and finally the subject.
-    const identifier = claims.email || profile.email
-      || claims.preferred_username || profile.preferred_username
-      || claims.sub;
+  // Drop strategies for providers that have been deleted or disabled.
+  [...registry.keys()]
+    .filter((id) => !providers.some((provider) => provider.id === id && provider.enabled))
+    .forEach(unregister);
 
-    if (!identifier) {
-      return done(null, false, { message: 'Unable to determine a username from the Okta profile.' });
-    }
-    const username = identifier.toLowerCase();
-
-    // Groups may arrive as an ID token claim or from the userinfo endpoint, depending on
-    // how the Okta authorization server is configured to emit the groups claim.
-    const groups = claims.groups || profile.groups || [];
-
-    // Map Okta groups to an Angles role (admin > team_lead > user). Returns null
-    // when the user belongs to none of the configured groups.
-    const newRole = resolveRoleFromGroups(groups);
-
-    if (!newRole) {
-      log(`User ${username} denied access: Not in required Okta groups.`);
-      return done(null, false, { message: 'You do not have permission to access this application.' });
+  const results = await Promise.all(providers.map(async (provider) => {
+    if (!provider.enabled) {
+      unregister(provider.id);
+      return { id: provider.id, ok: false, error: null };
     }
 
-    let user = await User.findOne({ username });
-
-    if (!user) {
-      // Auto-provision user on first login
-      user = new User({
-        username,
-        authProvider: 'okta',
-        role: newRole,
-        teams: [],
-      });
-      await user.save();
-      log(`Provisioned new Okta user: ${username} with role: ${newRole}`);
-    } else if (user.role !== newRole && user.authProvider === 'okta') {
-      // Sync role if it has changed (only for okta users)
-      user.role = newRole;
-      await user.save();
-      log(`Updated role for Okta user: ${username} to: ${newRole}`);
+    const builder = BUILDERS[provider.type];
+    if (!builder) {
+      unregister(provider.id);
+      const error = `Unsupported provider type: ${provider.type}`;
+      log(error);
+      return { id: provider.id, ok: false, error };
     }
-    return done(null, user);
-  } catch (err) {
-    return done(err);
-  }
+
+    try {
+      const strategy = await builder.build(provider);
+      passport.use(strategyName(provider.id), strategy);
+      registry.set(provider.id, { provider, error: null });
+      log('Configured %s strategy for provider %s', provider.type, provider.id);
+      return { id: provider.id, ok: true, error: null };
+    } catch (err) {
+      unregister(provider.id);
+      log('Failed to configure provider %s: %s', provider.id, err.message);
+      return { id: provider.id, ok: false, error: err.message };
+    }
+  }));
+
+  return results;
 };
 
 /**
- * (Re)registers the Okta OIDC strategy from the current authConfig values using OIDC
- * discovery (the issuer's .well-known/openid-configuration provides all endpoints and the
- * JWKS for token validation), or removes it when Okta is disabled / not fully configured.
- *
- * Asynchronous because of the discovery request. Safe to call at startup and again
- * whenever the admin updates the auth settings, so changes take effect without a restart.
- * @returns {Promise<boolean>} whether the strategy is registered afterwards
+ * @returns {boolean} whether the provider's strategy is registered and usable
  */
-const configureOktaStrategy = async () => {
-  const oktaReady = authConfig.oktaAuthEnabled
-    && authConfig.okta.issuer
-    && authConfig.okta.clientID
-    && authConfig.okta.clientSecret;
+const isProviderReady = (providerId) => registry.has(providerId);
 
-  if (!oktaReady) {
-    removeOktaStrategy();
-    return false;
-  }
-
-  try {
-    // The issuer is entered free-text in the admin UI; strip any trailing slash before
-    // discovery so it resolves cleanly.
-    const issuerUrl = authConfig.okta.issuer.replace(/\/+$/, '');
-    const issuer = await Issuer.discover(issuerUrl);
-    const client = new issuer.Client({
-      client_id: authConfig.okta.clientID,
-      client_secret: authConfig.okta.clientSecret,
-      redirect_uris: [authConfig.okta.callbackURL],
-      response_types: ['code'],
-    });
-
-    passport.use('oidc', new OpenIDConnectStrategy({
-      client,
-      // Authorization code flow with PKCE (S256). The library also generates and verifies
-      // state for CSRF protection on the callback, and validates the returned ID token
-      // (signature against the discovered JWKS, plus issuer/audience/expiry) before the
-      // verify callback runs.
-      usePKCE: 'S256',
-      params: { scope: 'openid profile email groups' },
-    }, oktaVerify));
-
-    oktaStrategyReady = true;
-    log('Okta OIDC strategy configured via discovery for issuer %s', issuer.issuer);
-    return true;
-  } catch (err) {
-    removeOktaStrategy();
-    log('Failed to configure Okta OIDC strategy: %s', err.message);
-    return false;
-  }
+/**
+ * @returns {Object|null} the configured provider backing a registered strategy
+ */
+const getReadyProvider = (providerId) => {
+  const entry = registry.get(providerId);
+  return entry ? entry.provider : null;
 };
 
-const isOktaStrategyReady = () => oktaStrategyReady;
+/**
+ * The enabled providers, as the login page needs them: no secrets, no configuration -
+ * just what is required to render and start a login.
+ */
+const listEnabledProviders = () => (authConfig.providers || [])
+  .filter((provider) => provider.enabled)
+  .map((provider) => ({
+    id: provider.id,
+    name: provider.name,
+    type: provider.type,
+    ready: registry.has(provider.id),
+    loginUrl: provider.type === 'ldap'
+      ? `/rest/api/v1.0/auth/sso/${provider.id}/login`
+      : `/rest/api/v1.0/auth/sso/${provider.id}`,
+  }));
 
-module.exports = { passport, configureOktaStrategy, isOktaStrategyReady };
+module.exports = {
+  passport,
+  configureProviders,
+  isProviderReady,
+  getReadyProvider,
+  listEnabledProviders,
+  strategyName,
+  BUILDERS,
+};

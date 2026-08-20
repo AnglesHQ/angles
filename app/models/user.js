@@ -28,10 +28,13 @@ const UserSchema = mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team',
   }],
+  // 'local' for password accounts, otherwise the id of the configured SSO provider that
+  // authenticated the user. Not an enum: provider ids are created at runtime by an admin,
+  // so the valid set is not known at schema-definition time.
   authProvider: {
     type: String,
-    enum: ['local', 'okta'],
     default: 'local',
+    trim: true,
   },
   apiTokens: [TokenSchema],
 }, {

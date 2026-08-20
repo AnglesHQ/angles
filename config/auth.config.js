@@ -29,27 +29,21 @@ const resolveSessionSecret = () => {
 };
 
 // These are only the in-memory defaults used before the persisted settings load at
-// startup. All authentication configuration (whether Okta is enabled, issuer, client id,
-// client secret, group mappings) is managed exclusively through the admin UI and stored
-// in the database - it is NOT read from environment variables. The auth-settings service
-// loads the database document at startup and mutates this object in place.
+// startup. All authentication configuration (which providers exist, whether they are
+// enabled, issuers, client ids, secrets, group mappings) is managed exclusively through
+// the admin UI and stored in the database - it is NOT read from environment variables.
+// The auth-settings service loads the database document at startup and mutates this
+// object in place.
 //
 // The two exceptions below are genuine deployment/infrastructure values, not user config:
 // - sessionSecret: the session signing key (see resolveSessionSecret above).
-// - okta.callbackURL: the public OIDC redirect URL, which depends on where the app is hosted.
+// - baseUrl: the public origin, used to derive each provider's callback URL. It depends
+//   on where the app is hosted and must match what is registered with the IdP.
 module.exports = {
-  authType: 'local', // derived mirror of oktaAuthEnabled: 'local' or 'okta'
   localAuthEnabled: true,
-  oktaAuthEnabled: false,
   sessionSecret: resolveSessionSecret(),
-  okta: {
-    domain: '',
-    issuer: '',
-    clientID: '',
-    clientSecret: '',
-    callbackURL: process.env.OKTA_CALLBACK_URL || 'http://localhost:3000/auth/okta/callback',
-    adminGroup: '',
-    teamLeadGroup: '',
-    userGroup: '',
-  },
+  // Public origin of this Angles instance, without a trailing slash.
+  baseUrl: (process.env.ANGLES_BASE_URL || 'http://localhost:3000').replace(/\/+$/, ''),
+  // Populated from the database at startup by auth-settings-service.
+  providers: [],
 };
