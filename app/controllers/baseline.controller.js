@@ -66,8 +66,11 @@ exports.create = (req, res) => {
     })
     .then((savedBaseline) => {
       log(`Created baseline with id "${savedBaseline._id}" for view "${savedBaseline.view}" and platorm "${savedBaseline.platformName}"`);
-      return res.status(201).send(savedBaseline);
-    }).catch((err) => handleError(err, res));
+      // populate the screenshot so the response matches the shape returned by find/update
+      return savedBaseline.populate('screenshot');
+    })
+    .then((savedBaselineWithScreenshot) => res.status(201).send(savedBaselineWithScreenshot))
+    .catch((err) => handleError(err, res));
 };
 
 exports.findAll = (req, res) => {
