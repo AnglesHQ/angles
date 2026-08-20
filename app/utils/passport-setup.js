@@ -6,6 +6,7 @@ const User = require('../models/user.js');
 const authConfig = require('../../config/auth.config.js');
 const oidcStrategy = require('./strategies/oidc-strategy.js');
 const samlStrategy = require('./strategies/saml-strategy.js');
+const ldapStrategy = require('./strategies/ldap-strategy.js');
 
 const log = debug('auth:passport');
 
@@ -14,6 +15,7 @@ const log = debug('auth:passport');
 const BUILDERS = {
   oidc: oidcStrategy,
   saml: samlStrategy,
+  ldap: ldapStrategy,
 };
 
 // Serialize user ID to session

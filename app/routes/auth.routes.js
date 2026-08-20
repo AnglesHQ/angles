@@ -76,11 +76,61 @@ module.exports = (app, path) => {
     return next();
   };
 
+  // LDAP is a direct-bind flow rather than a browser redirect: the user posts their
+  // credentials here and Angles forwards them to the directory. It therefore gets its own
+  // route shape, and returns JSON like the local login rather than redirecting.
+  app.post(`${path}/auth/sso/:providerId/login`, [
+    check('username')
+      .exists({ checkFalsy: true })
+      .isLength({ min: 1, max: 100 })
+      .withMessage('Username is required.'),
+    check('password')
+      .exists({ checkFalsy: true })
+      .isLength({ min: 1, max: 200 })
+      .withMessage('Password is required.'),
+  ], ssoGuard, (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ errors: errors.array() });
+    }
+    if (req.ssoProvider.type !== 'ldap') {
+      return res.status(404).json({ error: 'This provider does not accept a credential login.' });
+    }
+    const { providerId } = req.params;
+    return passport.authenticate(strategyName(providerId), (err, user, info) => {
+      if (err) {
+        // A directory that is unreachable or misconfigured is an operational fault, not a
+        // rejected credential, so it is logged rather than reported as a bad password.
+        log('LDAP login for provider %s errored: %s', providerId, err.message);
+        return res.status(503).json({ error: 'The directory could not be reached.' });
+      }
+      if (!user) {
+        return res.status(401).json({ error: (info && info.message) || 'Login failed' });
+      }
+      return req.logIn(user, (loginErr) => {
+        if (loginErr) return next(loginErr);
+        return res.json({
+          message: 'Logged in successfully',
+          user: {
+            _id: user._id, username: user.username, role: user.role, teams: user.teams,
+          },
+        });
+      });
+    })(req, res, next);
+  });
+
   // Begin an SSO login (redirect flows: OIDC, SAML).
   app.get(
     `${path}/auth/sso/:providerId`,
     ssoGuard,
-    (req, res, next) => passport.authenticate(strategyName(req.params.providerId))(req, res, next),
+    (req, res, next) => {
+      if (req.ssoProvider.type === 'ldap') {
+        return res.status(404).json({
+          error: 'This provider uses a credential login; post to /login instead.',
+        });
+      }
+      return passport.authenticate(strategyName(req.params.providerId))(req, res, next);
+    },
   );
 
   // SSO callback / assertion consumer service.

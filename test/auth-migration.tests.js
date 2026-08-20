@@ -15,11 +15,46 @@ const authConfig = require('../config/auth.config.js');
  * the fields no longer exist in the schema.
  */
 describe('Legacy Okta settings migration', () => {
-  // Replaces the singleton outright rather than inserting, so the helper cannot collide
-  // with a document another suite's teardown recreated (the unique index on `singleton`
-  // makes a plain insert fail in that case). `providers` is set explicitly so no earlier
-  // document's providers can survive into the test.
-  const writeLegacyDoc = (fields) => mongoose.connection.collection('authsettings')
+  // These tests drive loadAuthSettings() against deliberately malformed documents, which
+  // means repeatedly emptying and rewriting the auth settings singleton. Every other
+  // suite shares that same singleton through the one app instance, and mocha interleaves
+  // async hooks across files, so doing this on the live collection races their setup.
+  //
+  // Mongoose resolves a model's collection when the model is compiled, so the isolation
+  // is done by pointing the service at a second model over its own collection for the
+  // duration of this suite - same schema, same code path, nothing else reading it.
+  const scratchCollection = 'authsettings_migration_tests';
+  let ScratchAuthSettings;
+
+  before(() => {
+    ScratchAuthSettings = mongoose.model(
+      'AuthSettingsMigrationTest',
+      AuthSettings.schema.clone(),
+      scratchCollection,
+    );
+  });
+
+  /**
+   * Runs one service call against the scratch collection.
+   *
+   * The swap is scoped to the individual call rather than held for the whole suite:
+   * another suite's teardown may call loadAuthSettings() while this one is running, and
+   * a suite-wide swap would send that write into the scratch collection - which is what
+   * made this suite intermittently see a second provider.
+   */
+  const onScratch = async (fn) => {
+    // eslint-disable-next-line no-underscore-dangle
+    const restore = authSettingsService.__setModelForTesting(ScratchAuthSettings);
+    try {
+      return await fn();
+    } finally {
+      restore();
+    }
+  };
+
+  // `providers` is set explicitly so no earlier document's providers can survive into
+  // the test.
+  const writeLegacyDoc = (fields) => mongoose.connection.collection(scratchCollection)
     .replaceOne(
       { singleton: 'auth' },
       {
@@ -35,13 +70,13 @@ describe('Legacy Okta settings migration', () => {
     );
 
   beforeEach(async () => {
-    // Drop the singleton through the raw collection: another suite's teardown may have
-    // recreated it, and each test writes its own legacy document from scratch.
-    await mongoose.connection.collection('authsettings').deleteMany({});
+    await mongoose.connection.collection(scratchCollection).deleteMany({});
   });
 
   after(async () => {
-    await AuthSettings.deleteMany({}).exec();
+    await mongoose.connection.collection(scratchCollection).drop().catch(() => {});
+    // Reload from the real collection, so the in-memory authConfig matches the live
+    // settings again for any suite that runs afterwards.
     await authSettingsService.loadAuthSettings();
   });
 
@@ -57,7 +92,7 @@ describe('Legacy Okta settings migration', () => {
       oktaUserGroup: 'angles-users',
     });
 
-    const settings = await authSettingsService.loadAuthSettings();
+    const settings = await onScratch(() => authSettingsService.loadAuthSettings());
 
     settings.providers.should.have.length(1);
     const [provider] = settings.providers;
@@ -92,9 +127,9 @@ describe('Legacy Okta settings migration', () => {
       oktaClientSecret: 'legacy-client-secret',
     });
 
-    await authSettingsService.loadAuthSettings();
+    await onScratch(() => authSettingsService.loadAuthSettings());
 
-    const raw = await mongoose.connection.collection('authsettings').findOne({ singleton: 'auth' });
+    const raw = await mongoose.connection.collection(scratchCollection).findOne({ singleton: 'auth' });
     should.not.exist(raw.oktaAuthEnabled);
     should.not.exist(raw.oktaIssuer);
     should.not.exist(raw.oktaClientId);
@@ -109,7 +144,7 @@ describe('Legacy Okta settings migration', () => {
       oktaClientId: 'legacy-client-id',
     });
 
-    const settings = await authSettingsService.loadAuthSettings();
+    const settings = await onScratch(() => authSettingsService.loadAuthSettings());
     settings.providers.should.have.length(1);
     settings.providers[0].enabled.should.equal(false);
   });
@@ -122,7 +157,7 @@ describe('Legacy Okta settings migration', () => {
       oktaAdminGroup: 'angles-admins',
     });
 
-    const settings = await authSettingsService.loadAuthSettings();
+    const settings = await onScratch(() => authSettingsService.loadAuthSettings());
     settings.providers[0].roleMappings.should.have.length(1);
     settings.providers[0].roleMappings[0].role.should.equal('admin');
   });
@@ -135,8 +170,8 @@ describe('Legacy Okta settings migration', () => {
       oktaClientSecret: 'legacy-client-secret',
     });
 
-    await authSettingsService.loadAuthSettings();
-    const settings = await authSettingsService.loadAuthSettings();
+    await onScratch(() => authSettingsService.loadAuthSettings());
+    const settings = await onScratch(() => authSettingsService.loadAuthSettings());
 
     settings.providers.should.have.length(1);
     // The secret survives the second pass rather than being reset.
@@ -144,7 +179,7 @@ describe('Legacy Okta settings migration', () => {
   });
 
   it('leaves a document with no legacy fields untouched', async () => {
-    await AuthSettings.create({
+    await ScratchAuthSettings.create({
       singleton: 'auth',
       localAuthEnabled: true,
       providers: [{
@@ -156,7 +191,7 @@ describe('Legacy Okta settings migration', () => {
       }],
     });
 
-    const settings = await authSettingsService.loadAuthSettings();
+    const settings = await onScratch(() => authSettingsService.loadAuthSettings());
     settings.providers.should.have.length(1);
     settings.providers[0].id.should.equal('keycloak');
   });
@@ -169,7 +204,7 @@ describe('Legacy Okta settings migration', () => {
       oktaClientSecret: 'legacy-client-secret',
     });
 
-    const publicSettings = await authSettingsService.getAuthSettings();
+    const publicSettings = await onScratch(() => authSettingsService.getAuthSettings());
     const [provider] = publicSettings.providers;
     provider.clientSecretSet.should.equal(true);
     should.not.exist(provider.oidc.clientSecret);
@@ -183,7 +218,7 @@ describe('Legacy Okta settings migration', () => {
       oktaClientSecret: 'legacy-client-secret',
     });
 
-    await authSettingsService.loadAuthSettings();
+    await onScratch(() => authSettingsService.loadAuthSettings());
     const provider = authConfig.providers.find((candidate) => candidate.id === 'okta');
     should.exist(provider);
     // The runtime copy keeps the secret - it is needed to build the strategy.

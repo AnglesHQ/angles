@@ -4,6 +4,22 @@ const authConfig = require('../../config/auth.config.js');
 
 const log = debug('auth:settings');
 
+// The model every function below reads and writes through. Indirected via a variable
+// solely so the migration tests can point it at their own collection - the settings
+// singleton is global state shared by the whole app, and rewriting it repeatedly (as
+// those tests must) otherwise races every other suite.
+let Model = AuthSettings;
+
+/**
+ * Test seam: swaps the model this service uses and returns a function restoring it.
+ * Not used outside the test suite.
+ */
+const setModelForTesting = (replacement) => {
+  const previous = Model;
+  Model = replacement || AuthSettings;
+  return () => { Model = previous; };
+};
+
 // Secret paths, per provider type. These are `select: false` on the model and are
 // write-only through the API: their values are never returned, only a boolean flag
 // reporting whether one is set.
@@ -164,16 +180,16 @@ const migrateLegacyOkta = (settings) => {
  * bare document from the schema defaults (local auth on, no providers).
  */
 const loadDoc = async () => {
-  let settings = await AuthSettings.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
+  let settings = await Model.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
   if (!settings) {
-    settings = await AuthSettings.create({ singleton: 'auth' });
+    settings = await Model.create({ singleton: 'auth' });
     log('Created default auth settings document.');
     return settings;
   }
   if (migrateLegacyOkta(settings)) {
     await settings.save();
     // Re-read so the saved document is clean and the secrets are selected consistently.
-    settings = await AuthSettings.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
+    settings = await Model.findOne({ singleton: 'auth' }).select(SECRET_SELECT);
   }
   return settings;
 };
@@ -273,4 +289,6 @@ module.exports = {
   callbackUrlFor,
   SECRET_PATHS,
   SECRET_SELECT,
+  // eslint-disable-next-line no-underscore-dangle
+  __setModelForTesting: setModelForTesting,
 };
