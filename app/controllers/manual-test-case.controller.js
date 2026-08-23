@@ -6,6 +6,7 @@ const ManualTestCase = require('../models/manual-test-case.js');
 const ManualTestCaseVersion = require('../models/manual-test-case-version.js');
 const { Team } = require('../models/team.js');
 const manualTestCaseUtils = require('../utils/manual-test-case-utils.js');
+const customFieldUtils = require('../utils/custom-field-utils.js');
 const validationUtils = require('../utils/validation-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
@@ -15,6 +16,15 @@ const {
 } = require('../exceptions/errors.js');
 
 const log = debug('manual-test-case:controller');
+
+// Required custom fields are enforced for any status other than DRAFT, so a half-written
+// draft can always be saved but a case that is published carries everything it must.
+//
+// An absent status means the schema default (DRAFT) will apply, so it must not be treated
+// as "some other status" - doing so would enforce required fields on exactly the
+// create-a-draft case this rule exists to exempt.
+const DEFAULT_STATUS = 'DRAFT';
+const shouldEnforceRequired = (status) => (status || DEFAULT_STATUS) !== DEFAULT_STATUS;
 
 // Steps arrive from the client without a guaranteed order value. Normalising here means
 // the stored order always matches the array order the author sees, and the frozen version
@@ -58,6 +68,15 @@ exports.create = (req, res) => {
         }
       }
 
+      // Values are validated and coerced against the team's configured fields before the
+      // case is built, so nothing invalid ever reaches a frozen version.
+      const definitions = await customFieldUtils.getDefinitionsForTeam(teamFound._id);
+      const validatedFields = await customFieldUtils.validateCustomFields(
+        definitions,
+        customFields,
+        shouldEnforceRequired(status),
+      );
+
       const testCase = new ManualTestCase({
         team: teamFound._id,
         component,
@@ -68,7 +87,7 @@ exports.create = (req, res) => {
         priority,
         tags,
         steps: normaliseSteps(steps),
-        customFields,
+        customFields: validatedFields,
         version: 1,
         createdBy: req.user ? req.user._id : undefined,
         updatedBy: req.user ? req.user._id : undefined,
@@ -76,7 +95,8 @@ exports.create = (req, res) => {
 
       // The version is written first so a crash between the two writes leaves an orphan
       // version rather than a head pointing at a version that does not exist.
-      await manualTestCaseUtils.saveVersion(testCase, testCase.createdBy);
+      const snapshot = customFieldUtils.buildDefinitionSnapshot(definitions, validatedFields);
+      await manualTestCaseUtils.saveVersion(testCase, testCase.createdBy, snapshot);
       const savedCase = await testCase.save();
       log(`Created manual test case "${savedCase.title}" (v1) with id ${savedCase._id}`);
       return savedCase;
@@ -187,8 +207,36 @@ exports.update = (req, res) => {
         throw new ForbiddenError('You do not have access to this test case');
       }
 
+      const definitions = await customFieldUtils.getDefinitionsForTeam(testCase.team);
+
+      // The status the case will end up with decides whether required fields are
+      // enforced - publishing a draft has to satisfy them, editing a draft does not.
+      const resultingStatus = req.body.status === undefined ? testCase.status : req.body.status;
+
+      // Custom fields are validated before the content comparison so the comparison sees
+      // coerced values. Without this a client re-sending an unchanged date as a string
+      // would compare unequal to the stored Date and burn a version for no change.
+      let comparableBody = req.body;
+      if (req.body.customFields !== undefined) {
+        const validatedFields = await customFieldUtils.validateCustomFields(
+          definitions,
+          req.body.customFields,
+          shouldEnforceRequired(resultingStatus),
+        );
+        comparableBody = { ...req.body, customFields: validatedFields };
+      } else if (shouldEnforceRequired(resultingStatus)
+        && !shouldEnforceRequired(testCase.status)) {
+        // Publishing without restating the custom fields still has to satisfy the
+        // required ones, so re-validate what is already stored.
+        await customFieldUtils.validateCustomFields(
+          definitions,
+          Object.fromEntries(testCase.customFields || new Map()),
+          true,
+        );
+      }
+
       // Decided before mutating the document, against the values as they were persisted.
-      const contentChanged = manualTestCaseUtils.hasContentChanged(testCase, req.body);
+      const contentChanged = manualTestCaseUtils.hasContentChanged(testCase, comparableBody);
 
       const updatable = [
         'title',
@@ -201,8 +249,8 @@ exports.update = (req, res) => {
         'component',
       ];
       updatable.forEach((field) => {
-        if (req.body[field] !== undefined) {
-          testCase[field] = req.body[field];
+        if (comparableBody[field] !== undefined) {
+          testCase[field] = comparableBody[field];
         }
       });
       if (req.body.steps !== undefined) {
@@ -214,7 +262,9 @@ exports.update = (req, res) => {
         // A content change burns a version; a status-only edit (or an edit that changes
         // nothing) deliberately does not.
         testCase.version += 1;
-        await manualTestCaseUtils.saveVersion(testCase, testCase.updatedBy);
+        const snapshot = customFieldUtils
+          .buildDefinitionSnapshot(definitions, testCase.customFields);
+        await manualTestCaseUtils.saveVersion(testCase, testCase.updatedBy, snapshot);
         log(`Manual test case ${caseId} content changed, wrote version ${testCase.version}`);
       } else {
         log(`Manual test case ${caseId} updated without a content change, staying on version ${testCase.version}`);
@@ -271,7 +321,12 @@ exports.clone = (req, res) => {
         createdBy: req.user ? req.user._id : undefined,
         updatedBy: req.user ? req.user._id : undefined,
       });
-      await manualTestCaseUtils.saveVersion(clonedCase, clonedCase.createdBy);
+      // The clone carries the source's custom field values, so its first version needs
+      // the same definition snapshot to render them.
+      const definitions = await customFieldUtils.getDefinitionsForTeam(testCase.team);
+      const snapshot = customFieldUtils
+        .buildDefinitionSnapshot(definitions, testCase.customFields);
+      await manualTestCaseUtils.saveVersion(clonedCase, clonedCase.createdBy, snapshot);
       const savedClone = await clonedCase.save();
       log(`Cloned manual test case ${caseId} into ${savedClone._id}`);
       return savedClone;

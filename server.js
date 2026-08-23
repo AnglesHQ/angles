@@ -186,6 +186,7 @@ require('./app/routes/execution.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/screenshot.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/baseline.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/metrics.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/custom-field.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/manual-test-case.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/angles.routes.js')(app, '/rest/api/v1.0');
 

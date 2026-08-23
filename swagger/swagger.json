@@ -49,6 +49,10 @@
     {
       "name": "Manual Test Case",
       "description": "API for managing manual test cases and their version history"
+    },
+    {
+      "name": "Custom Field",
+      "description": "API for configuring the custom fields available to a team's manual test cases"
     }
   ],
   "security": [
@@ -4267,6 +4271,16 @@
               }
             }
           },
+          "400": {
+            "description": "One or more custom field values are invalid; the message lists every problem found. Also returned when a required custom field is missing on a case being saved with a status other than DRAFT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "No access to the team",
             "content": {
@@ -4496,6 +4510,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "One or more custom field values are invalid; the message lists every problem found. Also returned when a required custom field is missing on a case being saved with a status other than DRAFT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
                 }
               }
             }
@@ -4773,6 +4797,360 @@
           },
           "404": {
             "description": "No manual test case, or no such version, found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-field": {
+      "post": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Configure a custom field for a team",
+        "description": "Admin only. The key must be unique within the team, including against archived fields.",
+        "requestBody": {
+          "description": "The custom field to configure.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFieldDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Custom field created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Options are missing for a select field, or supplied for a type that cannot have them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A field with this key already exists for the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "List the custom fields configured for a team",
+        "description": "Readable by anyone with team access - the authoring UI needs the definitions to render its form.",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team to list custom fields for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "description": "Include archived fields. Defaults to false.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "appliesTo",
+            "in": "query",
+            "required": false,
+            "description": "Only return fields applying to this entity. Fields set to \"both\" always match.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "testcase",
+                "execution",
+                "both"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The team's custom fields, in display order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFieldsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-field/{fieldId}": {
+      "parameters": [
+        {
+          "name": "fieldId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the custom field definition.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Get a custom field definition",
+        "responses": {
+          "200": {
+            "description": "Custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this custom field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Update a custom field definition",
+        "description": "Admin only. The key can never be changed. The type cannot be changed while any test case holds a value for the field, and an option cannot be removed while a test case still uses it - both would leave existing values unrenderable.",
+        "requestBody": {
+          "description": "The fields to update.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFieldDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Custom field updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An attempt to change the key, or an invalid option configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The type or options cannot change because existing test cases depend on them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Delete or archive a custom field definition",
+        "description": "Admin only. A field whose values appear on any test case or in any frozen version is archived rather than removed, so historical values keep the label, type and options needed to render them. Only a field that has never been used is hard-deleted. Check the `archived` flag on the response to see which happened.",
+        "responses": {
+          "200": {
+            "description": "Custom field deleted or archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFieldDeleteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No custom field found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5794,7 +6172,7 @@
           },
           "customFields": {
             "type": "object",
-            "description": "Values for the custom fields configured for the team, keyed by field key.",
+            "description": "Values for the custom fields configured for the team, keyed by field key. Validated and coerced against those definitions: an unrecognised key is rejected rather than dropped, and required fields are enforced for any status other than DRAFT.",
             "additionalProperties": true
           }
         }
@@ -5970,6 +6348,125 @@
                 }
               }
             }
+          }
+        }
+      },
+      "CustomFieldDefinition": {
+        "required": [
+          "team",
+          "key",
+          "label",
+          "type"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "ID of the team the field is configured for."
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "description": "Stable storage key. A test case's customFields object is keyed by it, so it cannot be changed once created - create a new field instead."
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Display name. Can be changed freely; every frozen version keeps the label that was in force when it was written."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "textarea",
+              "number",
+              "date",
+              "boolean",
+              "select",
+              "multiselect",
+              "user"
+            ],
+            "description": "Value type. Cannot be changed once any test case holds a value for the field."
+          },
+          "options": {
+            "type": "array",
+            "description": "Allowed values. Required for select and multiselect, rejected for every other type. An option still held by a test case cannot be removed.",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          "required": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enforced only when a test case is saved with a status other than DRAFT, so an incomplete draft can always be saved."
+          },
+          "defaultValue": {
+            "description": "Applied when a test case supplies no value. Never applied to an archived field."
+          },
+          "order": {
+            "type": "number",
+            "description": "Display order within the team's field list."
+          },
+          "appliesTo": {
+            "type": "string",
+            "enum": [
+              "testcase",
+              "execution",
+              "both"
+            ],
+            "default": "testcase"
+          },
+          "archived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Archived fields are hidden from authoring and exempt from the required check, but existing values still validate and render."
+          }
+        }
+      },
+      "StoredCustomFieldDefinition": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CustomFieldDefinition"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "CustomFieldsResponse": {
+        "properties": {
+          "customFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+            }
+          }
+        }
+      },
+      "CustomFieldDeleteResponse": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "True when the field was in use and has been archived instead of removed. False when it was unused and hard-deleted."
+          },
+          "customField": {
+            "$ref": "#/components/schemas/StoredCustomFieldDefinition"
           }
         }
       }
