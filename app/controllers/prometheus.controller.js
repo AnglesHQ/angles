@@ -151,6 +151,15 @@ const domainFamilies = (domain) => {
     executionStatusSamples.push({ value: count, labels: { status } });
   });
 
+  // Emitted as its own family rather than as an extra label on angles_builds. Adding a
+  // label to an existing series changes what every current query and Grafana panel sums
+  // over, so the established metrics keep their exact shape and the new dimension is
+  // additive.
+  const buildTypeSamples = [];
+  domain.builds.byExecutionType.forEach((count, executionType) => {
+    buildTypeSamples.push({ value: count, labels: { execution_type: executionType } });
+  });
+
   return [
     {
       name: 'angles_builds',
@@ -159,12 +168,23 @@ const domainFamilies = (domain) => {
       samples: buildStatusSamples,
     },
     {
+      name: 'angles_builds_by_execution_type',
+      type: 'gauge',
+      help: 'Number of builds stored, by execution type (automated or manual).',
+      samples: buildTypeSamples,
+    },
+    {
       name: 'angles_builds_by_team',
       type: 'gauge',
-      help: 'Number of builds stored, by team, environment and status.',
+      help: 'Number of builds stored, by team, environment, status and execution type.',
       samples: domain.builds.byTeam.map((entry) => ({
         value: entry.count,
-        labels: { team: entry.team, environment: entry.environment, status: entry.status },
+        labels: {
+          team: entry.team,
+          environment: entry.environment,
+          status: entry.status,
+          execution_type: entry.executionType,
+        },
       })),
     },
     {
@@ -172,6 +192,15 @@ const domainFamilies = (domain) => {
       type: 'gauge',
       help: 'Number of test executions stored, by status.',
       samples: executionStatusSamples,
+    },
+    {
+      name: 'angles_executions_by_execution_type',
+      type: 'gauge',
+      help: 'Number of test executions stored, by status and execution type (automated or manual).',
+      samples: domain.executions.byStatusAndType.map((entry) => ({
+        value: entry.count,
+        labels: { status: entry.status, execution_type: entry.executionType },
+      })),
     },
     {
       name: 'angles_screenshots',

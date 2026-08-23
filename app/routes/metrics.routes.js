@@ -14,6 +14,10 @@ module.exports = (app, path) => {
     query('componentId')
       .optional()
       .isMongoId(),
+    query('executionType')
+      .optional()
+      .isIn(['automated', 'manual'])
+      .withMessage('executionType must be either automated or manual'),
     query('fromDate')
       .optional()
       .isISO8601()

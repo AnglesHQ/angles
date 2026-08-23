@@ -62,6 +62,10 @@ module.exports = (app, path) => {
     query('componentIds')
       .optional()
       .isString(),
+    query('executionType')
+      .optional()
+      .isIn(['automated', 'manual'])
+      .withMessage('executionType must be either automated or manual'),
     query('limit')
       .optional()
       .isNumeric(),

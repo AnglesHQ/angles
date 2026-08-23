@@ -868,6 +868,19 @@
             }
           },
           {
+            "name": "executionType",
+            "in": "query",
+            "required": false,
+            "description": "Narrow to automated or manual results. Omit for both, which is the behaviour every client saw before manual runs existed.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "automated",
+                "manual"
+              ]
+            }
+          },
+          {
             "name": "returnExecutionDetails",
             "in": "query",
             "required": false,
@@ -3192,6 +3205,19 @@
             "description": "ID of component you want to retrieve metrics for",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "executionType",
+            "in": "query",
+            "required": false,
+            "description": "Narrow to automated or manual results. Omit for both, which is the behaviour every client saw before manual runs existed.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "automated",
+                "manual"
+              ]
             }
           },
           {
@@ -8974,6 +9000,18 @@
                 "type": "integer"
               }
             }
+          }
+        }
+      },
+      "ExecutionTypeBreakdown": {
+        "type": "object",
+        "description": "Executions in the period split by execution type. The two always sum to result.TOTAL, so a stacked chart built from it cannot under-report. Executions with no stored executionType count as automated.",
+        "properties": {
+          "automated": {
+            "type": "integer"
+          },
+          "manual": {
+            "type": "integer"
           }
         }
       }
