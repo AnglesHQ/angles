@@ -269,7 +269,11 @@ exports.findAll = (req, res) => {
         ManualTestCase.find(query, null, { limit, skip })
           .populate('createdBy', 'username')
           .populate('updatedBy', 'username')
-          .sort('-updatedAt')
+          // Folder first so a paged read returns whole folders together rather than
+          // interleaving them. The UI groups a page into folder sections, and a purely
+          // recency-ordered page would scatter one folder's cases across several pages,
+          // showing the same folder heading on each. Recency still orders within a folder.
+          .sort({ folder: 1, updatedAt: -1 })
           .lean()
           .exec(),
         ManualTestCase.countDocuments(query).exec(),
