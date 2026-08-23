@@ -530,10 +530,13 @@ New pages under `src/app/`, each with a matching component folder under
 - `version-diff` — side-by-side comparison of two frozen versions, reusing the
   `diffDocuments` output shape from Phase 5 so the API does the field-level diffing
 
-**Dashboard filtering**: add an execution-type toggle (All / Automated / Manual) to
-`DashboardPage.js` and `MetricsPage.js`, threaded through the existing query-string state
-into `ApiUtilities.js` calls. The charts in `dashboard/charts` and `metrics/charts` gain a
-stacked series when "All" is selected.
+**Dashboard filtering** — **done**: an execution-type toggle (All / Automated / Manual) on
+`DashboardPage.js` and `MetricsPage.js`, sharing one sentinel-to-parameter mapping in
+`GeneralUtilities`. Defaulting to All preserves the pre-3.0 behaviour exactly.
+
+Deferred: stacking the two series in the charts when "All" is selected. The phase metrics
+response carries `executionTypeBreakdown` per period for exactly this, so it is additive
+work on the existing chart components rather than anything blocked.
 
 All UI work follows the design-system rules in the angles-ui `CLAUDE.md`/`.agents/AGENTS.md`,
 and the Next.js version notes there — read `node_modules/next/dist/docs/` before writing
