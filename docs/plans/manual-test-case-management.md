@@ -599,9 +599,10 @@ discoverable, not about fixing a runtime failure.
 
 - `swagger/swagger.json` is already current: every phase documented its own endpoints as
   it landed, rather than deferring to this phase.
-- `docs/manual-test-cases.md`: authoring guide, custom field configuration, permissions
-  matrix, the attachment storage/volume requirements for deployment, and the
-  `scripts/backfill-execution-type.js` step.
+- `docs/manual-test-cases.md` — **done**: concepts and the versioning rationale, authoring,
+  custom field configuration, runs and result states, attachments, change history, the
+  permissions matrix, the automated/manual filter, deployment (attachment volume and the
+  `scripts/backfill-execution-type.js` step), client library scope, and a route reference.
 
 ---
 
