@@ -61,6 +61,10 @@
     {
       "name": "Attachment",
       "description": "API for images attached to manual test steps"
+    },
+    {
+      "name": "Manual Test Run",
+      "description": "API for planning and executing manual test runs"
     }
   ],
   "security": [
@@ -6191,6 +6195,647 @@
           }
         }
       }
+    },
+    "/manual-test-run": {
+      "post": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Plan a manual test run",
+        "description": "Creates the run and the manual-tagged Build its results will be written into, and binds every selected test case to its current frozen version. If the run cannot be created the build is removed again, so no empty manual build is left on the dashboard.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestRun"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Test run created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A deprecated test case, or a case from a different component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team, environment, phase, component or test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "List a team's manual test runs",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter by run status, comma separated.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assignedTo",
+            "in": "query",
+            "required": false,
+            "description": "Filter by the user a run is assigned to.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum runs to return (defaults to 25).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Runs to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching test runs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestRunsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Get a manual test run",
+        "description": "Pass expand=true to include each case's frozen version document - the steps the tester should follow, read from the bound version rather than the current test case.",
+        "parameters": [
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Include each case's bound frozen version.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Update a run, or add test cases to it",
+        "description": "Cases named in testCaseIds that are not already in the run are appended, each bound to its current version at that moment. Cases already present are ignored rather than duplicated.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestRun"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test run updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A deprecated test case, or a case from a different component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run or test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Delete a manual test run",
+        "description": "Requires team lead access. The backing build and its executions exist only to represent this run on the dashboard, so they are removed with it.",
+        "responses": {
+          "200": {
+            "description": "Test run deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}/test-case/{caseId}/result": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case within the run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Record the result of one test case in a run",
+        "description": "Writes a TestExecution tagged executionType \"manual\" and folds it into the run's build through the same code path automated results take, so the result map and status are computed identically for both. Re-recording updates the existing execution rather than adding a second one. The run's own status is re-derived, and completing the last outstanding case stamps its end date.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "NOT_RUN",
+                      "IN_PROGRESS",
+                      "PASS",
+                      "FAIL",
+                      "ERROR",
+                      "SKIPPED",
+                      "BLOCKED"
+                    ]
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "stepResults": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ManualStepResult"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run, or the case is not part of it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The test run has been cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}/test-case/{caseId}/rebind": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case within the run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Move a not-yet-run case onto the latest version of its test case",
+        "description": "Refused once a result has been recorded: re-pointing an execution at content it was never run against is exactly the silent history rewrite the version binding exists to prevent. Add the case to a new run instead. Any step results recorded against the old version are cleared, since they are keyed by that version's step ids.",
+        "responses": {
+          "200": {
+            "description": "Case rebound to the latest version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run, test case, or the case is not part of the run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The case already has a recorded result, or is already on the latest version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}/status": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Transition a run's status",
+        "description": "Completing or cancelling stamps the end date. A cancelled run refuses further results.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PLANNED",
+                      "IN_PROGRESS",
+                      "COMPLETED",
+                      "CANCELLED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -6448,6 +7093,15 @@
             "items": {
               "$ref": "#/components/schemas/BuildExecution"
             }
+          },
+          "executionType": {
+            "type": "string",
+            "enum": [
+              "automated",
+              "manual"
+            ],
+            "default": "automated",
+            "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
           }
         }
       },
@@ -6514,6 +7168,15 @@
                 "items": {
                   "$ref": "#/components/schemas/Suite"
                 }
+              },
+              "executionType": {
+                "type": "string",
+                "enum": [
+                  "automated",
+                  "manual"
+                ],
+                "default": "automated",
+                "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
               }
             }
           }
@@ -6606,6 +7269,13 @@
           },
           "screenshot": {
             "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Images a QA attached while recording a manual step result. Automated runs use `screenshot` instead.",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -6732,6 +7402,31 @@
           },
           "meta": {
             "type": "object"
+          },
+          "executionType": {
+            "type": "string",
+            "enum": [
+              "automated",
+              "manual"
+            ],
+            "default": "automated",
+            "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
+          },
+          "manualTestCase": {
+            "type": "string",
+            "description": "On a manual execution, the test case it came from."
+          },
+          "manualTestCaseVersion": {
+            "type": "string",
+            "description": "The frozen version this execution was run against. Carried here as well as on the run entry, because an execution is reachable from the dashboard and the execution history without ever loading its run, and has to render the content it was executed against on its own."
+          },
+          "versionNumber": {
+            "type": "integer",
+            "description": "Denormalised version number, for display without a join."
+          },
+          "executedBy": {
+            "type": "string",
+            "description": "The user who recorded a manual result."
           }
         }
       },
@@ -6768,6 +7463,15 @@
                   "ERROR",
                   "FAIL"
                 ]
+              },
+              "executionType": {
+                "type": "string",
+                "enum": [
+                  "automated",
+                  "manual"
+                ],
+                "default": "automated",
+                "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
               }
             }
           }
@@ -8052,6 +8756,222 @@
               "totalEntries": {
                 "type": "integer",
                 "description": "Total for the entity, ignoring limit and skip."
+              }
+            }
+          }
+        }
+      },
+      "ManualStepResult": {
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "description": "The _id of the step in the frozen version. Binding by id rather than position means a reordered or deleted step in a later version cannot pull this result onto the wrong step."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_RUN",
+              "PASS",
+              "FAIL",
+              "BLOCKED",
+              "SKIPPED"
+            ]
+          },
+          "actual": {
+            "type": "string",
+            "description": "What actually happened."
+          },
+          "notes": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Attachment ids captured against this step.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManualRunTestCase": {
+        "properties": {
+          "testCase": {
+            "type": "string",
+            "description": "The mutable test case head."
+          },
+          "testCaseVersion": {
+            "type": "string",
+            "description": "The frozen version being executed. Bound when the case is added to the run and never moved implicitly - editing the case mid-run must not shift the steps under the tester."
+          },
+          "versionNumber": {
+            "type": "integer"
+          },
+          "snapshotTitle": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_RUN",
+              "IN_PROGRESS",
+              "PASS",
+              "FAIL",
+              "ERROR",
+              "SKIPPED",
+              "BLOCKED"
+            ],
+            "description": "Richer than the execution status enum. BLOCKED and IN_PROGRESS exist only here; BLOCKED is written to the TestExecution as SKIPPED, since a blocked test was never executed and must not inflate the failure count."
+          },
+          "stepResults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManualStepResult"
+            }
+          },
+          "execution": {
+            "type": "string",
+            "description": "The TestExecution written for this case."
+          },
+          "executedBy": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManualTestRun": {
+        "required": [
+          "name",
+          "team",
+          "environment"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "team": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string",
+            "description": "One component per run, matching Build.component. Defaults to the team's first component when omitted. A test case belonging to a different component is rejected."
+          },
+          "environment": {
+            "type": "string",
+            "description": "Environment name (not id), matching how POST /build takes it."
+          },
+          "phase": {
+            "type": "string",
+            "description": "Phase name (not id)."
+          },
+          "assignedTo": {
+            "type": "string"
+          },
+          "platforms": {
+            "type": "array",
+            "description": "Reuses the automated Platform shape verbatim, so manual runs capture the same platform and device metrics and the platform aggregations need no new fields.",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "testCaseIds": {
+            "type": "array",
+            "description": "Test cases to schedule. Each is bound to its current frozen version at the moment it is added. A DEPRECATED case is rejected.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "StoredManualTestRun": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ManualTestRun"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "build": {
+                "type": "string",
+                "description": "The Build tagged executionType \"manual\" that this run's executions are written into, so the run appears on the existing dashboards."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "PLANNED",
+                  "IN_PROGRESS",
+                  "COMPLETED",
+                  "CANCELLED"
+                ],
+                "description": "Derived from the cases as results are recorded: COMPLETED once every case has a terminal result. CANCELLED is only ever set explicitly."
+              },
+              "testCases": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ManualRunTestCase"
+                }
+              },
+              "expanded": {
+                "type": "boolean",
+                "description": "Present when the run was read with expand=true; each case then carries its frozen `version` document."
+              },
+              "start": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "end": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "createdBy": {
+                "type": "object"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "ManualTestRunsResponse": {
+        "properties": {
+          "testRuns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualTestRun"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalTestRuns": {
+                "type": "integer"
               }
             }
           }

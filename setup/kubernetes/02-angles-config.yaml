@@ -64,6 +64,7 @@ data:
       db.createCollection('baselines');
       db.createCollection('screenshots');
       db.createCollection('attachments');
+      db.createCollection('manualtestruns');
       
       db.testexecutions.createIndex({ build: 1 });
       db.testexecutions.createIndex({ suite: 1, title: 1 });
@@ -75,6 +76,8 @@ data:
       db.screenshots.createIndex({ view: 1 });
       db.attachments.createIndex({ testCase: 1 });
       db.attachments.createIndex({ sharedStep: 1 });
+      db.manualtestruns.createIndex({ team: 1, createdAt: -1 });
+      db.builds.createIndex({ team: 1, executionType: 1, start: -1 });
     
     EOF
 

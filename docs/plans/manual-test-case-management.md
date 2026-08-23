@@ -459,9 +459,14 @@ ids are preserved into the version document, so a step result binds to a specifi
 specific version. A reordered or deleted step in a later version cannot pull a historical
 result onto the wrong step.
 
-Note `BLOCKED` is a manual-only per-case state. It maps to `ERROR` when written to the
+Note `BLOCKED` is a manual-only per-case state. It maps to `SKIPPED` when written to the
 `TestExecution`, because `executionStates` in `build.js`/`execution.js` is a closed enum
 that the whole metrics layer depends on — the richer state is kept on the run document.
+
+`SKIPPED` rather than `ERROR` (which this plan originally proposed): a blocked test was
+never executed, so nothing was verified and no defect was found. Recording it as `ERROR`
+would inflate the failure count on every dashboard and alert that counts errors, and
+conflate "could not run" with "ran and errored".
 
 **Routes**
 ```
@@ -591,13 +596,13 @@ bound to them* — but that is deliberately not built now.
 
 ## Open items to confirm during implementation
 
-1. Whether a manual run should be allowed to span multiple components, or stay
-   single-component like a build (the plan assumes single, matching `Build.component`).
-2. Whether `DEPRECATED` test cases should be selectable in a new run (plan assumes no).
+1. ~~Whether a manual run should span multiple components~~ — settled: single component,
+   matching `Build.component`; a case from another component is rejected (phase 6).
+2. ~~Whether `DEPRECATED` test cases should be selectable in a new run~~ — settled: no,
+   rejected with a 400 naming the case (phase 6).
 3. Attachment retention — currently tied to the parent entity's lifetime, with no
    independent expiry.
-4. Whether editing a shared step should version every referencing case immediately (the
-   plan's choice), or mark them stale and let authors adopt the change per case. Immediate
-   versioning keeps history exact but can create many versions from one edit.
+4. ~~Whether editing a shared step should version every referencing case immediately~~ —
+   settled: immediate cascade (phase 3).
 5. Whether `status` transitions (`DRAFT` → `ACTIVE`) should burn a version. The plan says no
    — workflow state is not content — so an execution's bound version has no `status` field.
