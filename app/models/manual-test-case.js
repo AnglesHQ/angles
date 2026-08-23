@@ -21,7 +21,7 @@ const ManualStep = new Schema({
     // a placeholder action if the reference cannot be resolved - so demanding one here
     // would force callers to invent a dummy value that is never displayed.
     required: [
-      function actionRequiredForLiteralSteps() { return !this.sharedStep; },
+      function actionRequiredForLiteralSteps() { return !this.sharedStep && !this.sharedStepRef; },
       'Each step requires an action unless it includes a shared step',
     ],
     trim: true,

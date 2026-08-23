@@ -125,6 +125,33 @@ describe('Manual Test Case Version Recovery Tests', () => {
       should(res.body.version).equal(3);
     });
 
+    it('accepts expanded steps echoed back by a client', async () => {
+      // A client that read the case holds *expanded* steps - they carry sharedStepRef
+      // rather than sharedStep, and their action is whatever the shared step said, which
+      // may be empty. Saving that back must not be rejected.
+      const res = await send(leadAgent, 'put', `manual-test-case/${caseId}`, {
+        steps: [
+          {
+            order: 1, action: 'Log in', expected: 'Logged in', sharedStepRef: sharedStep._id, sharedStepVersion: 1,
+          },
+          { order: 2, action: 'Press spin', expected: 'Reels spin' },
+        ],
+      });
+      should(res.status).equal(200);
+    });
+
+    it('accepts an expanded step whose source had no action', async () => {
+      const res = await send(leadAgent, 'put', `manual-test-case/${caseId}`, {
+        steps: [
+          {
+            order: 1, expected: 'Something', sharedStepRef: sharedStep._id, sharedStepVersion: 1,
+          },
+          { order: 2, action: 'Press spin' },
+        ],
+      });
+      should(res.status).equal(200);
+    });
+
     it('still requires an action on a literal step', async () => {
       const res = await send(leadAgent, 'put', `manual-test-case/${caseId}`, {
         steps: [{ expected: 'Something happens' }],

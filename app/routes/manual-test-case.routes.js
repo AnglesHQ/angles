@@ -51,7 +51,13 @@ const contentValidators = [
     .if((value, { req, path }) => {
       const index = path.match(/steps\[(\d+)\]/);
       const step = index && req.body.steps ? req.body.steps[Number(index[1])] : undefined;
-      return !(step && step.sharedStep);
+      // Two shapes carry no action of their own and must both be exempt:
+      //   sharedStep    - an inclusion the author just added; the shared step's contents
+      //                   are expanded in its place.
+      //   sharedStepRef - a step that came *from* a shared step, echoed back by a client
+      //                   that read the case and is now saving it. Its action is whatever
+      //                   the shared step said, which may legitimately be empty.
+      return !(step && (step.sharedStep || step.sharedStepRef));
     })
     // Each check carries its own message and names the step. withMessage() only applies to
     // the validator immediately before it, so a shared trailing message would leave the
