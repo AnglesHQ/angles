@@ -5,6 +5,7 @@ const debug = require('debug');
 const ManualTestCase = require('../models/manual-test-case.js');
 const ManualTestCaseVersion = require('../models/manual-test-case-version.js');
 const { Team } = require('../models/team.js');
+const ManualFolder = require('../models/manual-folder.js');
 const SharedStep = require('../models/shared-step.js');
 const Attachment = require('../models/attachment.js');
 const manualTestCaseUtils = require('../utils/manual-test-case-utils.js');
@@ -34,6 +35,21 @@ const shouldEnforceRequired = (status) => (status || DEFAULT_STATUS) !== DEFAULT
 // Steps arrive from the client without a guaranteed order value. Normalising here means
 // the stored order always matches the array order the author sees, and the frozen version
 // is written with the same ordering.
+/*
+Rejects a folder that does not exist or belongs to another team.
+
+A cross-team folder reference would file one team's test case inside another team's tree,
+where it would be listed by a team that should not see it at all.
+ */
+const resolveFolder = async (folderId, teamId) => {
+  if (folderId === undefined || folderId === null || folderId === '') return null;
+  const folder = await ManualFolder.findById(folderId).select('_id team').lean().exec();
+  if (!folder || folder.team.toString() !== teamId.toString()) {
+    throw new NotFoundError(`No folder found for this team with id ${folderId}`);
+  }
+  return folder._id;
+};
+
 const normaliseSteps = (steps) => (steps || []).map((step, index) => ({
   ...step,
   order: step.order === undefined ? index + 1 : step.order,
@@ -99,6 +115,7 @@ exports.create = (req, res) => {
     tags,
     steps,
     customFields,
+    folder,
   } = req.body;
 
   return Team.findById(team).lean().exec()
@@ -117,6 +134,8 @@ exports.create = (req, res) => {
         }
       }
 
+      const folderId = await resolveFolder(folder, teamFound._id);
+
       await validateSharedStepReferences(steps, teamFound._id);
       await validateAttachmentReferences(steps, teamFound._id);
 
@@ -132,6 +151,7 @@ exports.create = (req, res) => {
       const testCase = new ManualTestCase({
         team: teamFound._id,
         component,
+        folder: folderId,
         title,
         description,
         preconditions,
@@ -153,6 +173,10 @@ exports.create = (req, res) => {
       // shows.
       const snapshot = customFieldUtils.buildDefinitionSnapshot(definitions, validatedFields);
       const expandedSteps = await manualStepUtils.expandStepsFor(testCase.steps);
+      // Validated before the version is written: a version that lands for a head that then
+      // fails to save is an orphan the unique { testCase, version } index later collides
+      // with. Same ordering as update, for the same reason.
+      await testCase.validate();
       await manualTestCaseUtils
         .saveVersion(testCase, testCase.createdBy, snapshot, expandedSteps);
       const savedCase = await testCase.save();
@@ -191,12 +215,14 @@ exports.findAll = (req, res) => {
     tags,
     search,
     priority,
+    folder,
+    includeSubFolders,
   } = req.query;
   const limit = parseInt(req.query.limit, 10) || 25;
   const skip = parseInt(req.query.skip, 10) || 0;
 
   return Team.findById(teamId).select('_id').lean().exec()
-    .then((teamFound) => {
+    .then(async (teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with id ${teamId}`);
       }
@@ -207,6 +233,28 @@ exports.findAll = (req, res) => {
       if (status) query.status = { $in: status.split(',') };
       if (priority) query.priority = { $in: priority.split(',') };
       if (tags) query.tags = { $all: tags.split(',').map((tag) => tag.trim().toLowerCase()) };
+      if (folder !== undefined) {
+        if (folder === 'none' || folder === '') {
+          // Cases that have never been filed. Distinct from "no folder filter at all".
+          query.folder = null;
+        } else if (includeSubFolders === 'true') {
+          // Browsing a branch shows everything beneath it, which is what a folder tree
+          // implies - otherwise a parent looks empty while its children hold the cases.
+          const descendants = await ManualFolder
+            .find({ team: teamFound._id, path: folder })
+            .select('_id')
+            .lean()
+            .exec();
+          query.folder = {
+            $in: [
+              mongoose.Types.ObjectId(folder),
+              ...descendants.map((entry) => entry._id),
+            ],
+          };
+        } else {
+          query.folder = mongoose.Types.ObjectId(folder);
+        }
+      }
       if (search) {
         // Interpolated into a $regex, so it must be escaped - an unescaped pattern is a
         // denial of service against the database and can widen the match.
@@ -336,6 +384,12 @@ exports.update = (req, res) => {
         'customFields',
         'component',
       ];
+      // Deliberately handled outside `updatable` and outside CONTENT_FIELDS: filing a case
+      // is organisation, not content, so it burns no version and never reaches a frozen
+      // version document. It is still audited, via TRACKED_PATHS below.
+      if (req.body.folder !== undefined) {
+        testCase.folder = await resolveFolder(req.body.folder, testCase.team);
+      }
       updatable.forEach((field) => {
         if (comparableBody[field] !== undefined) {
           testCase[field] = comparableBody[field];
@@ -432,6 +486,8 @@ exports.clone = (req, res) => {
       const clonedCase = new ManualTestCase({
         team: testCase.team,
         component: testCase.component,
+        // A clone lands beside its source; that is where the author is looking.
+        folder: testCase.folder,
         title: title || `${testCase.title} (copy)`,
         description: testCase.description,
         preconditions: testCase.preconditions,

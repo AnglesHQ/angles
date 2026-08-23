@@ -19,6 +19,7 @@ historyUtils.TRACKED_PATHS = {
     'steps',
     'customFields',
     'component',
+    'folder',
   ],
   sharedstep: ['name', 'description', 'steps'],
   customfield: [

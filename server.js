@@ -189,6 +189,7 @@ require('./app/routes/metrics.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/attachment.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/custom-field.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/shared-step.routes.js')(app, '/rest/api/v1.0');
+require('./app/routes/manual-folder.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/manual-test-case.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/manual-test-run.routes.js')(app, '/rest/api/v1.0');
 require('./app/routes/angles.routes.js')(app, '/rest/api/v1.0');

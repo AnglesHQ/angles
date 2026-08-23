@@ -47,6 +47,10 @@
       "description": "Prometheus scrape endpoint for resource and application metrics"
     },
     {
+      "name": "Manual Folder",
+      "description": "Folder tree used to organise manual test cases. Nests to any depth."
+    },
+    {
       "name": "Manual Test Case",
       "description": "API for managing manual test cases and their version history"
     },
@@ -4419,6 +4423,24 @@
             "schema": {
               "type": "number"
             }
+          },
+          {
+            "in": "query",
+            "name": "folder",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Narrow to a folder id, or \"none\" for test cases that are not filed in any folder."
+          },
+          {
+            "in": "query",
+            "name": "includeSubFolders",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "When true and `folder` is an id, also returns cases in every sub-folder beneath it."
           }
         ],
         "responses": {
@@ -6862,6 +6884,242 @@
           }
         }
       }
+    },
+    "/manual-folder": {
+      "post": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Create a folder",
+        "description": "Creates a folder in the team tree. Omit `parent` (or send null) for a root folder. Folder names must be unique among their siblings.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualFolder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Folder created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualFolder"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team."
+          },
+          "404": {
+            "description": "Team or parent folder not found."
+          },
+          "409": {
+            "description": "A folder with that name already exists under the same parent."
+          },
+          "422": {
+            "description": "Validation failed."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Get the team folder tree",
+        "description": "Returns the whole tree nested, with a test case count on each folder and a count of unfiled cases.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The folder tree.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualFoldersResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team."
+          },
+          "404": {
+            "description": "Team not found."
+          }
+        }
+      }
+    },
+    "/manual-folder/move": {
+      "put": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "File test cases into a folder",
+        "description": "Moves one or more test cases into a folder, or to the team root when `folder` is null. Filing is organisation rather than content: it does not create a new test case version, but it is recorded in the change history as a MOVE.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveManualTestCases"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test cases moved."
+          },
+          "400": {
+            "description": "Test cases from more than one team."
+          },
+          "403": {
+            "description": "No access to the team."
+          },
+          "404": {
+            "description": "A test case or the target folder was not found."
+          },
+          "422": {
+            "description": "Validation failed."
+          }
+        }
+      }
+    },
+    "/manual-folder/{folderId}": {
+      "get": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Get a folder",
+        "description": "Returns one folder with its ancestors populated and the counts of what it contains.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The folder.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualFolder"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the folder."
+          },
+          "404": {
+            "description": "Folder not found."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Rename or move a folder",
+        "description": "Renames a folder and/or re-parents it. Moving takes the whole subtree with it. A folder cannot be moved inside itself or inside one of its own sub-folders. Send `parent: null` to move it to the root.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualFolder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Folder updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualFolder"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The move would place the folder inside its own subtree, or nest too deeply."
+          },
+          "403": {
+            "description": "No access to the folder."
+          },
+          "404": {
+            "description": "Folder or new parent not found."
+          },
+          "409": {
+            "description": "A folder with that name already exists under the same parent."
+          },
+          "422": {
+            "description": "Validation failed."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Delete an empty folder",
+        "description": "Deletes a folder. Refused with a 409 while it still contains test cases or sub-folders, so nothing is removed or re-parented by accident. Requires team lead access.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Folder deleted."
+          },
+          "403": {
+            "description": "Team lead access required."
+          },
+          "404": {
+            "description": "Folder not found."
+          },
+          "409": {
+            "description": "The folder still contains test cases or sub-folders."
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -7941,6 +8199,11 @@
             "type": "string",
             "maxLength": 500,
             "description": "Optional reason for the change, recorded on the change history entry rather than stored on the entity."
+          },
+          "folder": {
+            "type": "string",
+            "nullable": true,
+            "description": "Folder this case is filed under, or null for the team root. Filing is organisation, not content: changing it does not create a new version."
           }
         }
       },
@@ -9012,6 +9275,133 @@
           },
           "manual": {
             "type": "integer"
+          }
+        }
+      },
+      "ManualFolder": {
+        "type": "object",
+        "required": [
+          "team",
+          "name"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team the folder belongs to."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "parent": {
+            "type": "string",
+            "nullable": true,
+            "description": "Parent folder id. Null or absent creates a root folder."
+          }
+        }
+      },
+      "StoredManualFolder": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parent": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ancestor folder ids, outermost first. Empty for a root folder."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "0 for a root folder."
+          },
+          "testCaseCount": {
+            "type": "integer",
+            "description": "Test cases filed directly in this folder."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualFolder"
+            },
+            "description": "Nested sub-folders, returned by GET /manual-folder."
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManualFoldersResponse": {
+        "type": "object",
+        "properties": {
+          "folders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualFolder"
+            },
+            "description": "Root folders, each with nested children."
+          },
+          "unfiledCount": {
+            "type": "integer",
+            "description": "Test cases not filed in any folder."
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalFolders": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "MoveManualTestCases": {
+        "type": "object",
+        "required": [
+          "testCaseIds"
+        ],
+        "properties": {
+          "testCaseIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "folder": {
+            "type": "string",
+            "nullable": true,
+            "description": "Target folder id, or null to move the cases to the team root."
           }
         }
       }

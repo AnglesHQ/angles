@@ -78,6 +78,10 @@ const contentValidators = [
   check('steps.*.order')
     .optional()
     .isNumeric(),
+  // null or absent files the case at the team root.
+  check('folder')
+    .optional({ nullable: true })
+    .isMongoId(),
   check('customFields')
     .optional()
     .isObject()
@@ -107,6 +111,14 @@ module.exports = (app, path) => {
   ], manualTestCaseController.create);
 
   app.get(`${path}/manual-test-case`, [
+    // A folder id narrows to that folder; the literal "none" narrows to unfiled cases.
+    query('folder')
+      .optional()
+      .custom((value) => value === 'none' || /^[a-f\d]{24}$/i.test(value))
+      .withMessage('folder must be a valid id, or "none" for unfiled test cases'),
+    query('includeSubFolders')
+      .optional()
+      .isBoolean(),
     query('teamId')
       .exists()
       .isMongoId(),

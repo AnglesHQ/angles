@@ -79,6 +79,15 @@ const ManualTestCaseSchema = mongoose.Schema({
     type: Schema.Types.ObjectId,
     required: false,
   },
+  // The folder this case is filed under, or null for the team's root. Organisation rather
+  // than content: a move does not burn a version, and a frozen version carries no folder -
+  // an execution renders what was tested, not where the case has since been filed.
+  folder: {
+    type: Schema.Types.ObjectId,
+    ref: 'ManualFolder',
+    required: false,
+    default: null,
+  },
   title: {
     type: String,
     required: true,
@@ -148,6 +157,8 @@ const ManualTestCaseSchema = mongoose.Schema({
 ManualTestCaseSchema.index({ team: 1, status: 1 }, { unique: false });
 ManualTestCaseSchema.index({ team: 1, createdAt: -1 }, { unique: false });
 ManualTestCaseSchema.index({ tags: 1 }, { unique: false });
+// Drives the folder-filtered case list.
+ManualTestCaseSchema.index({ team: 1, folder: 1 }, { unique: false });
 // Backs the `search` query parameter on GET /manual-test-case.
 ManualTestCaseSchema.index({ title: 'text', description: 'text' });
 

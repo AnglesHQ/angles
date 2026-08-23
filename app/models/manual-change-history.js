@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const { Schema } = mongoose;
 
-const entityTypes = ['testcase', 'sharedstep', 'customfield'];
+const entityTypes = ['testcase', 'sharedstep', 'customfield', 'folder'];
 const historyActions = [
   'CREATE',
   'UPDATE',
@@ -11,6 +11,9 @@ const historyActions = [
   'STATUS_CHANGE',
   'SHARED_STEP_UPDATE',
   'ARCHIVE',
+  // Filing a case into a folder. Organisation rather than content, so it burns no version -
+  // but it still answers "who moved this, and when?".
+  'MOVE',
 ];
 
 // One field-level change. `from` and `to` are Mixed because a custom field value can be a
