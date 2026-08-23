@@ -67,6 +67,14 @@ const handleError = (error, res) => {
       .join(', ');
     return res.status(422).send({ message: message || error.message });
   }
+  // A cast failure is the caller sending the wrong shape for a field - an object where a
+  // reference was expected, say - which is bad input rather than a server fault. Reported
+  // as 422 with the path, so it says which field rather than only that a cast failed.
+  if (error.name === 'CastError') {
+    return res.status(422).send({
+      message: `Invalid value for "${error.path}": expected a ${error.kind}.`,
+    });
+  }
   const message = error.message || 'Server Error';
   return res.status(500).send({ message });
 };
