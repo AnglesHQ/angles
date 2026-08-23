@@ -57,6 +57,10 @@
     {
       "name": "Shared Step",
       "description": "API for managing re-usable step sequences shared by manual test cases"
+    },
+    {
+      "name": "Attachment",
+      "description": "API for images attached to manual test steps"
     }
   ],
   "security": [
@@ -4296,7 +4300,7 @@
             }
           },
           "404": {
-            "description": "No team, component, or referenced shared step found",
+            "description": "No team, component, referenced shared step, or referenced attachment found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4551,7 +4555,7 @@
             }
           },
           "404": {
-            "description": "No team, component, or referenced shared step found",
+            "description": "No team, component, referenced shared step, or referenced attachment found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5617,6 +5621,412 @@
           }
         }
       }
+    },
+    "/attachment": {
+      "post": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Upload an image and attach it to a manual test step",
+        "description": "Multipart upload. Exactly one owner id must be supplied. Only image mime types are accepted and the file is capped at 10MB; the client filename is discarded and a name generated server-side. A thumbnail is produced on upload and served separately.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attachment"
+                ],
+                "properties": {
+                  "attachment": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The image file."
+                  },
+                  "testCaseId": {
+                    "type": "string",
+                    "description": "Attach to a manual test case."
+                  },
+                  "sharedStepId": {
+                    "type": "string",
+                    "description": "Attach to a shared step."
+                  },
+                  "executionId": {
+                    "type": "string",
+                    "description": "Attach to a manual execution. Accepted by the upload path but not yet usable."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attachment stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAttachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file supplied, an unsupported file type, or no valid owner id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the owning team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test case or shared step found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "List the attachments belonging to a test case or shared step",
+        "parameters": [
+          {
+            "name": "testCaseId",
+            "in": "query",
+            "required": false,
+            "description": "List the attachments of this manual test case.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sharedStepId",
+            "in": "query",
+            "required": false,
+            "description": "List the attachments of this shared step.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The entity's attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the owning team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test case or shared step found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachment/{attachmentId}": {
+      "parameters": [
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the attachment.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Get an attachment's metadata",
+        "responses": {
+          "200": {
+            "description": "Attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAttachment"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Delete an attachment",
+        "description": "An attachment referenced by any frozen test case version is never deleted - the file is the only copy of the image that version's tester saw, so a historical execution would lose it. Remove the image from the test case instead: that takes it off the head while leaving it available to the executions that used it. Deleting the whole test case removes its versions first, which does release the attachments. A successful delete also clears the reference from any head step, so nothing renders as a broken image.",
+        "responses": {
+          "200": {
+            "description": "Attachment deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A frozen test case version still references this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachment/{attachmentId}/file": {
+      "parameters": [
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the attachment.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Download the original image",
+        "responses": {
+          "200": {
+            "description": "The image file",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachment/{attachmentId}/thumbnail": {
+      "parameters": [
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the attachment.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Download the thumbnail",
+        "description": "Falls back to the original when no thumbnail could be generated, so this never 404s for an attachment that exists.",
+        "responses": {
+          "200": {
+            "description": "The thumbnail image",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -6534,7 +6944,7 @@
           },
           "attachments": {
             "type": "array",
-            "description": "IDs of images attached to this step. Not yet populated.",
+            "description": "IDs of images attached to this step. Reference one from the expected result as `![alt](attachment:<id>)`; the UI resolves that to /attachment/<id>/file. Validated on write - an id that does not exist, or belongs to another team, is rejected.",
             "items": {
               "type": "string"
             }
@@ -7293,6 +7703,84 @@
             }
           }
         ]
+      },
+      "StoredAttachment": {
+        "properties": {
+          "_id": {
+            "type": "string",
+            "uniqueItems": true
+          },
+          "team": {
+            "type": "string",
+            "description": "Taken from the entity the attachment hangs off, never from the request."
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "testcase",
+              "sharedstep",
+              "execution"
+            ]
+          },
+          "testCase": {
+            "type": "string"
+          },
+          "sharedStep": {
+            "type": "string"
+          },
+          "manualExecution": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Server-generated. The client filename is never used to build a path."
+          },
+          "originalName": {
+            "type": "string",
+            "description": "The uploaded filename, kept for display only and stripped of any directory component."
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number",
+            "description": "Bytes. Uploads are capped at 10MB."
+          },
+          "path": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string",
+            "description": "Path to the generated thumbnail. Absent when the image could not be thumbnailed; the original is still served."
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "uploadedBy": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AttachmentsResponse": {
+        "properties": {
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredAttachment"
+            }
+          }
+        }
       }
     }
   }

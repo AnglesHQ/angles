@@ -6,9 +6,11 @@ const ManualTestCase = require('../models/manual-test-case.js');
 const ManualTestCaseVersion = require('../models/manual-test-case-version.js');
 const { Team } = require('../models/team.js');
 const SharedStep = require('../models/shared-step.js');
+const Attachment = require('../models/attachment.js');
 const manualTestCaseUtils = require('../utils/manual-test-case-utils.js');
 const manualStepUtils = require('../utils/manual-step-utils.js');
 const customFieldUtils = require('../utils/custom-field-utils.js');
+const attachmentUtils = require('../utils/attachment-utils.js');
 const validationUtils = require('../utils/validation-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
@@ -35,6 +37,29 @@ const normaliseSteps = (steps) => (steps || []).map((step, index) => ({
   ...step,
   order: step.order === undefined ? index + 1 : step.order,
 }));
+
+/*
+Rejects an attachment reference that does not exist or belongs to another team.
+
+Same reasoning as the shared step check below: a dangling attachment renders as a broken
+image in the middle of a test a QA is trying to follow, and a cross-team reference would
+expose one team's screenshots inside another team's case.
+ */
+const validateAttachmentReferences = async (steps, teamId) => {
+  const ids = Array.from(new Set(
+    (steps || []).flatMap((step) => (step.attachments || []).map((id) => id.toString())),
+  ));
+  if (ids.length === 0) return;
+  const found = await Attachment.find({ _id: { $in: ids }, team: teamId })
+    .select('_id')
+    .lean()
+    .exec();
+  const foundIds = new Set(found.map((attachment) => attachment._id.toString()));
+  const missing = ids.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw new NotFoundError(`No attachment found for this team with id(s): ${missing.join(', ')}`);
+  }
+};
 
 /*
 Rejects a shared step reference that does not exist or belongs to another team.
@@ -92,6 +117,7 @@ exports.create = (req, res) => {
       }
 
       await validateSharedStepReferences(steps, teamFound._id);
+      await validateAttachmentReferences(steps, teamFound._id);
 
       // Values are validated and coerced against the team's configured fields before the
       // case is built, so nothing invalid ever reaches a frozen version.
@@ -250,6 +276,7 @@ exports.update = (req, res) => {
 
       if (req.body.steps !== undefined) {
         await validateSharedStepReferences(req.body.steps, testCase.team);
+        await validateAttachmentReferences(req.body.steps, testCase.team);
       }
 
       const definitions = await customFieldUtils.getDefinitionsForTeam(testCase.team);
@@ -411,7 +438,12 @@ exports.delete = (req, res) => {
       const versionsRemoved = await ManualTestCaseVersion
         .deleteMany({ testCase: testCase._id })
         .exec();
-      log(`Deleting manual test case ${caseId} along with ${versionsRemoved.deletedCount} version(s).`);
+      // Versions are removed first, so the reference check that protects an attachment
+      // referenced by a frozen version no longer applies - the thing referencing it has
+      // gone. Files and documents are collected together.
+      const attachmentsRemoved = await attachmentUtils
+        .removeAttachmentsForOwner('testcase', testCase._id);
+      log(`Deleting manual test case ${caseId} along with ${versionsRemoved.deletedCount} version(s) and ${attachmentsRemoved} attachment(s).`);
       return ManualTestCase.findByIdAndRemove(caseId);
     })
     .then((testCase) => {

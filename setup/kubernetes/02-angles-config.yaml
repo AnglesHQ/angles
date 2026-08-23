@@ -63,6 +63,7 @@ data:
       db.createCollection('environments');
       db.createCollection('baselines');
       db.createCollection('screenshots');
+      db.createCollection('attachments');
       
       db.testexecutions.createIndex({ build: 1 });
       db.testexecutions.createIndex({ suite: 1, title: 1 });
@@ -72,6 +73,8 @@ data:
       db.environment.createIndex({ name: 1 });
       db.screenshots.createIndex({ build: 1 });
       db.screenshots.createIndex({ view: 1 });
+      db.attachments.createIndex({ testCase: 1 });
+      db.attachments.createIndex({ sharedStep: 1 });
     
     EOF
 

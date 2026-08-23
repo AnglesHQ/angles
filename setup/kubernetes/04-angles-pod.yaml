@@ -34,6 +34,9 @@ spec:
         - mountPath: "/app/compares"
           subPath: "./compares"
           name: angles-persistent-volume
+        - mountPath: "/app/attachments"
+          subPath: "./attachments"
+          name: angles-persistent-volume
   volumes:
     - name: angles-persistent-volume
       persistentVolumeClaim:

@@ -7,6 +7,7 @@ const ManualTestCase = require('../models/manual-test-case.js');
 const { Team } = require('../models/team.js');
 const sharedStepUtils = require('../utils/shared-step-utils.js');
 const manualTestCaseUtils = require('../utils/manual-test-case-utils.js');
+const attachmentUtils = require('../utils/attachment-utils.js');
 const validationUtils = require('../utils/validation-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
@@ -287,7 +288,10 @@ exports.delete = (req, res) => {
         throw new ConflictError(`Unable to delete shared step "${sharedStep.name}" as it is included by ${references} test case(s).`);
       }
 
-      log(`Deleting unreferenced shared step ${sharedStepId}`);
+      // Nothing references the shared step, so nothing references its attachments either.
+      const attachmentsRemoved = await attachmentUtils
+        .removeAttachmentsForOwner('sharedstep', sharedStep._id);
+      log(`Deleting unreferenced shared step ${sharedStepId} along with ${attachmentsRemoved} attachment(s)`);
       return SharedStep.findByIdAndRemove(sharedStepId);
     })
     .then((sharedStep) => {

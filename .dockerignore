@@ -4,6 +4,7 @@ build
 Dockerfile
 Dockerfile.prod
 screenshots/
+attachments/
 compares/
 
 .git

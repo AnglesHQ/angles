@@ -34,6 +34,7 @@ ENV SWAGGER_SCHEMES=http
 
 VOLUME /app/screenshots
 VOLUME /app/compares
+VOLUME /app/attachments
 
 # runtime tools required by the clean-up crontab:
 # bash (clean-up.sh uses readarray), curl + jq (query the API), dcron (scheduler)

@@ -47,6 +47,7 @@ services:
     volumes:
       - angles_screenshots:/app/screenshots
       - angles_screenshot_compares:/app/compares
+      - angles_attachments:/app/attachments
 
   frontend:
     container_name: "angles-ui"
@@ -70,3 +71,5 @@ volumes:
     name: angles_screenshots
   angles_screenshot_compares:
     name: angels_screenshot_compares
+  angles_attachments:
+    name: angles_attachments
