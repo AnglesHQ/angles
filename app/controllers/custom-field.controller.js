@@ -6,6 +6,7 @@ const ManualTestCase = require('../models/manual-test-case.js');
 const ManualTestCaseVersion = require('../models/manual-test-case-version.js');
 const { Team } = require('../models/team.js');
 const { optionBackedTypes } = require('../models/custom-field-definition.js');
+const historyUtils = require('../utils/history-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
   NotFoundError,
@@ -82,6 +83,14 @@ exports.create = (req, res) => {
       });
       const saved = await definition.save();
       log(`Created custom field "${key}" for team ${teamFound._id}`);
+      historyUtils.recordChange({
+        entityType: 'customfield',
+        entityId: saved._id,
+        team: saved.team,
+        action: 'CREATE',
+        user: req.user ? req.user._id : undefined,
+        comment: `Created custom field "${saved.label}" (${saved.type})`,
+      });
       return saved;
     })
     .then((saved) => res.status(201).send(saved))
@@ -152,6 +161,9 @@ exports.update = (req, res) => {
         throw new NotFoundError(`No custom field found with id ${fieldId}`);
       }
 
+      // Captured before the document is mutated, so the diff sees what was persisted.
+      const before = definition.toObject();
+
       // The key is the storage key: every test case's customFields map and every frozen
       // version is keyed by it, so changing it would orphan all existing values. The
       // label is what the UI shows and can be changed freely.
@@ -200,7 +212,23 @@ exports.update = (req, res) => {
           }
         });
       log(`Updated custom field ${fieldId}`);
-      return definition.save();
+      const saved = await definition.save();
+      const changes = historyUtils.diffDocuments(
+        before,
+        saved.toObject(),
+        historyUtils.TRACKED_PATHS.customfield,
+      );
+      if (changes.length > 0) {
+        historyUtils.recordChange({
+          entityType: 'customfield',
+          entityId: saved._id,
+          team: saved.team,
+          action: 'UPDATE',
+          changes,
+          user: req.user ? req.user._id : undefined,
+        });
+      }
+      return saved;
     })
     .then((saved) => res.status(200).send(saved))
     .catch((err) => handleError(err, res));
@@ -242,6 +270,15 @@ exports.delete = (req, res) => {
         definition.archived = true;
         const saved = await definition.save();
         log(`Archived custom field ${fieldId} (in use by ${liveUses} case(s) and ${versionUses} version(s))`);
+        historyUtils.recordChange({
+          entityType: 'customfield',
+          entityId: saved._id,
+          team: saved.team,
+          action: 'ARCHIVE',
+          changes: [{ field: 'archived', from: false, to: true }],
+          user: req.user ? req.user._id : undefined,
+          comment: `Archived rather than deleted: in use by ${liveUses} test case(s) and ${versionUses} frozen version(s)`,
+        });
         return {
           definition: saved, archived: true, liveUses, versionUses,
         };
@@ -249,6 +286,14 @@ exports.delete = (req, res) => {
 
       await CustomFieldDefinition.findByIdAndRemove(fieldId).exec();
       log(`Deleted unused custom field ${fieldId}`);
+      historyUtils.recordChange({
+        entityType: 'customfield',
+        entityId: definition._id,
+        team: definition.team,
+        action: 'DELETE',
+        user: req.user ? req.user._id : undefined,
+        comment: `Deleted unused custom field "${definition.label}"`,
+      });
       return { archived: false };
     })
     .then((result) => {

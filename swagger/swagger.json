@@ -6027,6 +6027,170 @@
           }
         }
       }
+    },
+    "/manual-test-case/{caseId}/history": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Read a test case's change history",
+        "description": "Every mutation to the case, newest first, including status changes that burn no version and re-versions caused by a shared step edit.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum entries to return (defaults to 20).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Entries to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The case's change history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualChangeHistoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step/{sharedStepId}/history": {
+      "parameters": [
+        {
+          "name": "sharedStepId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the shared step.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Read a shared step's change history",
+        "description": "Every mutation to the shared step itself, newest first. The entries recording the knock-on re-versioning of each referencing test case live on those cases, not here.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum entries to return (defaults to 20).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Entries to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The shared step's change history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualChangeHistoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -7042,6 +7206,11 @@
             "type": "object",
             "description": "Values for the custom fields configured for the team, keyed by field key. Validated and coerced against those definitions: an unrecognised key is rejected rather than dropped, and required fields are enforced for any status other than DRAFT.",
             "additionalProperties": true
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Optional reason for the change, recorded on the change history entry rather than stored on the entity."
           }
         }
       },
@@ -7575,6 +7744,11 @@
             "items": {
               "$ref": "#/components/schemas/ManualStep"
             }
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Optional reason for the change, recorded on the change history entry rather than stored on the entity."
           }
         }
       },
@@ -7778,6 +7952,107 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/StoredAttachment"
+            }
+          }
+        }
+      },
+      "ManualChangeHistoryEntry": {
+        "description": "One audited mutation. Distinct from a test case version: a version is the content a tester saw, while a history entry says who changed what and why. A status change and a shared-step cascade both write history without the version collection being able to express them.",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "testcase",
+              "sharedstep",
+              "customfield"
+            ]
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE",
+              "CLONE",
+              "STATUS_CHANGE",
+              "SHARED_STEP_UPDATE",
+              "ARCHIVE"
+            ],
+            "description": "STATUS_CHANGE is a transition that deliberately burns no version. SHARED_STEP_UPDATE marks a test case re-versioned because a shared step it includes was edited - nobody edited the case itself. ARCHIVE is a custom field that was in use and so could not be deleted."
+          },
+          "version": {
+            "type": "integer",
+            "description": "The version the entity ended up on. Absent for custom fields, which are not versioned, and unchanged from the previous entry for an action that burns no version."
+          },
+          "changes": {
+            "type": "array",
+            "description": "Field-level changes. A steps change is broken down per position (`steps[2]`) and a custom field per key (`customFields.owner`), rather than reported as one opaque blob.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "from": {
+                  "description": "Previous value; type depends on the field."
+                },
+                "to": {
+                  "description": "New value; type depends on the field."
+                }
+              }
+            }
+          },
+          "changedBy": {
+            "type": "object",
+            "description": "Populated to _id and username only - the user document carries API tokens and must never leave the server through an audit endpoint.",
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              }
+            }
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "comment": {
+            "type": "string",
+            "description": "The author's reason, supplied as `comment` on the mutation, or a generated explanation for a cascade."
+          },
+          "causedBy": {
+            "type": "object",
+            "description": "On a SHARED_STEP_UPDATE entry, the shared step whose edit caused this case to be re-versioned."
+          }
+        }
+      },
+      "ManualChangeHistoryResponse": {
+        "properties": {
+          "history": {
+            "type": "array",
+            "description": "Entries newest first.",
+            "items": {
+              "$ref": "#/components/schemas/ManualChangeHistoryEntry"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalEntries": {
+                "type": "integer",
+                "description": "Total for the entity, ignoring limit and skip."
+              }
             }
           }
         }

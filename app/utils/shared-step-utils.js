@@ -4,6 +4,7 @@ const SharedStep = require('../models/shared-step.js');
 const manualStepUtils = require('./manual-step-utils.js');
 const manualTestCaseUtils = require('./manual-test-case-utils.js');
 const customFieldUtils = require('./custom-field-utils.js');
+const historyUtils = require('./history-utils.js');
 
 const log = debug('shared-step:utils');
 const sharedStepUtils = {};
@@ -77,6 +78,20 @@ sharedStepUtils.cascadeToTestCases = async (sharedStep, userId) => {
       );
       testCase.updatedBy = userId;
       await testCase.save();
+
+      // Records why a case changed when nobody edited it directly. Without this the
+      // history shows an unexplained version bump against every case that happens to
+      // include the shared step.
+      historyUtils.recordChange({
+        entityType: 'testcase',
+        entityId: testCase._id,
+        team: testCase.team,
+        action: 'SHARED_STEP_UPDATE',
+        version: testCase.version,
+        user: userId,
+        causedBy: sharedStep._id,
+        comment: `Re-versioned because shared step "${sharedStep.name}" was updated to v${sharedStep.version}`,
+      });
       versioned += 1;
     } catch (error) {
       log(`Failed to cascade shared step ${sharedStep._id} into test case ${testCase._id}: ${error.message}`);

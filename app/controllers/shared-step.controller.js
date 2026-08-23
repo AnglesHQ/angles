@@ -8,6 +8,7 @@ const { Team } = require('../models/team.js');
 const sharedStepUtils = require('../utils/shared-step-utils.js');
 const manualTestCaseUtils = require('../utils/manual-test-case-utils.js');
 const attachmentUtils = require('../utils/attachment-utils.js');
+const historyUtils = require('../utils/history-utils.js');
 const validationUtils = require('../utils/validation-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
@@ -72,6 +73,15 @@ exports.create = (req, res) => {
       });
       const saved = await sharedStep.save();
       log(`Created shared step "${name}" for team ${teamFound._id}`);
+      historyUtils.recordChange({
+        entityType: 'sharedstep',
+        entityId: saved._id,
+        team: saved.team,
+        action: 'CREATE',
+        version: saved.version,
+        user: saved.createdBy,
+        comment: req.body.comment,
+      });
       return saved;
     })
     .then((saved) => SharedStep.findById(saved._id)
@@ -183,6 +193,32 @@ exports.findUsage = (req, res) => {
     .catch((err) => handleError(err, res));
 };
 
+exports.findHistory = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { sharedStepId } = req.params;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = parseInt(req.query.skip, 10) || 0;
+
+  return SharedStep.findById(sharedStepId).select('_id team').lean().exec()
+    .then((sharedStep) => {
+      if (!sharedStep) {
+        throw new NotFoundError(`No shared step found with id ${sharedStepId}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, sharedStep.team)) {
+        throw new ForbiddenError('You do not have access to this shared step');
+      }
+      return historyUtils.findHistory(sharedStep._id, limit, skip);
+    })
+    .then(({ entries, count }) => res.status(200).send({
+      history: entries,
+      metrics: { totalEntries: count },
+    }))
+    .catch((err) => handleError(err, res));
+};
+
 exports.update = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -202,6 +238,8 @@ exports.update = (req, res) => {
       if (req.body.steps !== undefined) {
         rejectNestedSharedSteps(req.body.steps);
       }
+      // Captured before the document is mutated, so the diff sees what was persisted.
+      const before = sharedStep.toObject();
       if (req.body.name !== undefined && req.body.name !== sharedStep.name) {
         const clash = await SharedStep
           .findOne({ team: sharedStep.team, name: req.body.name })
@@ -233,6 +271,24 @@ exports.update = (req, res) => {
         sharedStep.version += 1;
       }
       const saved = await sharedStep.save();
+
+      const changes = historyUtils.diffDocuments(
+        before,
+        saved.toObject(),
+        historyUtils.TRACKED_PATHS.sharedstep,
+      );
+      if (changes.length > 0) {
+        historyUtils.recordChange({
+          entityType: 'sharedstep',
+          entityId: saved._id,
+          team: saved.team,
+          action: 'UPDATE',
+          version: saved.version,
+          changes,
+          user: saved.updatedBy,
+          comment: req.body.comment,
+        });
+      }
 
       if (!stepsChanged) {
         log(`Shared step ${sharedStepId} updated without a step change; no cascade`);
@@ -292,6 +348,15 @@ exports.delete = (req, res) => {
       const attachmentsRemoved = await attachmentUtils
         .removeAttachmentsForOwner('sharedstep', sharedStep._id);
       log(`Deleting unreferenced shared step ${sharedStepId} along with ${attachmentsRemoved} attachment(s)`);
+      historyUtils.recordChange({
+        entityType: 'sharedstep',
+        entityId: sharedStep._id,
+        team: sharedStep.team,
+        action: 'DELETE',
+        version: sharedStep.version,
+        user: req.user ? req.user._id : undefined,
+        comment: req.body.comment || `Deleted "${sharedStep.name}"`,
+      });
       return SharedStep.findByIdAndRemove(sharedStepId);
     })
     .then((sharedStep) => {

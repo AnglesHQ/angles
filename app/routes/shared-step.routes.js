@@ -30,6 +30,12 @@ const stepValidators = [
   check('steps.*.order')
     .optional()
     .isNumeric(),
+  // Optional free-text reason, recorded against the change history entry.
+  check('comment')
+    .optional()
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('Max length for a change comment is 500 characters'),
 ];
 
 module.exports = (app, path) => {
@@ -79,6 +85,18 @@ module.exports = (app, path) => {
       .isMongoId(),
   ], sharedStepController.findUsage);
 
+  app.get(`${path}/shared-step/:sharedStepId/history`, [
+    param('sharedStepId')
+      .exists()
+      .isMongoId(),
+    query('limit')
+      .optional()
+      .isNumeric(),
+    query('skip')
+      .optional()
+      .isNumeric(),
+  ], sharedStepController.findHistory);
+
   app.put(`${path}/shared-step/:sharedStepId`, [
     param('sharedStepId')
       .exists()
@@ -95,5 +113,10 @@ module.exports = (app, path) => {
     param('sharedStepId')
       .exists()
       .isMongoId(),
+    check('comment')
+      .optional()
+      .isString()
+      .isLength({ max: 500 })
+      .withMessage('Max length for a change comment is 500 characters'),
   ], sharedStepController.delete);
 };

@@ -60,6 +60,12 @@ const contentValidators = [
     .optional()
     .isObject()
     .withMessage('customFields must be an object of field key to value'),
+  // Optional free-text reason, recorded against the change history entry.
+  check('comment')
+    .optional()
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('Max length for a change comment is 500 characters'),
 ];
 
 module.exports = (app, path) => {
@@ -111,6 +117,18 @@ module.exports = (app, path) => {
       .isMongoId(),
   ], manualTestCaseController.findOne);
 
+  app.get(`${path}/manual-test-case/:caseId/history`, [
+    param('caseId')
+      .exists()
+      .isMongoId(),
+    query('limit')
+      .optional()
+      .isNumeric(),
+    query('skip')
+      .optional()
+      .isNumeric(),
+  ], manualTestCaseController.findHistory);
+
   app.get(`${path}/manual-test-case/:caseId/version`, [
     param('caseId')
       .exists()
@@ -150,11 +168,21 @@ module.exports = (app, path) => {
       .isString()
       .isLength({ min: 1, max: 200 })
       .withMessage('Max length for the test case title is 200 characters'),
+    check('comment')
+      .optional()
+      .isString()
+      .isLength({ max: 500 })
+      .withMessage('Max length for a change comment is 500 characters'),
   ], manualTestCaseController.clone);
 
   app.delete(`${path}/manual-test-case/:caseId`, [
     param('caseId')
       .exists()
       .isMongoId(),
+    check('comment')
+      .optional()
+      .isString()
+      .isLength({ max: 500 })
+      .withMessage('Max length for a change comment is 500 characters'),
   ], manualTestCaseController.delete);
 };

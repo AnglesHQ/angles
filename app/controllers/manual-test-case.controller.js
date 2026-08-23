@@ -11,6 +11,7 @@ const manualTestCaseUtils = require('../utils/manual-test-case-utils.js');
 const manualStepUtils = require('../utils/manual-step-utils.js');
 const customFieldUtils = require('../utils/custom-field-utils.js');
 const attachmentUtils = require('../utils/attachment-utils.js');
+const historyUtils = require('../utils/history-utils.js');
 const validationUtils = require('../utils/validation-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
@@ -156,6 +157,17 @@ exports.create = (req, res) => {
         .saveVersion(testCase, testCase.createdBy, snapshot, expandedSteps);
       const savedCase = await testCase.save();
       log(`Created manual test case "${savedCase.title}" (v1) with id ${savedCase._id}`);
+      // Not awaited: the case is saved, and losing an audit line must never fail the
+      // request that produced it.
+      historyUtils.recordChange({
+        entityType: 'testcase',
+        entityId: savedCase._id,
+        team: savedCase.team,
+        action: 'CREATE',
+        version: savedCase.version,
+        user: savedCase.createdBy,
+        comment: req.body.comment,
+      });
       return savedCase;
     })
     .then((savedCase) => ManualTestCase.findById(savedCase._id)
@@ -279,6 +291,10 @@ exports.update = (req, res) => {
         await validateAttachmentReferences(req.body.steps, testCase.team);
       }
 
+      // Captured before anything is mutated, so the diff compares against what was
+      // actually persisted rather than the half-updated document.
+      const before = testCase.toObject();
+
       const definitions = await customFieldUtils.getDefinitionsForTeam(testCase.team);
 
       // The status the case will end up with decides whether required fields are
@@ -343,7 +359,30 @@ exports.update = (req, res) => {
       } else {
         log(`Manual test case ${caseId} updated without a content change, staying on version ${testCase.version}`);
       }
-      return testCase.save();
+      const savedCase = await testCase.save();
+
+      // A status transition is audited even though it burns no version - "who published
+      // this?" is exactly the sort of question history exists to answer, and the version
+      // collection cannot express it.
+      const statusChanged = before.status !== savedCase.status;
+      const changes = historyUtils.diffDocuments(
+        before,
+        savedCase.toObject(),
+        historyUtils.TRACKED_PATHS.testcase,
+      );
+      if (changes.length > 0) {
+        historyUtils.recordChange({
+          entityType: 'testcase',
+          entityId: savedCase._id,
+          team: savedCase.team,
+          action: statusChanged && !contentChanged ? 'STATUS_CHANGE' : 'UPDATE',
+          version: savedCase.version,
+          changes,
+          user: savedCase.updatedBy,
+          comment: req.body.comment,
+        });
+      }
+      return savedCase;
     })
     .then((savedCase) => ManualTestCase.findById(savedCase._id)
       .populate('team')
@@ -405,6 +444,15 @@ exports.clone = (req, res) => {
         .saveVersion(clonedCase, clonedCase.createdBy, snapshot, expandedSteps);
       const savedClone = await clonedCase.save();
       log(`Cloned manual test case ${caseId} into ${savedClone._id}`);
+      historyUtils.recordChange({
+        entityType: 'testcase',
+        entityId: savedClone._id,
+        team: savedClone.team,
+        action: 'CLONE',
+        version: savedClone.version,
+        user: savedClone.createdBy,
+        comment: req.body.comment || `Cloned from test case ${caseId}`,
+      });
       return savedClone;
     })
     .then((savedClone) => ManualTestCase.findById(savedClone._id)
@@ -444,6 +492,18 @@ exports.delete = (req, res) => {
       const attachmentsRemoved = await attachmentUtils
         .removeAttachmentsForOwner('testcase', testCase._id);
       log(`Deleting manual test case ${caseId} along with ${versionsRemoved.deletedCount} version(s) and ${attachmentsRemoved} attachment(s).`);
+      // Recorded before the removal, while the team is still readable from the document.
+      // The entry outlives the case on purpose: "what happened to that test case?" is
+      // only answerable if the deletion itself is logged.
+      historyUtils.recordChange({
+        entityType: 'testcase',
+        entityId: testCase._id,
+        team: testCase.team,
+        action: 'DELETE',
+        version: testCase.version,
+        user: req.user ? req.user._id : undefined,
+        comment: req.body.comment || `Deleted "${testCase.title}"`,
+      });
       return ManualTestCase.findByIdAndRemove(caseId);
     })
     .then((testCase) => {
@@ -452,6 +512,32 @@ exports.delete = (req, res) => {
       }
       return res.status(200).send({ message: 'Manual test case deleted successfully!' });
     })
+    .catch((err) => handleError(err, res));
+};
+
+exports.findHistory = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { caseId } = req.params;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = parseInt(req.query.skip, 10) || 0;
+
+  return ManualTestCase.findById(caseId).select('_id team').lean().exec()
+    .then((testCase) => {
+      if (!testCase) {
+        throw new NotFoundError(`No manual test case found with id ${caseId}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, testCase.team)) {
+        throw new ForbiddenError('You do not have access to this test case');
+      }
+      return historyUtils.findHistory(testCase._id, limit, skip);
+    })
+    .then(({ entries, count }) => res.status(200).send({
+      history: entries,
+      metrics: { totalEntries: count },
+    }))
     .catch((err) => handleError(err, res));
 };
 
