@@ -23,12 +23,26 @@ const ManualStep = new Schema({
     type: String,
     required: false,
   },
-  // Set when this step is an inclusion of a re-usable shared step (added in phase 3).
-  // When present the step's own action/expected are ignored in favour of the shared
-  // step's contents.
+  // Set when this step is an inclusion of a re-usable shared step. On the mutable head
+  // it marks a placeholder whose own action/expected are ignored; the shared step's
+  // contents are expanded in its place. A frozen version never stores a placeholder -
+  // it stores the expanded result, with the two attribution fields below.
   sharedStep: {
     type: Schema.Types.ObjectId,
     ref: 'SharedStep',
+    required: false,
+  },
+  // Display attribution on an expanded step: which shared step it came from and at which
+  // version. Carried so the UI can show "from <shared step> v2" and so a frozen version
+  // records what the tester was actually looking at, without the step still being a
+  // reference that could resolve differently later.
+  sharedStepRef: {
+    type: Schema.Types.ObjectId,
+    ref: 'SharedStep',
+    required: false,
+  },
+  sharedStepVersion: {
+    type: Number,
     required: false,
   },
   attachments: [{

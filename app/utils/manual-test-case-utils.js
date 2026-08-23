@@ -47,7 +47,15 @@ const normaliseValue = (value) => {
         const normalised = normaliseValue(plain[key]);
         // Treat an absent key and an explicitly empty one as the same, so a client that
         // omits `expected` and one that sends '' do not produce different versions.
-        if (normalised !== null && normalised !== '') {
+        //
+        // An empty array counts as empty for the same reason: a stored step carries
+        // `attachments: []` from the schema default, while a client re-sending that step
+        // omits the key entirely. Without this, re-sending unchanged steps compares
+        // unequal and burns a version for no change.
+        const isEmpty = normalised === null
+          || normalised === ''
+          || (Array.isArray(normalised) && normalised.length === 0);
+        if (!isEmpty) {
           // eslint-disable-next-line no-param-reassign
           accumulator[key] = normalised;
         }
@@ -81,7 +89,12 @@ Builds (but does not save) the immutable version document for the given case.
 `fieldDefinitions` is passed in rather than looked up here: phase 2 owns the definitions,
 and until then every version is written with an empty array.
  */
-manualTestCaseUtils.buildVersionDocument = (testCase, userId, fieldDefinitions = []) => (
+manualTestCaseUtils.buildVersionDocument = (
+  testCase,
+  userId,
+  fieldDefinitions = [],
+  steps = undefined,
+) => (
   new ManualTestCaseVersion({
     testCase: testCase._id,
     version: testCase.version,
@@ -91,7 +104,11 @@ manualTestCaseUtils.buildVersionDocument = (testCase, userId, fieldDefinitions =
     preconditions: testCase.preconditions,
     priority: testCase.priority,
     tags: testCase.tags,
-    steps: testCase.steps,
+    // Callers pass the expanded steps: a version never stores a shared-step placeholder,
+    // because a reference would resolve to whatever the shared step says later rather
+    // than what the tester saw. The head's own steps are only correct for a case that
+    // includes no shared steps at all.
+    steps: steps === undefined ? testCase.steps : steps,
     customFields: testCase.customFields,
     fieldDefinitions,
     createdBy: userId,
@@ -107,8 +124,14 @@ document that does not exist. An orphan is harmless - nothing references a versi
 an execution binds to it - whereas a dangling head pointer would make the case
 unreadable at that version.
  */
-manualTestCaseUtils.saveVersion = (testCase, userId, fieldDefinitions = []) => {
-  const version = manualTestCaseUtils.buildVersionDocument(testCase, userId, fieldDefinitions);
+manualTestCaseUtils.saveVersion = (
+  testCase,
+  userId,
+  fieldDefinitions = [],
+  steps = undefined,
+) => {
+  const version = manualTestCaseUtils
+    .buildVersionDocument(testCase, userId, fieldDefinitions, steps);
   log(`Writing version ${testCase.version} for manual test case ${testCase._id}`);
   return version.save();
 };

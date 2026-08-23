@@ -5,7 +5,9 @@ const debug = require('debug');
 const ManualTestCase = require('../models/manual-test-case.js');
 const ManualTestCaseVersion = require('../models/manual-test-case-version.js');
 const { Team } = require('../models/team.js');
+const SharedStep = require('../models/shared-step.js');
 const manualTestCaseUtils = require('../utils/manual-test-case-utils.js');
+const manualStepUtils = require('../utils/manual-step-utils.js');
 const customFieldUtils = require('../utils/custom-field-utils.js');
 const validationUtils = require('../utils/validation-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
@@ -33,6 +35,27 @@ const normaliseSteps = (steps) => (steps || []).map((step, index) => ({
   ...step,
   order: step.order === undefined ? index + 1 : step.order,
 }));
+
+/*
+Rejects a shared step reference that does not exist or belongs to another team.
+
+Caught at write time rather than at expansion: a dangling reference expands to an
+unresolved placeholder, which silently costs the case its steps. A cross-team reference
+would additionally leak one team's content into another's test case.
+ */
+const validateSharedStepReferences = async (steps, teamId) => {
+  const ids = manualStepUtils.collectSharedStepIds(steps);
+  if (ids.length === 0) return;
+  const found = await SharedStep.find({ _id: { $in: ids }, team: teamId })
+    .select('_id')
+    .lean()
+    .exec();
+  const foundIds = new Set(found.map((sharedStep) => sharedStep._id.toString()));
+  const missing = ids.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw new NotFoundError(`No shared step found for this team with id(s): ${missing.join(', ')}`);
+  }
+};
 
 exports.create = (req, res) => {
   const errors = validationResult(req);
@@ -68,6 +91,8 @@ exports.create = (req, res) => {
         }
       }
 
+      await validateSharedStepReferences(steps, teamFound._id);
+
       // Values are validated and coerced against the team's configured fields before the
       // case is built, so nothing invalid ever reaches a frozen version.
       const definitions = await customFieldUtils.getDefinitionsForTeam(teamFound._id);
@@ -95,8 +120,14 @@ exports.create = (req, res) => {
 
       // The version is written first so a crash between the two writes leaves an orphan
       // version rather than a head pointing at a version that does not exist.
+      //
+      // Steps are expanded before freezing: a version must never hold a shared-step
+      // reference, or a later edit to that shared step would rewrite what this version
+      // shows.
       const snapshot = customFieldUtils.buildDefinitionSnapshot(definitions, validatedFields);
-      await manualTestCaseUtils.saveVersion(testCase, testCase.createdBy, snapshot);
+      const expandedSteps = await manualStepUtils.expandStepsFor(testCase.steps);
+      await manualTestCaseUtils
+        .saveVersion(testCase, testCase.createdBy, snapshot, expandedSteps);
       const savedCase = await testCase.save();
       log(`Created manual test case "${savedCase.title}" (v1) with id ${savedCase._id}`);
       return savedCase;
@@ -178,12 +209,22 @@ exports.findOne = (req, res) => {
     .populate('updatedBy', 'username')
     .lean()
     .exec()
-    .then((testCase) => {
+    .then(async (testCase) => {
       if (!testCase) {
         throw new NotFoundError(`No manual test case found with id ${caseId}`);
       }
       if (!authMiddleware.hasTeamAccess(req.user, testCase.team._id)) {
         throw new ForbiddenError('You do not have access to this test case');
+      }
+      // The head stores shared steps as placeholders. `expand=true` resolves them into
+      // the steps a tester would actually follow - what the authoring UI renders as a
+      // preview, and what the next frozen version will contain.
+      if (req.query.expand === 'true') {
+        return res.status(200).send({
+          ...testCase,
+          steps: await manualStepUtils.expandStepsFor(testCase.steps),
+          expanded: true,
+        });
       }
       return res.status(200).send(testCase);
     })
@@ -205,6 +246,10 @@ exports.update = (req, res) => {
       }
       if (!authMiddleware.hasTeamAccess(req.user, testCase.team)) {
         throw new ForbiddenError('You do not have access to this test case');
+      }
+
+      if (req.body.steps !== undefined) {
+        await validateSharedStepReferences(req.body.steps, testCase.team);
       }
 
       const definitions = await customFieldUtils.getDefinitionsForTeam(testCase.team);
@@ -264,7 +309,9 @@ exports.update = (req, res) => {
         testCase.version += 1;
         const snapshot = customFieldUtils
           .buildDefinitionSnapshot(definitions, testCase.customFields);
-        await manualTestCaseUtils.saveVersion(testCase, testCase.updatedBy, snapshot);
+        const expandedSteps = await manualStepUtils.expandStepsFor(testCase.steps);
+        await manualTestCaseUtils
+          .saveVersion(testCase, testCase.updatedBy, snapshot, expandedSteps);
         log(`Manual test case ${caseId} content changed, wrote version ${testCase.version}`);
       } else {
         log(`Manual test case ${caseId} updated without a content change, staying on version ${testCase.version}`);
@@ -326,7 +373,9 @@ exports.clone = (req, res) => {
       const definitions = await customFieldUtils.getDefinitionsForTeam(testCase.team);
       const snapshot = customFieldUtils
         .buildDefinitionSnapshot(definitions, testCase.customFields);
-      await manualTestCaseUtils.saveVersion(clonedCase, clonedCase.createdBy, snapshot);
+      const expandedSteps = await manualStepUtils.expandStepsFor(clonedCase.steps);
+      await manualTestCaseUtils
+        .saveVersion(clonedCase, clonedCase.createdBy, snapshot, expandedSteps);
       const savedClone = await clonedCase.save();
       log(`Cloned manual test case ${caseId} into ${savedClone._id}`);
       return savedClone;

@@ -53,6 +53,10 @@
     {
       "name": "Custom Field",
       "description": "API for configuring the custom fields available to a team's manual test cases"
+    },
+    {
+      "name": "Shared Step",
+      "description": "API for managing re-usable step sequences shared by manual test cases"
     }
   ],
   "security": [
@@ -4292,7 +4296,7 @@
             }
           },
           "404": {
-            "description": "No team or component found with the given id",
+            "description": "No team, component, or referenced shared step found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4485,7 +4489,19 @@
               }
             }
           }
-        }
+        },
+        "description": "Returns the mutable head. Its steps carry shared-step placeholders as stored; pass `expand=true` to resolve them into the steps a tester would follow.",
+        "parameters": [
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Expand shared-step inclusions into their steps, renumbering order contiguously. The response carries `expanded: true`.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
       },
       "put": {
         "tags": [
@@ -4535,7 +4551,7 @@
             }
           },
           "404": {
-            "description": "No manual test case found",
+            "description": "No team, component, or referenced shared step found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5151,6 +5167,436 @@
           },
           "404": {
             "description": "No custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step": {
+      "post": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Create a re-usable shared step",
+        "description": "Requires team lead access. The name must be unique within the team, and the steps must all be literal.",
+        "requestBody": {
+          "description": "The shared step to create.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedStep"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shared step created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredSharedStep"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A step tried to include another shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A shared step with this name already exists for the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Search a team's shared step library",
+        "description": "Readable by any team member - authors browse the library to include a step.",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team to list shared steps for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive substring match against the name and description.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number to return (defaults to 25).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Number to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching shared steps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedStepsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step/{sharedStepId}": {
+      "parameters": [
+        {
+          "name": "sharedStepId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the shared step.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Get a shared step",
+        "responses": {
+          "200": {
+            "description": "Shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredSharedStep"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Update a shared step, cascading into every referencing test case",
+        "description": "Requires team lead access. Changing the steps bumps the shared step version and writes a new frozen version for every test case that includes it, re-expanded with the new content - so previously written versions keep showing what their tester saw. Renaming or re-describing the shared step changes no test case content and cascades to nothing. Check `cascade.testCasesVersioned` on the response, and call the usage endpoint first to see how many cases an edit will affect.",
+        "requestBody": {
+          "description": "The fields to update.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedStep"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shared step updated, with the cascade outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedStepUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A step tried to include another shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A shared step with this name already exists for the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Delete a shared step",
+        "description": "Requires team lead access. A shared step that any test case still includes cannot be deleted - the referencing cases would expand to an unresolved placeholder and silently lose steps. Remove the inclusions first; the usage endpoint lists them.",
+        "responses": {
+          "200": {
+            "description": "Shared step deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The shared step is still included by one or more test cases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step/{sharedStepId}/usage": {
+      "parameters": [
+        {
+          "name": "sharedStepId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the shared step.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "List the test cases that include this shared step",
+        "description": "Tells an author how many test cases an edit is about to version, and which ones block a delete.",
+        "responses": {
+          "200": {
+            "description": "The referencing test cases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedStepUsageResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
             "content": {
               "application/json": {
                 "schema": {
@@ -6084,7 +6530,7 @@
           },
           "sharedStep": {
             "type": "string",
-            "description": "ID of a re-usable shared step this step includes. Not yet populated."
+            "description": "ID of a re-usable shared step this step includes. On a test case head this marks a placeholder: its own action and expected are ignored and the shared step is expanded in its place. A frozen version never carries this field - it stores the expanded steps instead, so a later edit to the shared step cannot rewrite history."
           },
           "attachments": {
             "type": "array",
@@ -6092,6 +6538,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "sharedStepRef": {
+            "type": "string",
+            "description": "Display attribution on an expanded step: the shared step it came from. Present on expanded output and on frozen versions, never on a head placeholder."
+          },
+          "sharedStepVersion": {
+            "type": "integer",
+            "description": "Which revision of the shared step this step was expanded from."
+          },
+          "unresolvedSharedStep": {
+            "type": "boolean",
+            "description": "True when the referenced shared step no longer exists. The placeholder is kept rather than dropped so the case does not silently lose steps."
           }
         }
       },
@@ -6676,6 +7134,161 @@
               "callbackUrl": {
                 "type": "string",
                 "description": "The redirect/ACS URL to register with the identity provider."
+              }
+            }
+          }
+        ]
+      },
+      "SharedStep": {
+        "required": [
+          "team",
+          "name",
+          "steps"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "ID of the team that owns the shared step."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "description": "Unique within the team."
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "steps": {
+            "type": "array",
+            "description": "The steps to expand in place of an inclusion. Always literal - a shared step cannot include another shared step.",
+            "items": {
+              "$ref": "#/components/schemas/ManualStep"
+            }
+          }
+        }
+      },
+      "StoredSharedStep": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SharedStep"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "version": {
+                "type": "integer",
+                "description": "Incremented only when the steps change. Recorded on every expanded step so a frozen version shows which revision the tester saw."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StoredManualStep"
+                }
+              },
+              "createdBy": {
+                "type": "object"
+              },
+              "updatedBy": {
+                "type": "object"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "SharedStepsResponse": {
+        "properties": {
+          "sharedSteps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredSharedStep"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalSharedSteps": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "SharedStepUsageResponse": {
+        "properties": {
+          "testCases": {
+            "type": "array",
+            "description": "The test cases whose head includes this shared step - the ones an edit would version.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalTestCases": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "SharedStepUpdateResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/StoredSharedStep"
+          },
+          {
+            "properties": {
+              "cascade": {
+                "type": "object",
+                "description": "What the edit did to the referencing test cases.",
+                "properties": {
+                  "testCasesVersioned": {
+                    "type": "integer",
+                    "description": "How many test cases were given a new frozen version. Zero when only the name or description changed."
+                  },
+                  "failures": {
+                    "type": "array",
+                    "description": "Test cases that could not be versioned. The shared step edit itself still succeeded.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "testCase": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
