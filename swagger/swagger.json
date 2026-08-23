@@ -4142,7 +4142,7 @@
                     "providers": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/definitions/AuthProviderPublic"
+                        "$ref": "#/components/schemas/AuthProviderPublic"
                       }
                     }
                   }
@@ -4177,7 +4177,7 @@
                   "providers": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/definitions/AuthProvider"
+                      "$ref": "#/components/schemas/AuthProvider"
                     }
                   }
                 }
@@ -4201,7 +4201,7 @@
                         "providers": {
                           "type": "array",
                           "items": {
-                            "$ref": "#/definitions/AuthProviderPublic"
+                            "$ref": "#/components/schemas/AuthProviderPublic"
                           }
                         }
                       }
@@ -6469,220 +6469,218 @@
             "$ref": "#/components/schemas/StoredCustomFieldDefinition"
           }
         }
-      }
-    }
-  },
-  "definitions": {
-    "AuthProvider": {
-      "type": "object",
-      "required": [
-        "id",
-        "name",
-        "type"
-      ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$",
-          "description": "Stable, URL-safe handle. Forms part of the login and callback URLs, so changing it changes what must be registered with the identity provider."
-        },
-        "name": {
-          "type": "string",
-          "description": "Label shown on the login button."
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "oidc",
-            "saml",
-            "ldap"
-          ]
-        },
-        "enabled": {
-          "type": "boolean"
-        },
-        "roleMappings": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "value",
-              "role"
+      },
+      "AuthProvider": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$",
+            "description": "Stable, URL-safe handle. Forms part of the login and callback URLs, so changing it changes what must be registered with the identity provider."
+          },
+          "name": {
+            "type": "string",
+            "description": "Label shown on the login button."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "oidc",
+              "saml",
+              "ldap"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "roleMappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "value",
+                "role"
+              ],
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "Group name, group id, or attribute value as supplied by the provider. Matched case-insensitively."
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "admin",
+                    "team_lead",
+                    "user"
+                  ]
+                }
+              }
+            }
+          },
+          "defaultRole": {
+            "type": "string",
+            "enum": [
+              "",
+              "admin",
+              "team_lead",
+              "user"
             ],
+            "description": "Role granted when no mapping matches. Empty denies access."
+          },
+          "oidc": {
+            "type": "object",
             "properties": {
-              "value": {
+              "issuer": {
                 "type": "string",
-                "description": "Group name, group id, or attribute value as supplied by the provider. Matched case-insensitively."
+                "description": "Issuer URL; endpoints and the JWKS come from its .well-known/openid-configuration."
               },
-              "role": {
+              "clientId": {
+                "type": "string"
+              },
+              "clientSecret": {
+                "type": "string",
+                "description": "Write-only. Never returned; send a non-empty value to change it, or omit/blank to keep the stored one."
+              },
+              "scopes": {
+                "type": "string",
+                "description": "Space-separated. openid is added automatically. Note Google rejects the groups scope, while Entra emits groups without one."
+              },
+              "groupsClaim": {
+                "type": "string",
+                "description": "Claim holding group membership - groups for Okta, often roles for Keycloak, a namespaced URI for Auth0."
+              },
+              "usernameClaim": {
+                "type": "string",
+                "description": "Claim used as the username. Falls back to email, then preferred_username, then sub."
+              }
+            }
+          },
+          "saml": {
+            "type": "object",
+            "properties": {
+              "entryPoint": {
+                "type": "string",
+                "description": "IdP SSO URL."
+              },
+              "idpCert": {
+                "type": "string",
+                "description": "IdP signing certificate. Accepted with or without PEM armour. Required: assertions are only trustworthy because they verify against it."
+              },
+              "issuer": {
+                "type": "string",
+                "description": "This application's SP entity id, as registered with the IdP."
+              },
+              "privateKey": {
+                "type": "string",
+                "description": "Write-only. Only needed when the IdP requires signed AuthnRequests."
+              },
+              "signatureAlgorithm": {
                 "type": "string",
                 "enum": [
-                  "admin",
-                  "team_lead",
-                  "user"
+                  "sha256",
+                  "sha512"
                 ]
+              },
+              "identifierFormat": {
+                "type": "string"
+              },
+              "groupsAttribute": {
+                "type": "string"
+              },
+              "usernameAttribute": {
+                "type": "string",
+                "description": "Attribute used as the username. Falls back to conventional email/name attributes, then the NameID."
+              },
+              "wantAuthnResponseSigned": {
+                "type": "boolean",
+                "description": "Require a signature over the whole Response, not just the assertion. Defaults to true; relax it for IdPs that sign only the assertion. The assertion signature is always required."
+              },
+              "allowUnsolicited": {
+                "type": "boolean",
+                "description": "Permit IdP-initiated login. Defaults to false: an unsolicited assertion has no AuthnRequest to correlate against, losing that replay protection."
+              }
+            }
+          },
+          "ldap": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Directory URL. Must be ldaps://, or ldap:// with startTLS enabled - this flow carries the user's password."
+              },
+              "bindDN": {
+                "type": "string",
+                "description": "Service account for the user search. Leave empty for an anonymous search."
+              },
+              "bindCredentials": {
+                "type": "string",
+                "description": "Write-only."
+              },
+              "searchBase": {
+                "type": "string"
+              },
+              "searchFilter": {
+                "type": "string",
+                "description": "{{username}} is substituted with the submitted username."
+              },
+              "groupSearchBase": {
+                "type": "string",
+                "description": "Leave empty to read membership from the user entry's memberOf attribute instead."
+              },
+              "groupSearchFilter": {
+                "type": "string",
+                "description": "{{dn}} is substituted with the user's DN."
+              },
+              "groupNameAttribute": {
+                "type": "string"
+              },
+              "usernameAttribute": {
+                "type": "string"
+              },
+              "startTLS": {
+                "type": "boolean"
+              },
+              "tlsRejectUnauthorized": {
+                "type": "boolean",
+                "description": "Defaults to true. Disabling it makes the connection interceptable, which here means intercepting passwords."
               }
             }
           }
-        },
-        "defaultRole": {
-          "type": "string",
-          "enum": [
-            "",
-            "admin",
-            "team_lead",
-            "user"
-          ],
-          "description": "Role granted when no mapping matches. Empty denies access."
-        },
-        "oidc": {
-          "type": "object",
-          "properties": {
-            "issuer": {
-              "type": "string",
-              "description": "Issuer URL; endpoints and the JWKS come from its .well-known/openid-configuration."
-            },
-            "clientId": {
-              "type": "string"
-            },
-            "clientSecret": {
-              "type": "string",
-              "description": "Write-only. Never returned; send a non-empty value to change it, or omit/blank to keep the stored one."
-            },
-            "scopes": {
-              "type": "string",
-              "description": "Space-separated. openid is added automatically. Note Google rejects the groups scope, while Entra emits groups without one."
-            },
-            "groupsClaim": {
-              "type": "string",
-              "description": "Claim holding group membership - groups for Okta, often roles for Keycloak, a namespaced URI for Auth0."
-            },
-            "usernameClaim": {
-              "type": "string",
-              "description": "Claim used as the username. Falls back to email, then preferred_username, then sub."
-            }
-          }
-        },
-        "saml": {
-          "type": "object",
-          "properties": {
-            "entryPoint": {
-              "type": "string",
-              "description": "IdP SSO URL."
-            },
-            "idpCert": {
-              "type": "string",
-              "description": "IdP signing certificate. Accepted with or without PEM armour. Required: assertions are only trustworthy because they verify against it."
-            },
-            "issuer": {
-              "type": "string",
-              "description": "This application's SP entity id, as registered with the IdP."
-            },
-            "privateKey": {
-              "type": "string",
-              "description": "Write-only. Only needed when the IdP requires signed AuthnRequests."
-            },
-            "signatureAlgorithm": {
-              "type": "string",
-              "enum": [
-                "sha256",
-                "sha512"
-              ]
-            },
-            "identifierFormat": {
-              "type": "string"
-            },
-            "groupsAttribute": {
-              "type": "string"
-            },
-            "usernameAttribute": {
-              "type": "string",
-              "description": "Attribute used as the username. Falls back to conventional email/name attributes, then the NameID."
-            },
-            "wantAuthnResponseSigned": {
-              "type": "boolean",
-              "description": "Require a signature over the whole Response, not just the assertion. Defaults to true; relax it for IdPs that sign only the assertion. The assertion signature is always required."
-            },
-            "allowUnsolicited": {
-              "type": "boolean",
-              "description": "Permit IdP-initiated login. Defaults to false: an unsolicited assertion has no AuthnRequest to correlate against, losing that replay protection."
-            }
-          }
-        },
-        "ldap": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "type": "string",
-              "description": "Directory URL. Must be ldaps://, or ldap:// with startTLS enabled - this flow carries the user's password."
-            },
-            "bindDN": {
-              "type": "string",
-              "description": "Service account for the user search. Leave empty for an anonymous search."
-            },
-            "bindCredentials": {
-              "type": "string",
-              "description": "Write-only."
-            },
-            "searchBase": {
-              "type": "string"
-            },
-            "searchFilter": {
-              "type": "string",
-              "description": "{{username}} is substituted with the submitted username."
-            },
-            "groupSearchBase": {
-              "type": "string",
-              "description": "Leave empty to read membership from the user entry's memberOf attribute instead."
-            },
-            "groupSearchFilter": {
-              "type": "string",
-              "description": "{{dn}} is substituted with the user's DN."
-            },
-            "groupNameAttribute": {
-              "type": "string"
-            },
-            "usernameAttribute": {
-              "type": "string"
-            },
-            "startTLS": {
-              "type": "boolean"
-            },
-            "tlsRejectUnauthorized": {
-              "type": "boolean",
-              "description": "Defaults to true. Disabling it makes the connection interceptable, which here means intercepting passwords."
-            }
-          }
         }
+      },
+      "AuthProviderPublic": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AuthProvider"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "clientSecretSet": {
+                "type": "boolean"
+              },
+              "privateKeySet": {
+                "type": "boolean"
+              },
+              "bindCredentialsSet": {
+                "type": "boolean"
+              },
+              "loginUrl": {
+                "type": "string"
+              },
+              "callbackUrl": {
+                "type": "string",
+                "description": "The redirect/ACS URL to register with the identity provider."
+              }
+            }
+          }
+        ]
       }
-    },
-    "AuthProviderPublic": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/AuthProvider"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "clientSecretSet": {
-              "type": "boolean"
-            },
-            "privateKeySet": {
-              "type": "boolean"
-            },
-            "bindCredentialsSet": {
-              "type": "boolean"
-            },
-            "loginUrl": {
-              "type": "string"
-            },
-            "callbackUrl": {
-              "type": "string",
-              "description": "The redirect/ACS URL to register with the identity provider."
-            }
-          }
-        }
-      ]
     }
   }
 }
