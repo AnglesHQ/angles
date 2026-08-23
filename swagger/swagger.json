@@ -45,6 +45,10 @@
     {
       "name": "Monitoring",
       "description": "Prometheus scrape endpoint for resource and application metrics"
+    },
+    {
+      "name": "Manual Test Case",
+      "description": "API for managing manual test cases and their version history"
     }
   ],
   "security": [
@@ -4233,6 +4237,562 @@
           }
         }
       }
+    },
+    "/manual-test-case": {
+      "post": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Create a manual test case",
+        "description": "Creates a test case and freezes its first version. The caller must have access to the team.",
+        "requestBody": {
+          "description": "The manual test case to create.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestCase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Manual test case created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team or component found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Search the manual test cases for a team",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team to retrieve test cases for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter by status, comma separated (DRAFT, ACTIVE, DEPRECATED).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "description": "Filter by priority, comma separated (LOW, MEDIUM, HIGH, CRITICAL).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "description": "Filter by tags, comma separated. A test case must carry every tag listed.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive substring match against the title and description.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of test cases to return (defaults to 25).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Number of test cases to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching manual test cases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestCasesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Get the current version of a manual test case",
+        "responses": {
+          "200": {
+            "description": "Manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Update a manual test case",
+        "description": "Only the fields present in the body are updated. Changing content (title, description, preconditions, priority, tags, steps or custom field values) increments the version and freezes a new one; a status-only change, or an update that changes nothing, leaves the version untouched.",
+        "requestBody": {
+          "description": "The fields to update.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestCase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Manual test case updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Delete a manual test case and its version history",
+        "description": "Requires team lead access. Removes the test case together with every frozen version of it.",
+        "responses": {
+          "200": {
+            "description": "Manual test case deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required to delete a test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}/clone": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Clone a manual test case",
+        "description": "Copies the test case into a new one that starts its own version history at 1 and always begins as a DRAFT.",
+        "requestBody": {
+          "description": "Optional title for the clone. Defaults to the original title with \" (copy)\" appended.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Manual test case cloned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}/version": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "List the version history of a manual test case",
+        "description": "Returns version metadata only, newest first.",
+        "responses": {
+          "200": {
+            "description": "Version history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestCaseVersionsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}/version/{version}": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "version",
+          "in": "path",
+          "required": true,
+          "description": "The version number to retrieve.",
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Get the frozen content of one version",
+        "description": "Returns the test case exactly as it stood at this version. This is what an execution recorded against that version renders, and it is unaffected by any later edit to the test case.",
+        "responses": {
+          "200": {
+            "description": "Frozen version content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestCaseVersion"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case, or no such version, found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -5117,6 +5677,299 @@
               "local",
               "okta"
             ]
+          }
+        }
+      },
+      "ManualStep": {
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer",
+            "description": "Position of the step within the test case. Assigned from the array order when omitted."
+          },
+          "action": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "What the tester should do."
+          },
+          "expected": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "The expected result of performing the action."
+          },
+          "data": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Test data needed for this step (accounts, payloads, fixture references)."
+          },
+          "sharedStep": {
+            "type": "string",
+            "description": "ID of a re-usable shared step this step includes. Not yet populated."
+          },
+          "attachments": {
+            "type": "array",
+            "description": "IDs of images attached to this step. Not yet populated.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "StoredManualStep": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ManualStep"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true,
+                "description": "Stable step id. Preserved into every frozen version so a recorded step result stays bound to the right step when later versions reorder or remove steps."
+              }
+            }
+          }
+        ]
+      },
+      "ManualTestCase": {
+        "required": [
+          "team",
+          "title"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "ID of the team that owns this test case."
+          },
+          "component": {
+            "type": "string",
+            "description": "ID of a component belonging to the team."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "preconditions": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "DEPRECATED"
+            ],
+            "default": "DRAFT",
+            "description": "Workflow state. Changing it does not create a new version."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ],
+            "default": "MEDIUM"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManualStep"
+            }
+          },
+          "customFields": {
+            "type": "object",
+            "description": "Values for the custom fields configured for the team, keyed by field key.",
+            "additionalProperties": true
+          }
+        }
+      },
+      "StoredManualTestCase": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ManualTestCase"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "version": {
+                "type": "integer",
+                "description": "Current content version. Incremented only when content changes; always resolves to a document in the version history."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StoredManualStep"
+                }
+              },
+              "createdBy": {
+                "type": "object"
+              },
+              "updatedBy": {
+                "type": "object"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "ManualTestCasesResponse": {
+        "properties": {
+          "testCases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualTestCase"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalTestCases": {
+                "type": "integer",
+                "description": "Total matching the query, ignoring limit and skip."
+              }
+            }
+          }
+        }
+      },
+      "ManualTestCaseVersion": {
+        "description": "An immutable copy of one version of a manual test case. These documents are only ever inserted - never updated or deleted - so an execution bound to a version always renders the content it was run against.",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "testCase": {
+            "type": "string",
+            "description": "ID of the test case this is a version of."
+          },
+          "version": {
+            "type": "integer"
+          },
+          "team": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "preconditions": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualStep"
+            }
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "fieldDefinitions": {
+            "type": "array",
+            "description": "The custom field definitions in force when this version was written, so an archived or relabelled field still renders with its original label and type. Empty until custom fields are configurable.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "createdBy": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unversioned": {
+            "type": "boolean",
+            "description": "Present and true only when the case predates version tracking and the mutable head was returned instead of a frozen version. Such a response is not guaranteed immutable."
+          }
+        }
+      },
+      "ManualTestCaseVersionsResponse": {
+        "properties": {
+          "versions": {
+            "type": "array",
+            "description": "Version metadata, newest first. Fetch a single version for its full frozen content.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "createdBy": {
+                  "type": "object"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
           }
         }
       }
