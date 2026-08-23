@@ -8,6 +8,13 @@ const {
 // Shared by POST and PUT. Every field except the title is optional on create (a case
 // starts as a draft and is filled in progressively), and all of them are optional on
 // update - an omitted field is left untouched rather than cleared.
+// Turns an express-validator path like "steps[2].action" into "Step 3", so a message can
+// say which step is wrong rather than leaving the author to count.
+const describeStep = (validatorPath) => {
+  const match = /steps\[(\d+)\]/.exec(validatorPath || '');
+  return match ? `Step ${Number(match[1]) + 1}` : 'Each step';
+};
+
 const contentValidators = [
   check('description')
     .optional()
@@ -46,10 +53,18 @@ const contentValidators = [
       const step = index && req.body.steps ? req.body.steps[Number(index[1])] : undefined;
       return !(step && step.sharedStep);
     })
+    // Each check carries its own message and names the step. withMessage() only applies to
+    // the validator immediately before it, so a shared trailing message would leave the
+    // others reporting a bare "Invalid value" - which tells the author nothing about which
+    // of several steps is wrong.
     .exists()
+    .withMessage((value, { path }) => `${describeStep(path)} requires an action, unless it includes a shared step`)
+    .bail()
     .isString()
+    .withMessage((value, { path }) => `${describeStep(path)} action must be text`)
+    .bail()
     .isLength({ max: 2000 })
-    .withMessage('Each step requires an action (max 2000 characters)'),
+    .withMessage((value, { path }) => `${describeStep(path)} action must be 2000 characters or fewer`),
   check('steps.*.expected')
     .optional()
     .isString()
