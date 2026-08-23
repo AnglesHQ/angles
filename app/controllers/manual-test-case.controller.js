@@ -346,20 +346,31 @@ exports.update = (req, res) => {
       }
       testCase.updatedBy = req.user ? req.user._id : undefined;
 
+      let savedCase;
       if (contentChanged) {
         // A content change burns a version; a status-only edit (or an edit that changes
         // nothing) deliberately does not.
         testCase.version += 1;
+        // Recovers a case whose head fell behind its versions - see reconcileVersion.
+        await manualTestCaseUtils.reconcileVersion(testCase);
         const snapshot = customFieldUtils
           .buildDefinitionSnapshot(definitions, testCase.customFields);
         const expandedSteps = await manualStepUtils.expandStepsFor(testCase.steps);
+
+        // The head is validated before the version is written. Writing the version first
+        // and then failing to save the head leaves an orphan version at the new number,
+        // and because { testCase, version } is unique the next edit collides with it -
+        // wedging the case permanently. Validating first turns that into a clean 422 with
+        // nothing written.
+        await testCase.validate();
         await manualTestCaseUtils
           .saveVersion(testCase, testCase.updatedBy, snapshot, expandedSteps);
         log(`Manual test case ${caseId} content changed, wrote version ${testCase.version}`);
+        savedCase = await testCase.save();
       } else {
         log(`Manual test case ${caseId} updated without a content change, staying on version ${testCase.version}`);
+        savedCase = await testCase.save();
       }
-      const savedCase = await testCase.save();
 
       // A status transition is audited even though it burns no version - "who published
       // this?" is exactly the sort of question history exists to answer, and the version

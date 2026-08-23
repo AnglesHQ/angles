@@ -58,6 +58,15 @@ const handleError = (error, res) => {
     const { statusCode, message } = error;
     return res.status(statusCode).send({ message });
   }
+  // A mongoose schema validation failure is the caller sending something the model
+  // rejects, which is the same class of problem the route validators return 422 for.
+  // Without this it surfaces as a 500, reading as a server fault rather than bad input.
+  if (error.name === 'ValidationError' && error.errors) {
+    const message = Object.values(error.errors)
+      .map((fieldError) => fieldError.message)
+      .join(', ');
+    return res.status(422).send({ message: message || error.message });
+  }
   const message = error.message || 'Server Error';
   return res.status(500).send({ message });
 };

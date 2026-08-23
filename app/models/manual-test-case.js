@@ -16,7 +16,14 @@ const ManualStep = new Schema({
   },
   action: {
     type: String,
-    required: true,
+    // Required only for a literal step. A shared step inclusion carries no action of its
+    // own - the shared step's contents are expanded in its place, and expandSteps supplies
+    // a placeholder action if the reference cannot be resolved - so demanding one here
+    // would force callers to invent a dummy value that is never displayed.
+    required: [
+      function actionRequiredForLiteralSteps() { return !this.sharedStep; },
+      'Each step requires an action unless it includes a shared step',
+    ],
     trim: true,
   },
   expected: {

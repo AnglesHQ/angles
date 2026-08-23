@@ -38,7 +38,14 @@ const contentValidators = [
   check('steps')
     .optional()
     .isArray(),
+  // A shared step inclusion has no action of its own - the shared step's contents are
+  // expanded in its place - so the action is only required for a literal step.
   check('steps.*.action')
+    .if((value, { req, path }) => {
+      const index = path.match(/steps\[(\d+)\]/);
+      const step = index && req.body.steps ? req.body.steps[Number(index[1])] : undefined;
+      return !(step && step.sharedStep);
+    })
     .exists()
     .isString()
     .isLength({ max: 2000 })

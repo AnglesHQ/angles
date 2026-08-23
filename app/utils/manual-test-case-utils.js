@@ -124,6 +124,32 @@ document that does not exist. An orphan is harmless - nothing references a versi
 an execution binds to it - whereas a dangling head pointer would make the case
 unreadable at that version.
  */
+/*
+Reconciles the head's version number with what is actually on disk.
+
+The head and its versions are written in two steps, so a crash between them can leave a
+version at a number the head never reached. Because { testCase, version } is unique, the
+next edit would try that number again and fail with a duplicate key error - and keep
+failing, wedging the case for good. Advancing the head past anything already written turns
+that into a recoverable state rather than a permanent one.
+
+Returns the version number the caller should write.
+ */
+manualTestCaseUtils.reconcileVersion = async (testCase) => {
+  const latest = await ManualTestCaseVersion
+    .findOne({ testCase: testCase._id })
+    .sort('-version')
+    .select('version')
+    .lean()
+    .exec();
+  if (latest && latest.version >= testCase.version) {
+    log(`Manual test case ${testCase._id} head is at v${testCase.version} but v${latest.version} exists on disk; advancing the head.`);
+    // eslint-disable-next-line no-param-reassign
+    testCase.version = latest.version + 1;
+  }
+  return testCase.version;
+};
+
 manualTestCaseUtils.saveVersion = (
   testCase,
   userId,

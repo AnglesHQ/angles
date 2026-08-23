@@ -69,6 +69,12 @@ sharedStepUtils.cascadeToTestCases = async (sharedStep, userId) => {
         .buildDefinitionSnapshot(definitions, testCase.customFields);
 
       testCase.version += 1;
+      // Recovers a case whose head fell behind its versions - see reconcileVersion.
+      await manualTestCaseUtils.reconcileVersion(testCase);
+      testCase.updatedBy = userId;
+      // Validated before the version is written, so a case the cascade cannot save does
+      // not leave an orphan version behind that wedges every later edit.
+      await testCase.validate();
       // The version document carries the expanded steps; the head keeps its placeholders.
       await manualTestCaseUtils.saveVersion(
         testCase,
@@ -76,7 +82,6 @@ sharedStepUtils.cascadeToTestCases = async (sharedStep, userId) => {
         snapshot,
         expandedSteps,
       );
-      testCase.updatedBy = userId;
       await testCase.save();
 
       // Records why a case changed when nobody edited it directly. Without this the
