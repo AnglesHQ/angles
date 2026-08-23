@@ -15,7 +15,7 @@ These were settled before planning and constrain everything below:
 | Manual run ↔ Build relationship | Manual runs create a real `Build` document tagged `executionType: 'manual'`, plus dedicated `manualtestcases` / `manualtestruns` collections |
 | Step attachments | A new dedicated `Attachment` model and collection, independent of `Screenshot` |
 | Permissions | Admin configures custom fields; team leads manage shared steps; any team member authors and executes |
-| Scope | Angles API + angles-ui, delivered in phases |
+| Scope | Angles API + angles-ui + client libraries, delivered in phases. The JavaScript client gets the full manual surface (it backs angles-ui); the Java and Python clients only track the automated-reporting fields — see phase 9 |
 | Execution ↔ case versioning | Every version is written to an append-only `manualtestcaseversions` collection; executions bind to a version document, never to the mutable case |
 
 ### Why executions bind to an immutable version document
@@ -541,20 +541,67 @@ page code rather than assuming conventions.
 
 ---
 
-## Phase 9 — Client library and docs
+## Phase 9 — Client libraries and docs
 
-- `angles-javascript-client`: new `ManualTestCaseRequests.ts`, `SharedStepRequests.ts`,
-  `ManualTestRunRequests.ts`, `AttachmentRequests.ts` plus models under
-  `src/lib/models/` mirroring the schemas above, and enums under `models/enum/`.
-  Register them in `AnglesReporter.ts`.
-- `swagger/swagger.json`: document every new endpoint. It is a single 5.3k-line file —
-  add the new paths and component schemas in place rather than restructuring it.
+The three clients need very different amounts of work, because they do very different
+jobs. Only the JavaScript client drives angles-ui; the Java and Python clients exist to
+*report* automated results from test frameworks and have no manual-testing caller.
+
+### angles-javascript-client — full manual test management surface
+
+This is the client `angles-ui` consumes, so it needs every endpoint phase 8 will call:
+
+- `ManualTestCaseRequests.ts` — CRUD, clone, version list, single version, history
+- `SharedStepRequests.ts` — CRUD, usage, history
+- `CustomFieldRequests.ts` — CRUD (admin writes, team-access reads)
+- `AttachmentRequests.ts` — multipart upload, metadata, file, thumbnail, delete
+- `ManualTestRunRequests.ts` — create, list, get (with `expand`), update, record result,
+  rebind, status transition, delete
+- Models under `src/lib/models/` mirroring the schemas, request shapes under
+  `models/requests/`, and enums (`ManualTestCaseStates`, `ManualTestCasePriorities`,
+  `ManualRunStates`, `ManualCaseResultStates`, `CustomFieldTypes`) under `models/enum/`
+- Register all five on `AnglesReporter.ts`
+
+`BuildRequests` and `MetricRequests` also gain the optional `executionType` filter added
+in phase 7, which is what backs the dashboard's automated/manual toggle.
+
+### angles-java-client and angles-python-client — automated reporting fields only
+
+These only need to keep pace with what phases 6 and 7 added to the *automated* API. No
+manual test management surface at all.
+
+Both deserialize leniently — Gson ignores unknown JSON fields, and the Python client
+returns raw dicts from `requests.py` rather than deserializing into its dataclasses — so
+neither is *broken* by the new fields today. What they lack is the ability to read them
+back, which is a real gap for a caller that wants to know whether a build it fetched was
+automated or manual.
+
+Required changes, both clients:
+
+- `Build`: add `executionType` (`"automated"` / `"manual"`).
+- `Execution`: add `executionType`, plus the manual-only `manualTestCase`,
+  `manualTestCaseVersion`, `versionNumber` and `executedBy` — populated only on manual
+  executions, and read-only from these clients' point of view.
+- `Step`: add `attachments` (list of ids), alongside the existing `screenshot`.
+- Build/metrics list calls: accept an optional `executionType` filter parameter.
+
+Neither client should be able to *write* `executionType` on a build or execution it
+creates. The value is what distinguishes a manual run from an automated one, and a
+reporting client setting it to `"manual"` would put a build on the dashboard that no
+manual run exists to explain. It stays server-assigned: `POST /build` from these clients
+gets the schema default.
+
+Python note: the dataclasses in `models/` are request-shaping and documentation only —
+nothing deserializes into them — so adding the fields is about making the intended shape
+discoverable, not about fixing a runtime failure.
+
+### Docs
+
+- `swagger/swagger.json` is already current: every phase documented its own endpoints as
+  it landed, rather than deferring to this phase.
 - `docs/manual-test-cases.md`: authoring guide, custom field configuration, permissions
-  matrix, and the attachment storage/volume requirements for deployment.
-
-The Java and Python clients are deliberately out of scope — they exist to *report*
-automated results from test frameworks, and manual test management has no equivalent
-programmatic caller.
+  matrix, the attachment storage/volume requirements for deployment, and the
+  `scripts/backfill-execution-type.js` step.
 
 ---
 
