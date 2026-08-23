@@ -1,0 +1,160 @@
+const { check, param, query } = require('express-validator');
+const manualTestCaseController = require('../controllers/manual-test-case.controller.js');
+const {
+  testCaseStates,
+  testCasePriorities,
+} = require('../models/manual-test-case.js');
+
+// Shared by POST and PUT. Every field except the title is optional on create (a case
+// starts as a draft and is filled in progressively), and all of them are optional on
+// update - an omitted field is left untouched rather than cleared.
+const contentValidators = [
+  check('description')
+    .optional()
+    .isString()
+    .isLength({ max: 5000 })
+    .withMessage('Max length for the description is 5000 characters'),
+  check('preconditions')
+    .optional()
+    .isString()
+    .isLength({ max: 5000 })
+    .withMessage('Max length for the preconditions is 5000 characters'),
+  check('status')
+    .optional()
+    .isIn(testCaseStates)
+    .withMessage(`Status must be one of [${testCaseStates.join(', ')}]`),
+  check('priority')
+    .optional()
+    .isIn(testCasePriorities)
+    .withMessage(`Priority must be one of [${testCasePriorities.join(', ')}]`),
+  check('tags')
+    .optional()
+    .isArray(),
+  check('tags.*')
+    .optional()
+    .isString()
+    .isLength({ max: 50 })
+    .withMessage('Max length for a tag is 50 characters'),
+  check('steps')
+    .optional()
+    .isArray(),
+  check('steps.*.action')
+    .exists()
+    .isString()
+    .isLength({ max: 2000 })
+    .withMessage('Each step requires an action (max 2000 characters)'),
+  check('steps.*.expected')
+    .optional()
+    .isString()
+    .isLength({ max: 2000 })
+    .withMessage('Max length for a step expected result is 2000 characters'),
+  check('steps.*.data')
+    .optional()
+    .isString()
+    .isLength({ max: 2000 })
+    .withMessage('Max length for step data is 2000 characters'),
+  check('steps.*.order')
+    .optional()
+    .isNumeric(),
+  check('customFields')
+    .optional()
+    .isObject()
+    .withMessage('customFields must be an object of field key to value'),
+];
+
+module.exports = (app, path) => {
+  app.post(`${path}/manual-test-case`, [
+    check('team')
+      .exists()
+      .isMongoId(),
+    check('component')
+      .optional()
+      .isMongoId(),
+    check('title')
+      .exists({ checkFalsy: true })
+      .isString()
+      .isLength({ max: 200 })
+      .withMessage('Max length for the test case title is 200 characters'),
+    ...contentValidators,
+  ], manualTestCaseController.create);
+
+  app.get(`${path}/manual-test-case`, [
+    query('teamId')
+      .exists()
+      .isMongoId(),
+    query('status')
+      .optional()
+      .isString(),
+    query('priority')
+      .optional()
+      .isString(),
+    query('tags')
+      .optional()
+      .isString(),
+    // Interpolated into a $regex in the controller (escaped there), so bound the length
+    // here rather than leaving it entirely unvalidated.
+    query('search')
+      .optional()
+      .isString()
+      .isLength({ max: 100 }),
+    query('limit')
+      .optional()
+      .isNumeric(),
+    query('skip')
+      .optional()
+      .isNumeric(),
+  ], manualTestCaseController.findAll);
+
+  app.get(`${path}/manual-test-case/:caseId`, [
+    param('caseId')
+      .exists()
+      .isMongoId(),
+  ], manualTestCaseController.findOne);
+
+  app.get(`${path}/manual-test-case/:caseId/version`, [
+    param('caseId')
+      .exists()
+      .isMongoId(),
+  ], manualTestCaseController.findVersions);
+
+  app.get(`${path}/manual-test-case/:caseId/version/:version`, [
+    param('caseId')
+      .exists()
+      .isMongoId(),
+    param('version')
+      .exists()
+      .isInt({ min: 1 }),
+  ], manualTestCaseController.findVersion);
+
+  app.put(`${path}/manual-test-case/:caseId`, [
+    param('caseId')
+      .exists()
+      .isMongoId(),
+    check('component')
+      .optional()
+      .isMongoId(),
+    check('title')
+      .optional()
+      .isString()
+      .isLength({ min: 1, max: 200 })
+      .withMessage('Max length for the test case title is 200 characters'),
+    ...contentValidators,
+  ], manualTestCaseController.update);
+
+  app.post(`${path}/manual-test-case/:caseId/clone`, [
+    param('caseId')
+      .exists()
+      .isMongoId(),
+    check('title')
+      .optional()
+      .isString()
+      .isLength({ min: 1, max: 200 })
+      .withMessage('Max length for the test case title is 200 characters'),
+  ], manualTestCaseController.clone);
+
+  app.delete(`${path}/manual-test-case/:caseId`, [
+    param('caseId')
+      .exists()
+      .isMongoId(),
+  ], manualTestCaseController.delete);
+};
