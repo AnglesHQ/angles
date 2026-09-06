@@ -237,6 +237,38 @@ that matched on an exact label set needs updating; one that matches by name does
 
 ## Deployment
 
+### Turning the feature on and off
+
+Manual test case management is optional and **enabled by default**. An admin controls it
+from **Admin → Settings → Feature Management**; the toggle covers test cases, test runs,
+shared steps and folders as a single unit, because a run is a run *of* cases.
+
+Turning it off:
+
+- removes the Manual Testing menu from the navigation for every user,
+- replaces the pages themselves with an explanation, so a bookmarked link says why it no
+  longer works, and
+- makes `/manual-test-case`, `/manual-test-run`, `/manual-folder` and `/shared-step`
+  respond `404` for every method — the data is genuinely unreachable, not merely hidden.
+
+Nothing is deleted. Re-enabling restores every case, run and shared step exactly as it
+was. Changes apply immediately; no restart is needed.
+
+To deploy an instance with the feature already off, set:
+
+```
+ANGLES_MANUAL_TESTING_ENABLED=false
+```
+
+Any value other than the string `false` leaves the feature enabled, so an unset or
+misspelled value behaves as it always did.
+
+This variable is a **seed, not an override**. It supplies the value written when the
+feature settings are first created — the same create-if-missing pattern as
+`ANGLES_ADMIN_PASSWORD`. Once those settings exist the database is authoritative and the
+variable is ignored, so a restart can never silently revert a change an admin made in the
+UI. To change the toggle on a running instance, use the admin UI.
+
 ### Attachment storage
 
 Attachments are written to `/app/attachments`, grouped into one directory per owning

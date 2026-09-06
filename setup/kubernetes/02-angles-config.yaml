@@ -8,6 +8,11 @@ data:
   SWAGGER_SCHEMES: "http"
   PORT: "3002"
   BUILD_CLEAN_UP_AGE_IN_DAYS: "90"
+  # Seeds manual test case management the first time this instance starts. Set to
+  # "false" to deploy with the feature turned off. It is only a seed: once the
+  # settings document exists, admins control the toggle from Admin -> Settings and
+  # this value is ignored, so a restart never reverts their choice.
+  ANGLES_MANUAL_TESTING_ENABLED: "true"
   # change these credentials
   MONGO_ANGLES_USERNAME: "angleshq"
   MONGO_ANGLES_PASSWORD: "Password123"

@@ -1,5 +1,6 @@
 const { check, param, query } = require('express-validator');
 const manualTestCaseController = require('../controllers/manual-test-case.controller.js');
+const featureMiddleware = require('../utils/feature-middleware.js');
 const {
   testCaseStates,
   testCasePriorities,
@@ -101,6 +102,9 @@ const contentValidators = [
 ];
 
 module.exports = (app, path) => {
+  // Manual testing is an optional feature; when an admin has turned it off every
+  // route below responds 404, so the data is unreachable and not merely hidden in the UI.
+  app.use(`${path}/manual-test-case`, featureMiddleware.requireManualTesting);
   app.post(`${path}/manual-test-case`, [
     check('team')
       .exists()

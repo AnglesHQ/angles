@@ -1,7 +1,11 @@
 const { check, param, query } = require('express-validator');
 const manualFolderController = require('../controllers/manual-folder.controller.js');
+const featureMiddleware = require('../utils/feature-middleware.js');
 
 module.exports = (app, path) => {
+  // Manual testing is an optional feature; when an admin has turned it off every
+  // route below responds 404, so the data is unreachable and not merely hidden in the UI.
+  app.use(`${path}/manual-folder`, featureMiddleware.requireManualTesting);
   app.post(`${path}/manual-folder`, [
     check('team')
       .exists()

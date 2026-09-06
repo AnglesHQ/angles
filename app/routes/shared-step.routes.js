@@ -1,5 +1,6 @@
 const { check, param, query } = require('express-validator');
 const sharedStepController = require('../controllers/shared-step.controller.js');
+const featureMiddleware = require('../utils/feature-middleware.js');
 
 // Shared by create and update. A shared step's steps are literal, so `sharedStep` is not
 // accepted on them - the controller rejects any that slip through with an explanatory 400.
@@ -39,6 +40,9 @@ const stepValidators = [
 ];
 
 module.exports = (app, path) => {
+  // Manual testing is an optional feature; when an admin has turned it off every
+  // route below responds 404, so the data is unreachable and not merely hidden in the UI.
+  app.use(`${path}/shared-step`, featureMiddleware.requireManualTesting);
   app.post(`${path}/shared-step`, [
     check('team')
       .exists()

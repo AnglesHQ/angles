@@ -16,6 +16,7 @@ const authConfig = require('./config/auth.config.js');
 // provider strategy registry, (re)configured after the DB settings load.
 const { configureProviders } = require('./app/utils/passport-setup.js');
 const authSettingsService = require('./app/utils/auth-settings-service.js');
+const featureSettingsService = require('./app/utils/feature-settings-service.js');
 const adminSeedService = require('./app/utils/admin-seed-service.js');
 // mongo db config
 const dbConfig = require('./config/database.config.js');
@@ -113,6 +114,15 @@ mongoose.connect(mongoURL, {
     logger.info('Auth settings loaded (%d provider(s) active)', providerResults.filter((r) => r.ok).length);
   } catch (err) {
     logger.error('Could not load auth settings', err);
+  }
+  // Load the persisted feature toggles onto the in-memory config the route guards read.
+  // A failure here leaves the defaults in place (every feature on), which is the same
+  // behaviour the instance had before toggles existed.
+  try {
+    const features = await featureSettingsService.loadFeatureSettings();
+    logger.info('Feature settings loaded (manual testing %s)', features.manualTestingEnabled !== false ? 'enabled' : 'disabled');
+  } catch (err) {
+    logger.error('Could not load feature settings', err);
   }
 }).catch((err) => {
   logger.error('Could not connect to the database. Exiting now...', err);

@@ -168,6 +168,17 @@ module.exports = (app, path) => {
     check('localAuthEnabled').optional().isBoolean().withMessage('localAuthEnabled must be a boolean.'),
     body('providers').optional().custom(validateProviders),
   ], authMiddleware.isAuthenticated, authMiddleware.authorizeAdmin, settings.updateAuthSettings);
+
+  app.get(
+    `${path}/settings/features`,
+    authMiddleware.isAuthenticated,
+    authMiddleware.authorizeAdmin,
+    settings.getFeatureSettings,
+  );
+
+  app.put(`${path}/settings/features`, [
+    check('manualTestingEnabled').optional().isBoolean().withMessage('manualTestingEnabled must be a boolean.'),
+  ], authMiddleware.isAuthenticated, authMiddleware.authorizeAdmin, settings.updateFeatureSettings);
 };
 
 module.exports.validateProviders = validateProviders;

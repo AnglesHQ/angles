@@ -31,6 +31,11 @@ services:
       - SWAGGER_SCHEMES=http
       - PORT=3000
       - BUILD_CLEAN_UP_AGE_IN_DAYS=90
+      # Seeds the manual test case management feature the first time the instance
+      # starts. Set to 'false' to ship with it turned off. It is only a seed: once
+      # the settings exist, admins control it from Admin -> Settings and this is
+      # ignored, so a restart never reverts their choice.
+      - ANGLES_MANUAL_TESTING_ENABLED=${ANGLES_MANUAL_TESTING_ENABLED:-true}
       - MONGO_URL=mongodb://angleshq:%40nglesPassword@mongodb:27017/angles
       # Public origin of this instance. Each SSO provider's redirect/callback URL is
       # derived from it, and must match what is registered with the identity provider,
