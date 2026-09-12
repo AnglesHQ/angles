@@ -2,6 +2,7 @@
 .idea/
 .DS_Store
 screenshots/
+attachments/
 compares/*
 !compares/description.txt
 /build/

@@ -11,6 +11,8 @@ db.createCollection('phase');
 db.createCollection('environments');
 db.createCollection('baselines');
 db.createCollection('screenshots');
+db.createCollection('attachments');
+db.createCollection('manualtestruns');
 db.createCollection('users');
 
 // The initial admin user is seeded by the backend at startup from the
@@ -26,3 +28,7 @@ db.phase.createIndex({ name: 1 });
 db.environment.createIndex({ name: 1 });
 db.screenshots.createIndex({ build: 1 });
 db.screenshots.createIndex({ view: 1 });
+db.attachments.createIndex({ testCase: 1 });
+db.attachments.createIndex({ sharedStep: 1 });
+db.manualtestruns.createIndex({ team: 1, createdAt: -1 });
+db.builds.createIndex({ team: 1, executionType: 1, start: -1 });

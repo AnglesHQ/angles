@@ -45,6 +45,30 @@
     {
       "name": "Monitoring",
       "description": "Prometheus scrape endpoint for resource and application metrics"
+    },
+    {
+      "name": "Manual Folder",
+      "description": "Folder tree used to organise manual test cases. Nests to any depth."
+    },
+    {
+      "name": "Manual Test Case",
+      "description": "API for managing manual test cases and their version history"
+    },
+    {
+      "name": "Custom Field",
+      "description": "API for configuring the custom fields available to a team's manual test cases"
+    },
+    {
+      "name": "Shared Step",
+      "description": "API for managing re-usable step sequences shared by manual test cases"
+    },
+    {
+      "name": "Attachment",
+      "description": "API for images attached to manual test steps"
+    },
+    {
+      "name": "Manual Test Run",
+      "description": "API for planning and executing manual test runs"
     }
   ],
   "security": [
@@ -845,6 +869,19 @@
             "description": "IDs of the component you want to filter by, comma seperated",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "executionType",
+            "in": "query",
+            "required": false,
+            "description": "Narrow to automated or manual results. Omit for both, which is the behaviour every client saw before manual runs existed.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "automated",
+                "manual"
+              ]
             }
           },
           {
@@ -3175,6 +3212,19 @@
             }
           },
           {
+            "name": "executionType",
+            "in": "query",
+            "required": false,
+            "description": "Narrow to automated or manual results. Omit for both, which is the behaviour every client saw before manual runs existed.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "automated",
+                "manual"
+              ]
+            }
+          },
+          {
             "name": "fromDate",
             "in": "query",
             "required": false,
@@ -4134,7 +4184,7 @@
                     "providers": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/definitions/AuthProviderPublic"
+                        "$ref": "#/components/schemas/AuthProviderPublic"
                       }
                     }
                   }
@@ -4169,7 +4219,7 @@
                   "providers": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/definitions/AuthProvider"
+                      "$ref": "#/components/schemas/AuthProvider"
                     }
                   }
                 }
@@ -4193,7 +4243,7 @@
                         "providers": {
                           "type": "array",
                           "items": {
-                            "$ref": "#/definitions/AuthProviderPublic"
+                            "$ref": "#/components/schemas/AuthProviderPublic"
                           }
                         }
                       }
@@ -4230,6 +4280,2843 @@
           },
           "422": {
             "description": "Validation failed - unknown provider type, duplicate or malformed provider id, unrecognised configuration key, or an invalid role mapping."
+          }
+        }
+      }
+    },
+    "/manual-test-case": {
+      "post": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Create a manual test case",
+        "description": "Creates a test case and freezes its first version. The caller must have access to the team.",
+        "requestBody": {
+          "description": "The manual test case to create.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestCase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Manual test case created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "One or more custom field values are invalid; the message lists every problem found. Also returned when a required custom field is missing on a case being saved with a status other than DRAFT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team, component, referenced shared step, or referenced attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Search the manual test cases for a team",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team to retrieve test cases for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter by status, comma separated (DRAFT, ACTIVE, DEPRECATED).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "description": "Filter by priority, comma separated (LOW, MEDIUM, HIGH, CRITICAL).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "description": "Filter by tags, comma separated. A test case must carry every tag listed.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive substring match against the title and description.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of test cases to return (defaults to 25).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Number of test cases to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "folder",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Narrow to a folder id, or \"none\" for test cases that are not filed in any folder."
+          },
+          {
+            "in": "query",
+            "name": "includeSubFolders",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "When true and `folder` is an id, also returns cases in every sub-folder beneath it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching manual test cases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestCasesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Get the current version of a manual test case",
+        "responses": {
+          "200": {
+            "description": "Manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the mutable head. Its steps carry shared-step placeholders as stored; pass `expand=true` to resolve them into the steps a tester would follow.",
+        "parameters": [
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Expand shared-step inclusions into their steps, renumbering order contiguously. The response carries `expanded: true`.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Update a manual test case",
+        "description": "Only the fields present in the body are updated. Changing content (title, description, preconditions, priority, tags, steps or custom field values) increments the version and freezes a new one; a status-only change, or an update that changes nothing, leaves the version untouched.",
+        "requestBody": {
+          "description": "The fields to update.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestCase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Manual test case updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "One or more custom field values are invalid; the message lists every problem found. Also returned when a required custom field is missing on a case being saved with a status other than DRAFT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team, component, referenced shared step, or referenced attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Delete a manual test case and its version history",
+        "description": "Requires team lead access. Removes the test case together with every frozen version of it.",
+        "responses": {
+          "200": {
+            "description": "Manual test case deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required to delete a test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}/clone": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Clone a manual test case",
+        "description": "Copies the test case into a new one that starts its own version history at 1 and always begins as a DRAFT.",
+        "requestBody": {
+          "description": "Optional title for the clone. Defaults to the original title with \" (copy)\" appended.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Manual test case cloned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestCase"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}/version": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "List the version history of a manual test case",
+        "description": "Returns version metadata only, newest first.",
+        "responses": {
+          "200": {
+            "description": "Version history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestCaseVersionsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}/version/{version}": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "version",
+          "in": "path",
+          "required": true,
+          "description": "The version number to retrieve.",
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Get the frozen content of one version",
+        "description": "Returns the test case exactly as it stood at this version. This is what an execution recorded against that version renders, and it is unaffected by any later edit to the test case.",
+        "responses": {
+          "200": {
+            "description": "Frozen version content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestCaseVersion"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case, or no such version, found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-field": {
+      "post": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Configure a custom field for a team",
+        "description": "Admin only. The key must be unique within the team, including against archived fields.",
+        "requestBody": {
+          "description": "The custom field to configure.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFieldDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Custom field created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Options are missing for a select field, or supplied for a type that cannot have them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A field with this key already exists for the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "List the custom fields configured for a team",
+        "description": "Readable by anyone with team access - the authoring UI needs the definitions to render its form.",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team to list custom fields for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "description": "Include archived fields. Defaults to false.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "appliesTo",
+            "in": "query",
+            "required": false,
+            "description": "Only return fields applying to this entity. Fields set to \"both\" always match.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "testcase",
+                "execution",
+                "both"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The team's custom fields, in display order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFieldsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom-field/{fieldId}": {
+      "parameters": [
+        {
+          "name": "fieldId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the custom field definition.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Get a custom field definition",
+        "responses": {
+          "200": {
+            "description": "Custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this custom field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Update a custom field definition",
+        "description": "Admin only. The key can never be changed. The type cannot be changed while any test case holds a value for the field, and an option cannot be removed while a test case still uses it - both would leave existing values unrenderable.",
+        "requestBody": {
+          "description": "The fields to update.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomFieldDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Custom field updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An attempt to change the key, or an invalid option configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The type or options cannot change because existing test cases depend on them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Custom Field"
+        ],
+        "summary": "Delete or archive a custom field definition",
+        "description": "Admin only. A field whose values appear on any test case or in any frozen version is archived rather than removed, so historical values keep the label, type and options needed to render them. Only a field that has never been used is hard-deleted. Check the `archived` flag on the response to see which happened.",
+        "responses": {
+          "200": {
+            "description": "Custom field deleted or archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomFieldDeleteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No custom field found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step": {
+      "post": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Create a re-usable shared step",
+        "description": "Requires team lead access. The name must be unique within the team, and the steps must all be literal.",
+        "requestBody": {
+          "description": "The shared step to create.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedStep"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shared step created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredSharedStep"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A step tried to include another shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A shared step with this name already exists for the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Search a team's shared step library",
+        "description": "Readable by any team member - authors browse the library to include a step.",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team to list shared steps for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive substring match against the name and description.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number to return (defaults to 25).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Number to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching shared steps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedStepsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step/{sharedStepId}": {
+      "parameters": [
+        {
+          "name": "sharedStepId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the shared step.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Get a shared step",
+        "responses": {
+          "200": {
+            "description": "Shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredSharedStep"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Update a shared step, cascading into every referencing test case",
+        "description": "Requires team lead access. Changing the steps bumps the shared step version and writes a new frozen version for every test case that includes it, re-expanded with the new content - so previously written versions keep showing what their tester saw. Renaming or re-describing the shared step changes no test case content and cascades to nothing. Check `cascade.testCasesVersioned` on the response, and call the usage endpoint first to see how many cases an edit will affect.",
+        "requestBody": {
+          "description": "The fields to update.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedStep"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shared step updated, with the cascade outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedStepUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A step tried to include another shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A shared step with this name already exists for the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Delete a shared step",
+        "description": "Requires team lead access. A shared step that any test case still includes cannot be deleted - the referencing cases would expand to an unresolved placeholder and silently lose steps. Remove the inclusions first; the usage endpoint lists them.",
+        "responses": {
+          "200": {
+            "description": "Shared step deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The shared step is still included by one or more test cases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step/{sharedStepId}/usage": {
+      "parameters": [
+        {
+          "name": "sharedStepId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the shared step.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "List the test cases that include this shared step",
+        "description": "Tells an author how many test cases an edit is about to version, and which ones block a delete.",
+        "responses": {
+          "200": {
+            "description": "The referencing test cases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedStepUsageResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachment": {
+      "post": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Upload an image and attach it to a manual test step",
+        "description": "Multipart upload. Exactly one owner id must be supplied. Only image mime types are accepted and the file is capped at 10MB; the client filename is discarded and a name generated server-side. A thumbnail is produced on upload and served separately.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attachment"
+                ],
+                "properties": {
+                  "attachment": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The image file."
+                  },
+                  "testCaseId": {
+                    "type": "string",
+                    "description": "Attach to a manual test case."
+                  },
+                  "sharedStepId": {
+                    "type": "string",
+                    "description": "Attach to a shared step."
+                  },
+                  "executionId": {
+                    "type": "string",
+                    "description": "Attach to a manual execution. Accepted by the upload path but not yet usable."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attachment stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAttachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file supplied, an unsupported file type, or no valid owner id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the owning team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test case or shared step found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "List the attachments belonging to a test case or shared step",
+        "parameters": [
+          {
+            "name": "testCaseId",
+            "in": "query",
+            "required": false,
+            "description": "List the attachments of this manual test case.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sharedStepId",
+            "in": "query",
+            "required": false,
+            "description": "List the attachments of this shared step.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The entity's attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the owning team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test case or shared step found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachment/{attachmentId}": {
+      "parameters": [
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the attachment.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Get an attachment's metadata",
+        "responses": {
+          "200": {
+            "description": "Attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAttachment"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Delete an attachment",
+        "description": "An attachment referenced by any frozen test case version is never deleted - the file is the only copy of the image that version's tester saw, so a historical execution would lose it. Remove the image from the test case instead: that takes it off the head while leaving it available to the executions that used it. Deleting the whole test case removes its versions first, which does release the attachments. A successful delete also clears the reference from any head step, so nothing renders as a broken image.",
+        "responses": {
+          "200": {
+            "description": "Attachment deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A frozen test case version still references this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachment/{attachmentId}/file": {
+      "parameters": [
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the attachment.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Download the original image",
+        "responses": {
+          "200": {
+            "description": "The image file",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachment/{attachmentId}/thumbnail": {
+      "parameters": [
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the attachment.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Download the thumbnail",
+        "description": "Falls back to the original when no thumbnail could be generated, so this never 404s for an attachment that exists.",
+        "responses": {
+          "200": {
+            "description": "The thumbnail image",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attachment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-case/{caseId}/history": {
+      "parameters": [
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Case"
+        ],
+        "summary": "Read a test case's change history",
+        "description": "Every mutation to the case, newest first, including status changes that burn no version and re-versions caused by a shared step edit.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum entries to return (defaults to 20).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Entries to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The case's change history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualChangeHistoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No manual test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shared-step/{sharedStepId}/history": {
+      "parameters": [
+        {
+          "name": "sharedStepId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the shared step.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Shared Step"
+        ],
+        "summary": "Read a shared step's change history",
+        "description": "Every mutation to the shared step itself, newest first. The entries recording the knock-on re-versioning of each referencing test case live on those cases, not here.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum entries to return (defaults to 20).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Entries to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The shared step's change history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualChangeHistoryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this shared step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shared step found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run": {
+      "post": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Plan a manual test run",
+        "description": "Creates the run and the manual-tagged Build its results will be written into, and binds every selected test case to its current frozen version. If the run cannot be created the build is removed again, so no empty manual build is left on the dashboard.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestRun"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Test run created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A deprecated test case, or a case from a different component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team, environment, phase, component or test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "List a team's manual test runs",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "description": "ID of the team.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter by run status, comma separated.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assignedTo",
+            "in": "query",
+            "required": false,
+            "description": "Filter by the user a run is assigned to.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum runs to return (defaults to 25).",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "Runs to skip (defaults to 0).",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching test runs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTestRunsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No team found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Get a manual test run",
+        "description": "Pass expand=true to include each case's frozen version document - the steps the tester should follow, read from the bound version rather than the current test case.",
+        "parameters": [
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "Include each case's bound frozen version.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Update a run, or add test cases to it",
+        "description": "Cases named in testCaseIds that are not already in the run are appended, each bound to its current version at that moment. Cases already present are ignored rather than duplicated.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTestRun"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test run updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A deprecated test case, or a case from a different component",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run or test case found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Delete a manual test run",
+        "description": "Requires team lead access. The backing build and its executions exist only to represent this run on the dashboard, so they are removed with it.",
+        "responses": {
+          "200": {
+            "description": "Test run deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Team lead access is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}/test-case/{caseId}/result": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case within the run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Record the result of one test case in a run",
+        "description": "Writes a TestExecution tagged executionType \"manual\" and folds it into the run's build through the same code path automated results take, so the result map and status are computed identically for both. Re-recording updates the existing execution rather than adding a second one. The run's own status is re-derived, and completing the last outstanding case stamps its end date.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "NOT_RUN",
+                      "IN_PROGRESS",
+                      "PASS",
+                      "FAIL",
+                      "ERROR",
+                      "SKIPPED",
+                      "BLOCKED"
+                    ]
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "stepResults": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ManualStepResult"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run, or the case is not part of it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The test run has been cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}/test-case/{caseId}/rebind": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "caseId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test case within the run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Move a not-yet-run case onto the latest version of its test case",
+        "description": "Refused once a result has been recorded: re-pointing an execution at content it was never run against is exactly the silent history rewrite the version binding exists to prevent. Add the case to a new run instead. Any step results recorded against the old version are cleared, since they are keyed by that version's step ids.",
+        "responses": {
+          "200": {
+            "description": "Case rebound to the latest version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run, test case, or the case is not part of the run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The case already has a recorded result, or is already on the latest version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-test-run/{runId}/status": {
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the manual test run.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "tags": [
+          "Manual Test Run"
+        ],
+        "summary": "Transition a run's status",
+        "description": "Completing or cancelling stamps the end date. A cancelled run refuses further results.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PLANNED",
+                      "IN_PROGRESS",
+                      "COMPLETED",
+                      "CANCELLED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualTestRun"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to this test run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No test run found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manual-folder": {
+      "post": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Create a folder",
+        "description": "Creates a folder in the team tree. Omit `parent` (or send null) for a root folder. Folder names must be unique among their siblings.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualFolder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Folder created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualFolder"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team."
+          },
+          "404": {
+            "description": "Team or parent folder not found."
+          },
+          "409": {
+            "description": "A folder with that name already exists under the same parent."
+          },
+          "422": {
+            "description": "Validation failed."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Get the team folder tree",
+        "description": "Returns the whole tree nested, with a test case count on each folder and a count of unfiled cases.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The folder tree.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualFoldersResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the team."
+          },
+          "404": {
+            "description": "Team not found."
+          }
+        }
+      }
+    },
+    "/manual-folder/move": {
+      "put": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "File test cases into a folder",
+        "description": "Moves one or more test cases into a folder, or to the team root when `folder` is null. Filing is organisation rather than content: it does not create a new test case version, but it is recorded in the change history as a MOVE.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveManualTestCases"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test cases moved."
+          },
+          "400": {
+            "description": "Test cases from more than one team."
+          },
+          "403": {
+            "description": "No access to the team."
+          },
+          "404": {
+            "description": "A test case or the target folder was not found."
+          },
+          "422": {
+            "description": "Validation failed."
+          }
+        }
+      }
+    },
+    "/manual-folder/{folderId}": {
+      "get": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Get a folder",
+        "description": "Returns one folder with its ancestors populated and the counts of what it contains.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The folder.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualFolder"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the folder."
+          },
+          "404": {
+            "description": "Folder not found."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Rename or move a folder",
+        "description": "Renames a folder and/or re-parents it. Moving takes the whole subtree with it. A folder cannot be moved inside itself or inside one of its own sub-folders. Send `parent: null` to move it to the root.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualFolder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Folder updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredManualFolder"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The move would place the folder inside its own subtree, or nest too deeply."
+          },
+          "403": {
+            "description": "No access to the folder."
+          },
+          "404": {
+            "description": "Folder or new parent not found."
+          },
+          "409": {
+            "description": "A folder with that name already exists under the same parent."
+          },
+          "422": {
+            "description": "Validation failed."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Manual Folder"
+        ],
+        "summary": "Delete an empty folder",
+        "description": "Deletes a folder. Refused with a 409 while it still contains test cases or sub-folders, so nothing is removed or re-parented by accident. Requires team lead access.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Folder deleted."
+          },
+          "403": {
+            "description": "Team lead access required."
+          },
+          "404": {
+            "description": "Folder not found."
+          },
+          "409": {
+            "description": "The folder still contains test cases or sub-folders."
           }
         }
       }
@@ -4490,6 +7377,15 @@
             "items": {
               "$ref": "#/components/schemas/BuildExecution"
             }
+          },
+          "executionType": {
+            "type": "string",
+            "enum": [
+              "automated",
+              "manual"
+            ],
+            "default": "automated",
+            "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
           }
         }
       },
@@ -4556,6 +7452,15 @@
                 "items": {
                   "$ref": "#/components/schemas/Suite"
                 }
+              },
+              "executionType": {
+                "type": "string",
+                "enum": [
+                  "automated",
+                  "manual"
+                ],
+                "default": "automated",
+                "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
               }
             }
           }
@@ -4648,6 +7553,13 @@
           },
           "screenshot": {
             "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Images a QA attached while recording a manual step result. Automated runs use `screenshot` instead.",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -4774,6 +7686,31 @@
           },
           "meta": {
             "type": "object"
+          },
+          "executionType": {
+            "type": "string",
+            "enum": [
+              "automated",
+              "manual"
+            ],
+            "default": "automated",
+            "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
+          },
+          "manualTestCase": {
+            "type": "string",
+            "description": "On a manual execution, the test case it came from."
+          },
+          "manualTestCaseVersion": {
+            "type": "string",
+            "description": "The frozen version this execution was run against. Carried here as well as on the run entry, because an execution is reachable from the dashboard and the execution history without ever loading its run, and has to render the content it was executed against on its own."
+          },
+          "versionNumber": {
+            "type": "integer",
+            "description": "Denormalised version number, for display without a join."
+          },
+          "executedBy": {
+            "type": "string",
+            "description": "The user who recorded a manual result."
           }
         }
       },
@@ -4810,6 +7747,15 @@
                   "ERROR",
                   "FAIL"
                 ]
+              },
+              "executionType": {
+                "type": "string",
+                "enum": [
+                  "automated",
+                  "manual"
+                ],
+                "default": "automated",
+                "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
               }
             }
           }
@@ -5119,220 +8065,1346 @@
             ]
           }
         }
-      }
-    }
-  },
-  "definitions": {
-    "AuthProvider": {
-      "type": "object",
-      "required": [
-        "id",
-        "name",
-        "type"
-      ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$",
-          "description": "Stable, URL-safe handle. Forms part of the login and callback URLs, so changing it changes what must be registered with the identity provider."
-        },
-        "name": {
-          "type": "string",
-          "description": "Label shown on the login button."
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "oidc",
-            "saml",
-            "ldap"
-          ]
-        },
-        "enabled": {
-          "type": "boolean"
-        },
-        "roleMappings": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "value",
-              "role"
-            ],
+      },
+      "ManualStep": {
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer",
+            "description": "Position of the step within the test case. Assigned from the array order when omitted."
+          },
+          "action": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "What the tester should do."
+          },
+          "expected": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "The expected result of performing the action."
+          },
+          "data": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Test data needed for this step (accounts, payloads, fixture references)."
+          },
+          "sharedStep": {
+            "type": "string",
+            "description": "ID of a re-usable shared step this step includes. On a test case head this marks a placeholder: its own action and expected are ignored and the shared step is expanded in its place. A frozen version never carries this field - it stores the expanded steps instead, so a later edit to the shared step cannot rewrite history."
+          },
+          "attachments": {
+            "type": "array",
+            "description": "IDs of images attached to this step. Reference one from the expected result as `![alt](attachment:<id>)`; the UI resolves that to /attachment/<id>/file. Validated on write - an id that does not exist, or belongs to another team, is rejected.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sharedStepRef": {
+            "type": "string",
+            "description": "Display attribution on an expanded step: the shared step it came from. Present on expanded output and on frozen versions, never on a head placeholder."
+          },
+          "sharedStepVersion": {
+            "type": "integer",
+            "description": "Which revision of the shared step this step was expanded from."
+          },
+          "unresolvedSharedStep": {
+            "type": "boolean",
+            "description": "True when the referenced shared step no longer exists. The placeholder is kept rather than dropped so the case does not silently lose steps."
+          }
+        }
+      },
+      "StoredManualStep": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ManualStep"
+          },
+          {
             "properties": {
-              "value": {
+              "_id": {
                 "type": "string",
-                "description": "Group name, group id, or attribute value as supplied by the provider. Matched case-insensitively."
-              },
-              "role": {
-                "type": "string",
-                "enum": [
-                  "admin",
-                  "team_lead",
-                  "user"
-                ]
+                "uniqueItems": true,
+                "description": "Stable step id. Preserved into every frozen version so a recorded step result stays bound to the right step when later versions reorder or remove steps."
               }
             }
           }
-        },
-        "defaultRole": {
-          "type": "string",
-          "enum": [
-            "",
-            "admin",
-            "team_lead",
-            "user"
-          ],
-          "description": "Role granted when no mapping matches. Empty denies access."
-        },
-        "oidc": {
-          "type": "object",
-          "properties": {
-            "issuer": {
+        ]
+      },
+      "ManualTestCase": {
+        "required": [
+          "team",
+          "title"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "ID of the team that owns this test case."
+          },
+          "component": {
+            "type": "string",
+            "description": "ID of a component belonging to the team."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "preconditions": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "DEPRECATED"
+            ],
+            "default": "DRAFT",
+            "description": "Workflow state. Changing it does not create a new version."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ],
+            "default": "MEDIUM"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
               "type": "string",
-              "description": "Issuer URL; endpoints and the JWKS come from its .well-known/openid-configuration."
-            },
-            "clientId": {
-              "type": "string"
-            },
-            "clientSecret": {
-              "type": "string",
-              "description": "Write-only. Never returned; send a non-empty value to change it, or omit/blank to keep the stored one."
-            },
-            "scopes": {
-              "type": "string",
-              "description": "Space-separated. openid is added automatically. Note Google rejects the groups scope, while Entra emits groups without one."
-            },
-            "groupsClaim": {
-              "type": "string",
-              "description": "Claim holding group membership - groups for Okta, often roles for Keycloak, a namespaced URI for Auth0."
-            },
-            "usernameClaim": {
-              "type": "string",
-              "description": "Claim used as the username. Falls back to email, then preferred_username, then sub."
+              "maxLength": 50
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManualStep"
+            }
+          },
+          "customFields": {
+            "type": "object",
+            "description": "Values for the custom fields configured for the team, keyed by field key. Validated and coerced against those definitions: an unrecognised key is rejected rather than dropped, and required fields are enforced for any status other than DRAFT.",
+            "additionalProperties": true
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Optional reason for the change, recorded on the change history entry rather than stored on the entity."
+          },
+          "folder": {
+            "type": "string",
+            "nullable": true,
+            "description": "Folder this case is filed under, or null for the team root. Filing is organisation, not content: changing it does not create a new version."
+          }
+        }
+      },
+      "StoredManualTestCase": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ManualTestCase"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "version": {
+                "type": "integer",
+                "description": "Current content version. Incremented only when content changes; always resolves to a document in the version history."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StoredManualStep"
+                }
+              },
+              "createdBy": {
+                "type": "object"
+              },
+              "updatedBy": {
+                "type": "object"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
             }
           }
-        },
-        "saml": {
-          "type": "object",
-          "properties": {
-            "entryPoint": {
-              "type": "string",
-              "description": "IdP SSO URL."
-            },
-            "idpCert": {
-              "type": "string",
-              "description": "IdP signing certificate. Accepted with or without PEM armour. Required: assertions are only trustworthy because they verify against it."
-            },
-            "issuer": {
-              "type": "string",
-              "description": "This application's SP entity id, as registered with the IdP."
-            },
-            "privateKey": {
-              "type": "string",
-              "description": "Write-only. Only needed when the IdP requires signed AuthnRequests."
-            },
-            "signatureAlgorithm": {
-              "type": "string",
-              "enum": [
-                "sha256",
-                "sha512"
-              ]
-            },
-            "identifierFormat": {
-              "type": "string"
-            },
-            "groupsAttribute": {
-              "type": "string"
-            },
-            "usernameAttribute": {
-              "type": "string",
-              "description": "Attribute used as the username. Falls back to conventional email/name attributes, then the NameID."
-            },
-            "wantAuthnResponseSigned": {
-              "type": "boolean",
-              "description": "Require a signature over the whole Response, not just the assertion. Defaults to true; relax it for IdPs that sign only the assertion. The assertion signature is always required."
-            },
-            "allowUnsolicited": {
-              "type": "boolean",
-              "description": "Permit IdP-initiated login. Defaults to false: an unsolicited assertion has no AuthnRequest to correlate against, losing that replay protection."
+        ]
+      },
+      "ManualTestCasesResponse": {
+        "properties": {
+          "testCases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualTestCase"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalTestCases": {
+                "type": "integer",
+                "description": "Total matching the query, ignoring limit and skip."
+              }
             }
           }
-        },
-        "ldap": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "type": "string",
-              "description": "Directory URL. Must be ldaps://, or ldap:// with startTLS enabled - this flow carries the user's password."
-            },
-            "bindDN": {
-              "type": "string",
-              "description": "Service account for the user search. Leave empty for an anonymous search."
-            },
-            "bindCredentials": {
-              "type": "string",
-              "description": "Write-only."
-            },
-            "searchBase": {
+        }
+      },
+      "ManualTestCaseVersion": {
+        "description": "An immutable copy of one version of a manual test case. These documents are only ever inserted - never updated or deleted - so an execution bound to a version always renders the content it was run against.",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "testCase": {
+            "type": "string",
+            "description": "ID of the test case this is a version of."
+          },
+          "version": {
+            "type": "integer"
+          },
+          "team": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "preconditions": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
               "type": "string"
-            },
-            "searchFilter": {
-              "type": "string",
-              "description": "{{username}} is substituted with the submitted username."
-            },
-            "groupSearchBase": {
-              "type": "string",
-              "description": "Leave empty to read membership from the user entry's memberOf attribute instead."
-            },
-            "groupSearchFilter": {
-              "type": "string",
-              "description": "{{dn}} is substituted with the user's DN."
-            },
-            "groupNameAttribute": {
-              "type": "string"
-            },
-            "usernameAttribute": {
-              "type": "string"
-            },
-            "startTLS": {
-              "type": "boolean"
-            },
-            "tlsRejectUnauthorized": {
-              "type": "boolean",
-              "description": "Defaults to true. Disabling it makes the connection interceptable, which here means intercepting passwords."
             }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualStep"
+            }
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "fieldDefinitions": {
+            "type": "array",
+            "description": "The custom field definitions in force when this version was written, so an archived or relabelled field still renders with its original label and type. Empty until custom fields are configurable.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "createdBy": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unversioned": {
+            "type": "boolean",
+            "description": "Present and true only when the case predates version tracking and the mutable head was returned instead of a frozen version. Such a response is not guaranteed immutable."
+          }
+        }
+      },
+      "ManualTestCaseVersionsResponse": {
+        "properties": {
+          "versions": {
+            "type": "array",
+            "description": "Version metadata, newest first. Fetch a single version for its full frozen content.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "createdBy": {
+                  "type": "object"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CustomFieldDefinition": {
+        "required": [
+          "team",
+          "key",
+          "label",
+          "type"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "ID of the team the field is configured for."
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "description": "Stable storage key. A test case's customFields object is keyed by it, so it cannot be changed once created - create a new field instead."
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Display name. Can be changed freely; every frozen version keeps the label that was in force when it was written."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "textarea",
+              "number",
+              "date",
+              "boolean",
+              "select",
+              "multiselect",
+              "user"
+            ],
+            "description": "Value type. Cannot be changed once any test case holds a value for the field."
+          },
+          "options": {
+            "type": "array",
+            "description": "Allowed values. Required for select and multiselect, rejected for every other type. An option still held by a test case cannot be removed.",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          "required": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enforced only when a test case is saved with a status other than DRAFT, so an incomplete draft can always be saved."
+          },
+          "defaultValue": {
+            "description": "Applied when a test case supplies no value. Never applied to an archived field."
+          },
+          "order": {
+            "type": "number",
+            "description": "Display order within the team's field list."
+          },
+          "appliesTo": {
+            "type": "string",
+            "enum": [
+              "testcase",
+              "execution",
+              "both"
+            ],
+            "default": "testcase"
+          },
+          "archived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Archived fields are hidden from authoring and exempt from the required check, but existing values still validate and render."
+          }
+        }
+      },
+      "StoredCustomFieldDefinition": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CustomFieldDefinition"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "CustomFieldsResponse": {
+        "properties": {
+          "customFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+            }
+          }
+        }
+      },
+      "CustomFieldDeleteResponse": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "True when the field was in use and has been archived instead of removed. False when it was unused and hard-deleted."
+          },
+          "customField": {
+            "$ref": "#/components/schemas/StoredCustomFieldDefinition"
+          }
+        }
+      },
+      "AuthProvider": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$",
+            "description": "Stable, URL-safe handle. Forms part of the login and callback URLs, so changing it changes what must be registered with the identity provider."
+          },
+          "name": {
+            "type": "string",
+            "description": "Label shown on the login button."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "oidc",
+              "saml",
+              "ldap"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "roleMappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "value",
+                "role"
+              ],
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "Group name, group id, or attribute value as supplied by the provider. Matched case-insensitively."
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "admin",
+                    "team_lead",
+                    "user"
+                  ]
+                }
+              }
+            }
+          },
+          "defaultRole": {
+            "type": "string",
+            "enum": [
+              "",
+              "admin",
+              "team_lead",
+              "user"
+            ],
+            "description": "Role granted when no mapping matches. Empty denies access."
+          },
+          "oidc": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "description": "Issuer URL; endpoints and the JWKS come from its .well-known/openid-configuration."
+              },
+              "clientId": {
+                "type": "string"
+              },
+              "clientSecret": {
+                "type": "string",
+                "description": "Write-only. Never returned; send a non-empty value to change it, or omit/blank to keep the stored one."
+              },
+              "scopes": {
+                "type": "string",
+                "description": "Space-separated. openid is added automatically. Note Google rejects the groups scope, while Entra emits groups without one."
+              },
+              "groupsClaim": {
+                "type": "string",
+                "description": "Claim holding group membership - groups for Okta, often roles for Keycloak, a namespaced URI for Auth0."
+              },
+              "usernameClaim": {
+                "type": "string",
+                "description": "Claim used as the username. Falls back to email, then preferred_username, then sub."
+              }
+            }
+          },
+          "saml": {
+            "type": "object",
+            "properties": {
+              "entryPoint": {
+                "type": "string",
+                "description": "IdP SSO URL."
+              },
+              "idpCert": {
+                "type": "string",
+                "description": "IdP signing certificate. Accepted with or without PEM armour. Required: assertions are only trustworthy because they verify against it."
+              },
+              "issuer": {
+                "type": "string",
+                "description": "This application's SP entity id, as registered with the IdP."
+              },
+              "privateKey": {
+                "type": "string",
+                "description": "Write-only. Only needed when the IdP requires signed AuthnRequests."
+              },
+              "signatureAlgorithm": {
+                "type": "string",
+                "enum": [
+                  "sha256",
+                  "sha512"
+                ]
+              },
+              "identifierFormat": {
+                "type": "string"
+              },
+              "groupsAttribute": {
+                "type": "string"
+              },
+              "usernameAttribute": {
+                "type": "string",
+                "description": "Attribute used as the username. Falls back to conventional email/name attributes, then the NameID."
+              },
+              "wantAuthnResponseSigned": {
+                "type": "boolean",
+                "description": "Require a signature over the whole Response, not just the assertion. Defaults to true; relax it for IdPs that sign only the assertion. The assertion signature is always required."
+              },
+              "allowUnsolicited": {
+                "type": "boolean",
+                "description": "Permit IdP-initiated login. Defaults to false: an unsolicited assertion has no AuthnRequest to correlate against, losing that replay protection."
+              }
+            }
+          },
+          "ldap": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Directory URL. Must be ldaps://, or ldap:// with startTLS enabled - this flow carries the user's password."
+              },
+              "bindDN": {
+                "type": "string",
+                "description": "Service account for the user search. Leave empty for an anonymous search."
+              },
+              "bindCredentials": {
+                "type": "string",
+                "description": "Write-only."
+              },
+              "searchBase": {
+                "type": "string"
+              },
+              "searchFilter": {
+                "type": "string",
+                "description": "{{username}} is substituted with the submitted username."
+              },
+              "groupSearchBase": {
+                "type": "string",
+                "description": "Leave empty to read membership from the user entry's memberOf attribute instead."
+              },
+              "groupSearchFilter": {
+                "type": "string",
+                "description": "{{dn}} is substituted with the user's DN."
+              },
+              "groupNameAttribute": {
+                "type": "string"
+              },
+              "usernameAttribute": {
+                "type": "string"
+              },
+              "startTLS": {
+                "type": "boolean"
+              },
+              "tlsRejectUnauthorized": {
+                "type": "boolean",
+                "description": "Defaults to true. Disabling it makes the connection interceptable, which here means intercepting passwords."
+              }
+            }
+          }
+        }
+      },
+      "AuthProviderPublic": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AuthProvider"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "clientSecretSet": {
+                "type": "boolean"
+              },
+              "privateKeySet": {
+                "type": "boolean"
+              },
+              "bindCredentialsSet": {
+                "type": "boolean"
+              },
+              "loginUrl": {
+                "type": "string"
+              },
+              "callbackUrl": {
+                "type": "string",
+                "description": "The redirect/ACS URL to register with the identity provider."
+              }
+            }
+          }
+        ]
+      },
+      "SharedStep": {
+        "required": [
+          "team",
+          "name",
+          "steps"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "ID of the team that owns the shared step."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "description": "Unique within the team."
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "steps": {
+            "type": "array",
+            "description": "The steps to expand in place of an inclusion. Always literal - a shared step cannot include another shared step.",
+            "items": {
+              "$ref": "#/components/schemas/ManualStep"
+            }
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Optional reason for the change, recorded on the change history entry rather than stored on the entity."
+          }
+        }
+      },
+      "StoredSharedStep": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SharedStep"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "version": {
+                "type": "integer",
+                "description": "Incremented only when the steps change. Recorded on every expanded step so a frozen version shows which revision the tester saw."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StoredManualStep"
+                }
+              },
+              "createdBy": {
+                "type": "object"
+              },
+              "updatedBy": {
+                "type": "object"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "SharedStepsResponse": {
+        "properties": {
+          "sharedSteps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredSharedStep"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalSharedSteps": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "SharedStepUsageResponse": {
+        "properties": {
+          "testCases": {
+            "type": "array",
+            "description": "The test cases whose head includes this shared step - the ones an edit would version.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalTestCases": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "SharedStepUpdateResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/StoredSharedStep"
+          },
+          {
+            "properties": {
+              "cascade": {
+                "type": "object",
+                "description": "What the edit did to the referencing test cases.",
+                "properties": {
+                  "testCasesVersioned": {
+                    "type": "integer",
+                    "description": "How many test cases were given a new frozen version. Zero when only the name or description changed."
+                  },
+                  "failures": {
+                    "type": "array",
+                    "description": "Test cases that could not be versioned. The shared step edit itself still succeeded.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "testCase": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "StoredAttachment": {
+        "properties": {
+          "_id": {
+            "type": "string",
+            "uniqueItems": true
+          },
+          "team": {
+            "type": "string",
+            "description": "Taken from the entity the attachment hangs off, never from the request."
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "testcase",
+              "sharedstep",
+              "execution"
+            ]
+          },
+          "testCase": {
+            "type": "string"
+          },
+          "sharedStep": {
+            "type": "string"
+          },
+          "manualExecution": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Server-generated. The client filename is never used to build a path."
+          },
+          "originalName": {
+            "type": "string",
+            "description": "The uploaded filename, kept for display only and stripped of any directory component."
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number",
+            "description": "Bytes. Uploads are capped at 10MB."
+          },
+          "path": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string",
+            "description": "Path to the generated thumbnail. Absent when the image could not be thumbnailed; the original is still served."
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "uploadedBy": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AttachmentsResponse": {
+        "properties": {
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredAttachment"
+            }
+          }
+        }
+      },
+      "ManualChangeHistoryEntry": {
+        "description": "One audited mutation. Distinct from a test case version: a version is the content a tester saw, while a history entry says who changed what and why. A status change and a shared-step cascade both write history without the version collection being able to express them.",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "testcase",
+              "sharedstep",
+              "customfield"
+            ]
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE",
+              "CLONE",
+              "STATUS_CHANGE",
+              "SHARED_STEP_UPDATE",
+              "ARCHIVE"
+            ],
+            "description": "STATUS_CHANGE is a transition that deliberately burns no version. SHARED_STEP_UPDATE marks a test case re-versioned because a shared step it includes was edited - nobody edited the case itself. ARCHIVE is a custom field that was in use and so could not be deleted."
+          },
+          "version": {
+            "type": "integer",
+            "description": "The version the entity ended up on. Absent for custom fields, which are not versioned, and unchanged from the previous entry for an action that burns no version."
+          },
+          "changes": {
+            "type": "array",
+            "description": "Field-level changes. A steps change is broken down per position (`steps[2]`) and a custom field per key (`customFields.owner`), rather than reported as one opaque blob.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "from": {
+                  "description": "Previous value; type depends on the field."
+                },
+                "to": {
+                  "description": "New value; type depends on the field."
+                }
+              }
+            }
+          },
+          "changedBy": {
+            "type": "object",
+            "description": "Populated to _id and username only - the user document carries API tokens and must never leave the server through an audit endpoint.",
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              }
+            }
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "comment": {
+            "type": "string",
+            "description": "The author's reason, supplied as `comment` on the mutation, or a generated explanation for a cascade."
+          },
+          "causedBy": {
+            "type": "object",
+            "description": "On a SHARED_STEP_UPDATE entry, the shared step whose edit caused this case to be re-versioned."
+          }
+        }
+      },
+      "ManualChangeHistoryResponse": {
+        "properties": {
+          "history": {
+            "type": "array",
+            "description": "Entries newest first.",
+            "items": {
+              "$ref": "#/components/schemas/ManualChangeHistoryEntry"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalEntries": {
+                "type": "integer",
+                "description": "Total for the entity, ignoring limit and skip."
+              }
+            }
+          }
+        }
+      },
+      "ManualStepResult": {
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "description": "The _id of the step in the frozen version. Binding by id rather than position means a reordered or deleted step in a later version cannot pull this result onto the wrong step."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_RUN",
+              "PASS",
+              "FAIL",
+              "BLOCKED",
+              "SKIPPED"
+            ]
+          },
+          "actual": {
+            "type": "string",
+            "description": "What actually happened."
+          },
+          "notes": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Attachment ids captured against this step.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManualRunTestCase": {
+        "properties": {
+          "testCase": {
+            "type": "string",
+            "description": "The mutable test case head."
+          },
+          "testCaseVersion": {
+            "type": "string",
+            "description": "The frozen version being executed. Bound when the case is added to the run and never moved implicitly - editing the case mid-run must not shift the steps under the tester."
+          },
+          "versionNumber": {
+            "type": "integer"
+          },
+          "snapshotTitle": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_RUN",
+              "IN_PROGRESS",
+              "PASS",
+              "FAIL",
+              "ERROR",
+              "SKIPPED",
+              "BLOCKED"
+            ],
+            "description": "Richer than the execution status enum. BLOCKED and IN_PROGRESS exist only here; BLOCKED is written to the TestExecution as SKIPPED, since a blocked test was never executed and must not inflate the failure count."
+          },
+          "stepResults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManualStepResult"
+            }
+          },
+          "execution": {
+            "type": "string",
+            "description": "The TestExecution written for this case."
+          },
+          "executedBy": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManualTestRun": {
+        "required": [
+          "name",
+          "team",
+          "environment"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "team": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string",
+            "description": "One component per run, matching Build.component. Defaults to the team's first component when omitted. A test case belonging to a different component is rejected."
+          },
+          "environment": {
+            "type": "string",
+            "description": "Environment name (not id), matching how POST /build takes it."
+          },
+          "phase": {
+            "type": "string",
+            "description": "Phase name (not id)."
+          },
+          "assignedTo": {
+            "type": "string"
+          },
+          "platforms": {
+            "type": "array",
+            "description": "Reuses the automated Platform shape verbatim, so manual runs capture the same platform and device metrics and the platform aggregations need no new fields.",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "testCaseIds": {
+            "type": "array",
+            "description": "Test cases to schedule. Each is bound to its current frozen version at the moment it is added. A DEPRECATED case is rejected.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "StoredManualTestRun": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ManualTestRun"
+          },
+          {
+            "properties": {
+              "_id": {
+                "type": "string",
+                "uniqueItems": true
+              },
+              "build": {
+                "type": "string",
+                "description": "The Build tagged executionType \"manual\" that this run's executions are written into, so the run appears on the existing dashboards."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "PLANNED",
+                  "IN_PROGRESS",
+                  "COMPLETED",
+                  "CANCELLED"
+                ],
+                "description": "Derived from the cases as results are recorded: COMPLETED once every case has a terminal result. CANCELLED is only ever set explicitly."
+              },
+              "testCases": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ManualRunTestCase"
+                }
+              },
+              "expanded": {
+                "type": "boolean",
+                "description": "Present when the run was read with expand=true; each case then carries its frozen `version` document."
+              },
+              "start": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "end": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "createdBy": {
+                "type": "object"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "ManualTestRunsResponse": {
+        "properties": {
+          "testRuns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualTestRun"
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalTestRuns": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "ExecutionTypeBreakdown": {
+        "type": "object",
+        "description": "Executions in the period split by execution type. The two always sum to result.TOTAL, so a stacked chart built from it cannot under-report. Executions with no stored executionType count as automated.",
+        "properties": {
+          "automated": {
+            "type": "integer"
+          },
+          "manual": {
+            "type": "integer"
+          }
+        }
+      },
+      "ManualFolder": {
+        "type": "object",
+        "required": [
+          "team",
+          "name"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team the folder belongs to."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "parent": {
+            "type": "string",
+            "nullable": true,
+            "description": "Parent folder id. Null or absent creates a root folder."
+          }
+        }
+      },
+      "StoredManualFolder": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parent": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ancestor folder ids, outermost first. Empty for a root folder."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "0 for a root folder."
+          },
+          "testCaseCount": {
+            "type": "integer",
+            "description": "Test cases filed directly in this folder."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualFolder"
+            },
+            "description": "Nested sub-folders, returned by GET /manual-folder."
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManualFoldersResponse": {
+        "type": "object",
+        "properties": {
+          "folders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredManualFolder"
+            },
+            "description": "Root folders, each with nested children."
+          },
+          "unfiledCount": {
+            "type": "integer",
+            "description": "Test cases not filed in any folder."
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "totalFolders": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "MoveManualTestCases": {
+        "type": "object",
+        "required": [
+          "testCaseIds"
+        ],
+        "properties": {
+          "testCaseIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "folder": {
+            "type": "string",
+            "nullable": true,
+            "description": "Target folder id, or null to move the cases to the team root."
           }
         }
       }
-    },
-    "AuthProviderPublic": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/AuthProvider"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "clientSecretSet": {
-              "type": "boolean"
-            },
-            "privateKeySet": {
-              "type": "boolean"
-            },
-            "bindCredentialsSet": {
-              "type": "boolean"
-            },
-            "loginUrl": {
-              "type": "string"
-            },
-            "callbackUrl": {
-              "type": "string",
-              "description": "The redirect/ACS URL to register with the identity provider."
-            }
-          }
-        }
-      ]
     }
   }
 }

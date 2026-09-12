@@ -56,9 +56,22 @@ const buildNameMap = (documents) => {
  */
 const collectBuildMetrics = async (teamNames, environmentNames) => {
   const grouped = await Build.aggregate([
+    // Defaulted rather than read straight off the document: builds written before manual
+    // runs existed have no executionType on disk, and would otherwise be labelled
+    // "unknown" instead of the automated runs they actually are.
+    {
+      $addFields: {
+        executionType: { $ifNull: ['$executionType', 'automated'] },
+      },
+    },
     {
       $group: {
-        _id: { team: '$team', environment: '$environment', status: '$status' },
+        _id: {
+          team: '$team',
+          environment: '$environment',
+          status: '$status',
+          executionType: '$executionType',
+        },
         count: { $sum: 1 },
       },
     },
@@ -73,17 +86,22 @@ const collectBuildMetrics = async (teamNames, environmentNames) => {
   const byLabels = new Map();
   let total = 0;
 
+  const byExecutionType = new Map();
   grouped.forEach((group) => {
-    const { team, environment, status } = group._id;
+    const {
+      team, environment, status, executionType,
+    } = group._id;
     total += group.count;
     byStatus.set(status, (byStatus.get(status) || 0) + group.count);
+    byExecutionType.set(executionType, (byExecutionType.get(executionType) || 0) + group.count);
 
     const entry = {
       team: teamNames.get(team ? team.toString() : '') || 'unknown',
       environment: environmentNames.get(environment ? environment.toString() : '') || 'unknown',
       status: status || 'unknown',
+      executionType: executionType || 'automated',
     };
-    const key = `${entry.team} ${entry.environment} ${entry.status}`;
+    const key = `${entry.team} ${entry.environment} ${entry.status} ${entry.executionType}`;
     const existing = byLabels.get(key);
     if (existing) {
       existing.count += group.count;
@@ -92,7 +110,9 @@ const collectBuildMetrics = async (teamNames, environmentNames) => {
     }
   });
 
-  return { total, byStatus, byTeam: Array.from(byLabels.values()) };
+  return {
+    total, byStatus, byExecutionType, byTeam: Array.from(byLabels.values()),
+  };
 };
 
 /**
@@ -102,15 +122,37 @@ const collectBuildMetrics = async (teamNames, environmentNames) => {
  */
 const collectExecutionMetrics = async () => {
   const grouped = await Execution.aggregate([
-    { $group: { _id: '$status', count: { $sum: 1 } } },
+    {
+      $addFields: {
+        executionType: { $ifNull: ['$executionType', 'automated'] },
+      },
+    },
+    {
+      $group: {
+        _id: { status: '$status', executionType: '$executionType' },
+        count: { $sum: 1 },
+      },
+    },
   ]);
   const byStatus = new Map();
+  const byStatusAndType = new Map();
   let total = 0;
   grouped.forEach((group) => {
+    const status = group._id.status || 'unknown';
+    const executionType = group._id.executionType || 'automated';
     total += group.count;
-    byStatus.set(group._id || 'unknown', group.count);
+    byStatus.set(status, (byStatus.get(status) || 0) + group.count);
+    // Keyed by the label pair so two id-groups collapsing onto one label set are summed
+    // rather than emitted twice - Prometheus rejects a scrape with duplicate series.
+    const key = `${status} ${executionType}`;
+    const existing = byStatusAndType.get(key);
+    if (existing) {
+      existing.count += group.count;
+    } else {
+      byStatusAndType.set(key, { status, executionType, count: group.count });
+    }
   });
-  return { total, byStatus };
+  return { total, byStatus, byStatusAndType: Array.from(byStatusAndType.values()) };
 };
 
 /**

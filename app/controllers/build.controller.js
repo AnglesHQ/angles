@@ -142,6 +142,7 @@ exports.findAll = (req, res) => {
     componentIds,
     fromDate,
     toDate,
+    executionType,
   } = req.query;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = parseInt(req.query.skip, 10) || 0;
@@ -165,6 +166,9 @@ exports.findAll = (req, res) => {
           team: mongoose.Types.ObjectId(teamId),
         };
       }
+      // Absent means both, so every existing client keeps seeing exactly what it did
+      // before manual runs existed.
+      if (executionType) query.executionType = executionType;
       if (environmentIds) query.environment = { $in: environmentIds.split(',').map((environmentId) => (mongoose.Types.ObjectId(environmentId))) };
       if (componentIds) query.component = { $in: componentIds.split(',').map((componentId) => (mongoose.Types.ObjectId(componentId))) };
       if (fromDate) {

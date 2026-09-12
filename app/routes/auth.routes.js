@@ -2,6 +2,7 @@ const { check, validationResult } = require('express-validator');
 const passport = require('passport');
 const debug = require('debug');
 const authConfig = require('../../config/auth.config.js');
+const featureConfig = require('../../config/feature.config.js');
 const {
   isProviderReady,
   getReadyProvider,
@@ -14,9 +15,15 @@ const log = debug('auth:routes');
 
 module.exports = (app, path) => {
   // Config. Drives the login page: which sign-in methods to offer, and where each goes.
+  // It also carries the feature toggles, because every client needs them to decide which
+  // navigation and pages exist, and this is the one config endpoint fetched before login.
+  // Only the toggles themselves are exposed - never anything about how they are stored.
   app.get(`${path}/auth/config`, (req, res) => {
     res.json({
       localAuthEnabled: authConfig.localAuthEnabled !== false,
+      features: {
+        manualTestingEnabled: featureConfig.manualTestingEnabled !== false,
+      },
       providers: listEnabledProviders(),
     });
   });

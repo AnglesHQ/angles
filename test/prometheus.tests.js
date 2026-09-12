@@ -267,11 +267,25 @@ describe('Prometheus Metrics API Tests', () => {
       samplesFor(samples, 'angles_builds').length.should.be.above(0);
     });
 
-    it('should expose build counts labelled by team and environment', () => {
+    it('should expose build counts labelled by team, environment and execution type', () => {
       const key = 'angles_builds_by_team{team="prometheus-unit-testing-team"'
-        + ',environment="prometheus-unit-testing-environment",status="SKIPPED"}';
+        + ',environment="prometheus-unit-testing-environment",status="SKIPPED"'
+        + ',execution_type="automated"}';
       samples.should.have.property(key);
       samples[key].should.be.aboveOrEqual(1);
+    });
+
+    it('should label a build with no stored executionType as automated', () => {
+      // Builds written before manual runs existed have no executionType on disk. They
+      // must still be counted as the automated runs they are, not as "unknown".
+      const automated = samplesFor(samples, 'angles_builds_by_execution_type')
+        .filter((key) => key.includes('execution_type="automated"'));
+      automated.length.should.be.above(0);
+    });
+
+    it('should expose execution counts split by execution type', () => {
+      samplesFor(samples, 'angles_executions_by_execution_type')
+        .length.should.be.above(0);
     });
 
     it('should expose the last build timestamp per team', () => {

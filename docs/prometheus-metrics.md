@@ -70,11 +70,19 @@ A ready-to-import dashboard covering everything below lives in
 
 ### Angles application data
 
+> **Changed in 3.0**: `angles_builds_by_team` gained an `execution_type` label so manual
+> and automated runs can be told apart. Queries that aggregate (`sum by (team) (...)`,
+> which is what the bundled dashboard uses) are unaffected. A query pinning the *full*
+> label set needs `execution_type` adding, or an aggregation wrapped around it. Builds and
+> executions written before manual runs existed report as `automated`.
+
 | Metric | Type | Labels | Notes |
 | --- | --- | --- | --- |
 | `angles_builds` | gauge | `status` | |
-| `angles_builds_by_team` | gauge | `team`, `environment`, `status` | Subject to `ANGLES_METRICS_MAX_SERIES`. |
+| `angles_builds_by_execution_type` | gauge | `execution_type` (`automated`/`manual`) | |
+| `angles_builds_by_team` | gauge | `team`, `environment`, `status`, `execution_type` | Subject to `ANGLES_METRICS_MAX_SERIES`. |
 | `angles_executions` | gauge | `status` | |
+| `angles_executions_by_execution_type` | gauge | `status`, `execution_type` | |
 | `angles_screenshots` | gauge | | |
 | `angles_screenshots_with_phash` | gauge | | Image-engine coverage of the stored screenshots. |
 | `angles_baselines` | gauge | | |

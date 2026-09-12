@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
 const settingsService = require('../utils/auth-settings-service.js');
+const featureSettingsService = require('../utils/feature-settings-service.js');
 const { configureProviders } = require('../utils/passport-setup.js');
 const { handleError } = require('../exceptions/errors.js');
 
@@ -36,6 +37,30 @@ exports.updateAuthSettings = async (req, res) => {
         return acc;
       }, {}),
     });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+exports.getFeatureSettings = async (req, res) => {
+  try {
+    const settings = await featureSettingsService.getFeatureSettings();
+    return res.status(200).json(settings);
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+exports.updateFeatureSettings = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+
+  try {
+    const settings = await featureSettingsService.updateFeatureSettings(req.body);
+    log('Feature settings updated by admin.');
+    return res.status(200).json(settings);
   } catch (err) {
     return handleError(err, res);
   }

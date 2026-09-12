@@ -8,6 +8,11 @@ data:
   SWAGGER_SCHEMES: "http"
   PORT: "3002"
   BUILD_CLEAN_UP_AGE_IN_DAYS: "90"
+  # Seeds manual test case management the first time this instance starts. Set to
+  # "false" to deploy with the feature turned off. It is only a seed: once the
+  # settings document exists, admins control the toggle from Admin -> Settings and
+  # this value is ignored, so a restart never reverts their choice.
+  ANGLES_MANUAL_TESTING_ENABLED: "true"
   # change these credentials
   MONGO_ANGLES_USERNAME: "angleshq"
   MONGO_ANGLES_PASSWORD: "Password123"
@@ -63,6 +68,8 @@ data:
       db.createCollection('environments');
       db.createCollection('baselines');
       db.createCollection('screenshots');
+      db.createCollection('attachments');
+      db.createCollection('manualtestruns');
       
       db.testexecutions.createIndex({ build: 1 });
       db.testexecutions.createIndex({ suite: 1, title: 1 });
@@ -72,6 +79,10 @@ data:
       db.environment.createIndex({ name: 1 });
       db.screenshots.createIndex({ build: 1 });
       db.screenshots.createIndex({ view: 1 });
+      db.attachments.createIndex({ testCase: 1 });
+      db.attachments.createIndex({ sharedStep: 1 });
+      db.manualtestruns.createIndex({ team: 1, createdAt: -1 });
+      db.builds.createIndex({ team: 1, executionType: 1, start: -1 });
     
     EOF
 

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const { Schema } = mongoose;
 const executionStates = ['SKIPPED', 'PASS', 'ERROR', 'FAIL'];
+const executionTypes = ['automated', 'manual'];
 
 const Artifact = new Schema({
   groupId: {
@@ -108,6 +109,16 @@ const BuildSchema = Schema({
     type: Suite,
     required: true,
   }],
+  // Whether this build's results came from an automated run or a manual test run.
+  // Defaults to 'automated' so every existing document reads back correctly with no
+  // migration; scripts/backfill-execution-type.js sets it explicitly so the index below
+  // is dense.
+  executionType: {
+    type: String,
+    enum: executionTypes,
+    default: 'automated',
+    required: true,
+  },
 }, {
   timestamps: true,
   collection: 'builds',
@@ -116,5 +127,9 @@ const BuildSchema = Schema({
 BuildSchema.index({ team: 1 }, { unique: false });
 BuildSchema.index({ team: 1, createdAt: -1 }, { unique: false });
 BuildSchema.index({ team: 1, start: -1 }, { unique: false });
+// Backs the dashboard's automated/manual filter without falling back to the broader
+// { team: 1, start: -1 } index and discarding most of what it reads.
+BuildSchema.index({ team: 1, executionType: 1, start: -1 }, { unique: false });
 
 module.exports = mongoose.model('Build', BuildSchema);
+module.exports.executionTypes = executionTypes;

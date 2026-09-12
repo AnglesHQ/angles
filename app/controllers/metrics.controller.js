@@ -60,6 +60,7 @@ exports.retrieveMetricsPerPhase = (req, res) => {
     fromDate,
     toDate,
     groupingPeriod,
+    executionType,
   } = req.query;
   let query = {};
   return Team.findById({ _id: teamId })
@@ -68,6 +69,13 @@ exports.retrieveMetricsPerPhase = (req, res) => {
         throw new NotFoundError(`No team found with id ${teamId}`);
       }
       const buildQuery = { team: teamFound._id };
+      // Applied to the build query rather than the execution aggregation: the executions
+      // are already scoped to these builds, so narrowing here narrows both. Absent means
+      // both types, preserving the response every existing client already receives.
+      if (executionType) {
+        buildQuery.executionType = executionType;
+        metrics.executionType = executionType;
+      }
       if (componentId) {
         // match componentId with name (and add it to query)
         teamFound.components.forEach((component) => {
@@ -143,6 +151,14 @@ exports.retrieveMetricsPerPhase = (req, res) => {
         // { $addFields: { phase: { $ifNull: ['$phase', 'default'] } } },
         // { $unwind: '$phase' },
         { $addFields: { length: { $subtract: ['$end', '$start'] } } },
+        // Defaulted here rather than relying on the field being present: executions
+        // written before manual runs existed have no executionType on disk, and would
+        // otherwise fall out of the breakdown entirely.
+        {
+          $addFields: {
+            executionType: { $ifNull: ['$executionType', 'automated'] },
+          },
+        },
         { $unset: ['build', 'actions'] },
       ];
       return Execution.aggregate(query);
@@ -171,6 +187,7 @@ exports.retrieveMetricsPerPhase = (req, res) => {
       metrics.periods.forEach((currentPeriod) => {
         const period = currentPeriod;
         period.result = { TOTAL: 0 };
+        period.executionTypeBreakdown = { automated: 0, manual: 0 };
         period.buildIds = new Set();
         const { items: executions } = period;
         executions.map((execution) => {
@@ -200,6 +217,11 @@ exports.retrieveMetricsPerPhase = (req, res) => {
           }
           period.result[execution.status] += 1;
           period.result.TOTAL += 1;
+          const type = execution.executionType || 'automated';
+          if (period.executionTypeBreakdown[type] === undefined) {
+            period.executionTypeBreakdown[type] = 0;
+          }
+          period.executionTypeBreakdown[type] += 1;
 
           const phaseGroup = period.phases.find((phase) => phase.name === execution.phase);
           if (phaseGroup.result[execution.status] === undefined) {
