@@ -115,6 +115,18 @@ mongoose.connect(mongoURL, {
   } catch (err) {
     logger.error('Could not load auth settings', err);
   }
+  // Baselines are looked up per team; give any written before that their team, or they
+  // would stop matching. Idempotent, and cheap once done (it only reads baselines that
+  // have no team).
+  try {
+    // eslint-disable-next-line global-require
+    const { checked, updated } = await require('./app/utils/baseline-utils.js').backfillTeams();
+    if (checked > 0) {
+      logger.info('Baseline team backfill: %d of %d baseline(s) updated', updated, checked);
+    }
+  } catch (err) {
+    logger.error('Could not backfill baseline teams', err);
+  }
   // Load the persisted feature toggles onto the in-memory config the route guards read.
   // A failure here leaves the defaults in place (every feature on), which is the same
   // behaviour the instance had before toggles existed.
