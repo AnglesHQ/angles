@@ -3,9 +3,12 @@ const { validationResult } = require('express-validator');
 const debug = require('debug');
 
 const Attachment = require('../models/attachment.js');
+const Build = require('../models/build.js');
+const TestExecution = require('../models/execution.js');
 const ManualTestCase = require('../models/manual-test-case.js');
 const SharedStep = require('../models/shared-step.js');
 const attachmentUtils = require('../utils/attachment-utils.js');
+const { describeFile } = require('../utils/multer-config-test-attachments.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const {
   NotFoundError,
@@ -90,6 +93,61 @@ exports.create = (req, res) => {
     });
 };
 
+/*
+Stores a file an automated test uploaded against a build: a console log, HAR file, video,
+Playwright trace, HTML snapshot or image. The test lists the returned id on the execution
+(or a step) when it saves the execution, and the attachment is linked to it then.
+ */
+exports.createForBuild = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  if (!req.file) {
+    return res.status(400).send({ message: 'A file is required in the "attachment" field.' });
+  }
+  const { buildId } = req.params;
+
+  return Build.findById(buildId).select('_id team').lean().exec()
+    .then(async (build) => {
+      if (!build) {
+        throw new NotFoundError(`No build found with id ${buildId}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, build.team)) {
+        throw new ForbiddenError('You do not have access to this build');
+      }
+      // multer has already accepted the extension, so this always describes the file.
+      const { kind, mimeType } = describeFile(req.file.originalname);
+      const imageDetails = kind === 'image'
+        ? await attachmentUtils.generateThumbnail(req.file.path) : {};
+
+      const attachment = new Attachment({
+        team: build.team,
+        scope: 'build',
+        build: build._id,
+        kind,
+        filename: req.file.filename,
+        originalName: path.basename(req.file.originalname || ''),
+        mimeType,
+        size: req.file.size,
+        path: req.file.path,
+        ...imageDetails,
+        uploadedBy: req.user ? req.user._id : undefined,
+      });
+      const saved = await attachment.save();
+      log(`Stored ${kind} attachment ${saved._id} for build ${build._id}`);
+      return Attachment.findById(saved._id).select(attachmentUtils.PUBLIC_FIELDS).lean().exec();
+    })
+    .then((saved) => res.status(201).send(saved))
+    .catch(async (err) => {
+      if (req.file) {
+        await attachmentUtils.removeFiles({ path: req.file.path });
+        await attachmentUtils.removeDirectoryIfEmpty(path.dirname(req.file.path));
+      }
+      return handleError(err, res);
+    });
+};
+
 // Express only treats a middleware as an error handler when it declares four parameters,
 // so `next` must stay in the signature even though it is unused - without it multer's
 // rejections (bad mime type, missing owner id) fall through to the default handler and
@@ -97,12 +155,55 @@ exports.create = (req, res) => {
 // eslint-disable-next-line no-unused-vars
 exports.createFail = (error, req, res, next) => res.status(400).send({ error: error.message });
 
+// Resolves the team behind a build-scoped listing: the build itself, or the build an
+// automated execution belongs to.
+const resolveBuildListing = async ({ executionId, buildId }) => {
+  if (executionId) {
+    const execution = await TestExecution.findById(executionId).select('_id build').lean().exec();
+    if (!execution) {
+      throw new NotFoundError(`No execution found with id ${executionId}`);
+    }
+    const build = await Build.findById(execution.build).select('_id team').lean().exec();
+    if (!build) {
+      throw new NotFoundError(`No build found for execution with id ${executionId}`);
+    }
+    return { query: { execution: execution._id, scope: 'build' }, team: build.team };
+  }
+  const build = await Build.findById(buildId).select('_id team').lean().exec();
+  if (!build) {
+    throw new NotFoundError(`No build found with id ${buildId}`);
+  }
+  return { query: { build: build._id, scope: 'build' }, team: build.team };
+};
+
+const findBuildAttachments = (req, res) => {
+  const { executionId, buildId } = req.query;
+  return resolveBuildListing({ executionId, buildId })
+    .then(({ query, team }) => {
+      if (!authMiddleware.hasTeamAccess(req.user, team)) {
+        throw new ForbiddenError('You do not have access to this build');
+      }
+      return Attachment.find(query)
+        .select(attachmentUtils.PUBLIC_FIELDS)
+        .sort('createdAt')
+        .lean()
+        .exec();
+    })
+    .then((attachments) => res.status(200).send({ attachments }))
+    .catch((err) => handleError(err, res));
+};
+
 exports.findAll = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  const { testCaseId, sharedStepId } = req.query;
+  const {
+    testCaseId, sharedStepId, executionId, buildId,
+  } = req.query;
+  if (executionId || buildId) {
+    return findBuildAttachments(req, res);
+  }
 
   return resolveOwner({ testCaseId, sharedStepId })
     .then(({ field, owner }) => {
@@ -150,7 +251,10 @@ exports.findFile = (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   return findWithAccess(req.params.attachmentId, req.user)
-    .then((attachment) => res.sendFile(path.resolve(attachment.path)))
+    .then((attachment) => res.sendFile(
+      path.resolve(attachment.path),
+      { headers: attachmentUtils.fileHeaders(attachment, req.query.download === 'true') },
+    ))
     .catch((err) => handleError(err, res));
 };
 
@@ -199,6 +303,16 @@ exports.delete = (req, res) => {
         { 'steps.attachments': attachment._id },
         { $pull: { 'steps.$[].attachments': attachment._id } },
       ).exec();
+      if (attachment.scope === 'build') {
+        await TestExecution.updateMany(
+          { attachments: attachment._id },
+          { $pull: { attachments: attachment._id } },
+        ).exec();
+        await TestExecution.updateMany(
+          { 'actions.steps.attachments': attachment._id },
+          { $pull: { 'actions.$[].steps.$[].attachments': attachment._id } },
+        ).exec();
+      }
 
       log(`Deleted attachment ${attachmentId}`);
       return true;

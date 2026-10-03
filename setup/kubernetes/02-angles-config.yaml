@@ -13,6 +13,9 @@ data:
   # settings document exists, admins control the toggle from Admin -> Settings and
   # this value is ignored, so a restart never reverts their choice.
   ANGLES_MANUAL_TESTING_ENABLED: "true"
+  # Largest file (in MB) an automated test can attach to a build: logs, HAR files,
+  # videos, traces and HTML snapshots. Stored on the attachments volume.
+  ANGLES_ATTACHMENT_MAX_SIZE_MB: "100"
   # change these credentials
   MONGO_ANGLES_USERNAME: "angleshq"
   MONGO_ANGLES_PASSWORD: "Password123"
@@ -81,6 +84,8 @@ data:
       db.screenshots.createIndex({ view: 1 });
       db.attachments.createIndex({ testCase: 1 });
       db.attachments.createIndex({ sharedStep: 1 });
+      db.attachments.createIndex({ build: 1 });
+      db.attachments.createIndex({ execution: 1 });
       db.manualtestruns.createIndex({ team: 1, createdAt: -1 });
       db.builds.createIndex({ team: 1, executionType: 1, start: -1 });
     

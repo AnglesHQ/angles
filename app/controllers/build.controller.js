@@ -5,6 +5,7 @@ const debug = require('debug');
 
 const buildMetricsUtils = require('../utils/build-utils.js');
 const imageUtils = require('../utils/image-utils.js');
+const attachmentUtils = require('../utils/attachment-utils.js');
 const validationUtils = require('../utils/validation-utils.js');
 
 const Build = require('../models/build.js');
@@ -103,7 +104,10 @@ exports.create = (req, res) => {
           }
           const testExecutions = executions
             .map((execution) => buildMetricsUtils.buildExecution(execution, savedBuild));
-          return Execution.insertMany(testExecutions)
+          // The build is brand new, so nothing can have been uploaded against it yet; this
+          // drops any attachment ids the executions carry.
+          return attachmentUtils.restrictToBuild(testExecutions, savedBuild._id)
+            .then(() => Execution.insertMany(testExecutions))
             .then((savedExecutions) => buildMetricsUtils
               .addExecutionsToBuild(savedBuild, savedExecutions))
             .catch(async (err) => {
@@ -349,9 +353,12 @@ exports.addExecutions = (req, res) => {
       }
       const testExecutions = executions
         .map((execution) => buildMetricsUtils.buildExecution(execution, existingBuild));
-      return Execution.insertMany(testExecutions)
-        .then((savedExecutions) => buildMetricsUtils
-          .addExecutionsToBuild(existingBuild, savedExecutions))
+      return attachmentUtils.restrictToBuild(testExecutions, existingBuild._id)
+        .then(() => Execution.insertMany(testExecutions))
+        .then(async (savedExecutions) => {
+          await attachmentUtils.linkToExecutions(savedExecutions);
+          return buildMetricsUtils.addExecutionsToBuild(existingBuild, savedExecutions);
+        })
         .catch(async (err) => {
           // Unlike create, the build may already hold executions and screenshots, so only the
           // executions from this failed batch are removed - the caller retries the batch.
@@ -469,6 +476,7 @@ exports.delete = (req, res) => {
       // Cascade the same way deleteMany does: image files on disk first, then the
       // screenshot and execution documents, then the build itself.
       await imageUtils.removeScreenshotDirectories([existingBuild]);
+      await attachmentUtils.removeAttachmentsForBuilds([existingBuild._id]);
       await Screenshot.deleteMany({ build: existingBuild._id }).exec();
       await Execution.deleteMany({ build: existingBuild._id }).exec();
       log(`Deleting build ${buildId} along with ${screenshotIds.length} screenshot(s).`);
@@ -534,6 +542,7 @@ exports.deleteMany = (req, res) => {
       };
       const promises = [
         imageUtils.removeScreenshotDirectories(buildsToDelete),
+        attachmentUtils.removeAttachmentsForBuilds(buildsToDeleteIds),
         // deleteMany rather than the deprecated remove(): remove() is gone in Mongoose 7,
         // where it would silently stop cleaning these up.
         Screenshot.deleteMany({ build: { $in: buildsToDeleteIds } })

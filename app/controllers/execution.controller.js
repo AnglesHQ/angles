@@ -3,6 +3,7 @@ const debug = require('debug');
 const TestExecution = require('../models/execution.js');
 const Build = require('../models/build.js');
 const buildMetricsUtils = require('../utils/build-utils.js');
+const attachmentUtils = require('../utils/attachment-utils.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 const { handleError, NotFoundError, ForbiddenError } = require('../exceptions/errors.js');
 
@@ -42,10 +43,12 @@ exports.create = (req, res) => {
         throw new ForbiddenError('You do not have access to this build');
       }
       testExecution = buildMetricsUtils.createExecution(req, buildFound);
-      return testExecution.save();
+      return attachmentUtils.restrictToBuild([testExecution], buildFound._id)
+        .then(() => testExecution.save());
     })
-    .then((savedExecution) => {
+    .then(async (savedExecution) => {
       testExecution = savedExecution;
+      await attachmentUtils.linkToExecutions([testExecution]);
       return buildMetricsUtils.addExecutionToBuild(testExecution.build, testExecution);
     })
     .then((savedBuild) => {
@@ -229,6 +232,7 @@ exports.delete = (req, res) => {
       }
       return TestExecution.findByIdAndRemove(executionId);
     })
+    .then(() => attachmentUtils.removeAttachmentsForExecution(executionId))
     .then(() => res.status(200).send({ message: 'Test execution deleted successfully!' }))
     .catch((err) => handleError(err, res));
 };

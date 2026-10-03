@@ -36,6 +36,9 @@ services:
       # the settings exist, admins control it from Admin -> Settings and this is
       # ignored, so a restart never reverts their choice.
       - ANGLES_MANUAL_TESTING_ENABLED=${ANGLES_MANUAL_TESTING_ENABLED:-true}
+      # Largest file (in MB) an automated test can attach to a build: logs, HAR files,
+      # videos, traces and HTML snapshots. Stored on the angles_attachments volume.
+      - ANGLES_ATTACHMENT_MAX_SIZE_MB=${ANGLES_ATTACHMENT_MAX_SIZE_MB:-100}
       - MONGO_URL=mongodb://angleshq:%40nglesPassword@mongodb:27017/angles
       # Public origin of this instance. Each SSO provider's redirect/callback URL is
       # derived from it, and must match what is registered with the identity provider,
