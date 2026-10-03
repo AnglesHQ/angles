@@ -21,7 +21,9 @@ module.exports = (app, path) => {
     param('phaseId').isMongoId(),
   ], phaseController.findOne);
 
-  app.put(`${path}/phase/:phaseId`, [
+  // Phases are shared by every team, so changing one is an admin action, the same as
+  // creating or deleting it.
+  app.put(`${path}/phase/:phaseId`, authMiddleware.authorizeAdmin, [
     param('phaseId').isMongoId(),
     oneOf([
       check('name')

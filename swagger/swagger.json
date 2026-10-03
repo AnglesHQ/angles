@@ -556,8 +556,19 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "description": "Admin only: environments and phases are shared by every team."
       }
     },
     "/phase": {
@@ -776,8 +787,19 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "description": "Admin only: environments and phases are shared by every team."
       }
     },
     "/build": {
@@ -1340,6 +1362,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "No access to the build's team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -1731,6 +1763,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the build's team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
                 }
               }
             }
@@ -2953,6 +2995,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "No access to the screenshot's team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -3015,6 +3067,15 @@
             "schema": {
               "type": "number"
             }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": false,
+            "description": "Only return this team's baselines. The caller must have access to the team.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3030,8 +3091,19 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "No access to the named team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "description": "Baselines belong to a team (the team of the build their screenshot came from). Without `teamId`, a non-admin only sees their own teams' baselines; admins see every team's, so they should pass `teamId` when view names are shared between teams."
       }
     },
     "/baseline/{baselineId}": {
@@ -3078,6 +3150,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the baseline's team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
                 }
               }
             }
@@ -3182,6 +3264,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "No access to the baseline's team, or the new screenshot belongs to another team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3249,6 +3341,16 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "403": {
+            "description": "No access to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -8035,6 +8137,10 @@
               },
               "screenshot": {
                 "$ref": "#/components/schemas/Screenshot"
+              },
+              "team": {
+                "type": "string",
+                "description": "The team that owns the baseline: the team of the build its screenshot came from."
               }
             }
           }

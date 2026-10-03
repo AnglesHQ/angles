@@ -39,6 +39,9 @@ module.exports = (app, path) => {
     query('screenWidth')
       .optional()
       .isNumeric(),
+    query('teamId')
+      .optional()
+      .isMongoId(),
   ], baselineController.findAll);
 
   app.get(`${path}/baseline/:baselineId`, [

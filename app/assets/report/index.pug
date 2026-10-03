@@ -277,5 +277,6 @@ html(lang="en")
       img(alt="")
       span.viewer-caption
 
-    script
+    //- The nonce matches the Content-Security-Policy the API serves the report with.
+    script(nonce=nonce)
       include report.js

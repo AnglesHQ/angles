@@ -10,6 +10,7 @@ const Build = require('../models/build.js');
 const Baseline = require('../models/baseline.js');
 const validationUtils = require('../utils/validation-utils.js');
 const imageUtils = require('../utils/image-utils.js');
+const baselineUtils = require('../utils/baseline-utils.js');
 // Searches run on the image-engine worker pool; annotateMatches stays on the main
 // thread because it is I/O-bound rather than CPU-bound.
 const imageEngine = require('../image-engine/index.js');
@@ -76,6 +77,28 @@ const readableTeamIds = (user) => {
   return (user && user.teams) ? user.teams : [];
 };
 
+/**
+ * A `$match` stage restricting screenshots to builds of the caller's teams, for the
+ * aggregations that search across builds (metrics, view and tag lookups, the latest
+ * screenshot per platform). Empty for admins, who may read every team.
+ */
+const readableScreenshotsMatch = async (user) => {
+  const teamIds = readableTeamIds(user);
+  if (teamIds === null) return {};
+  const buildIds = await Build.find({ team: { $in: teamIds } }).distinct('_id').exec();
+  return { build: { $in: buildIds } };
+};
+
+// An upload that is rejected after multer has written it must not be left on disk.
+const removeUploadedFile = async (file) => {
+  if (!file || !file.path) return;
+  try {
+    await fs.promises.unlink(file.path);
+  } catch (error) {
+    if (error.code !== 'ENOENT') log(`Could not remove rejected upload ${file.path}: ${error.message}`);
+  }
+};
+
 // Compare options arrive as strings; undefined fields mean "use the engine default"
 // (pixel algorithm, threshold 0.5, no regions).
 const parseCompareOptions = (query) => {
@@ -99,10 +122,13 @@ exports.create = (req, res) => {
     view,
     tags,
   } = req.body;
-  return Build.findById(buildId).select('_id').lean()
+  return Build.findById(buildId).select('_id team').lean()
     .then((foundBuild) => {
       if (!foundBuild) {
         throw new NotFoundError(`No build found with id ${buildId}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, foundBuild.team)) {
+        throw new ForbiddenError('You do not have access to this build');
       }
       build = foundBuild;
       return jimp.read(req.file.path)
@@ -148,7 +174,10 @@ exports.create = (req, res) => {
       log(`Created screenshot "${savedScreenshot.path}", view "${savedScreenshot.view}" build "${savedScreenshot.build}", with id: "${savedScreenshot._id}"`);
       return res.status(201).send(savedScreenshot);
     })
-    .catch((error) => handleError(error, res));
+    .catch(async (error) => {
+      await removeUploadedFile(req.file);
+      return handleError(error, res);
+    });
 };
 
 // Express only treats a middleware as an error handler when it declares four parameters,
@@ -235,12 +264,12 @@ exports.findViewNames = (req, res) => {
 
   const queryLimit = parseInt(limit, 10) || 10;
 
-  return Screenshot.aggregate([
-    { $match: { view: { $regex: `^${validationUtils.escapeRegex(partialView)}` } } },
+  return readableScreenshotsMatch(req.user).then((readable) => Screenshot.aggregate([
+    { $match: { ...readable, view: { $regex: `^${validationUtils.escapeRegex(partialView)}` } } },
     { $group: { _id: '$view' } },
     { $limit: queryLimit },
     { $group: { _id: 0, views: { $push: '$_id' } } },
-  ])
+  ]))
     .then((resultArray) => {
       if (resultArray.length > 0) {
         const { views } = resultArray[0];
@@ -261,15 +290,18 @@ exports.findTagNames = (req, res) => {
     limit,
   } = req.query;
 
-  const queryLimit = parseInt(limit, 10) || 0;
+  // Defaults to 10 like the view lookup; MongoDB rejects `$limit: 0`, so the old default of
+  // 0 made every request without a limit fail with a 500.
+  const queryLimit = parseInt(limit, 10) || 10;
 
-  return Screenshot.aggregate([
+  return readableScreenshotsMatch(req.user).then((readable) => Screenshot.aggregate([
+    { $match: readable },
     { $unwind: '$tags' },
     { $match: { tags: { $regex: `^${validationUtils.escapeRegex(partialTag)}` } } },
     { $group: { _id: '$tags' } },
     { $limit: queryLimit },
     { $group: { _id: 0, tagsArray: { $push: '$_id' } } },
-  ])
+  ]))
     .then((resultArray) => {
       if (resultArray.length > 0) {
         const { tagsArray } = resultArray[0];
@@ -380,11 +412,12 @@ exports.retrieveScreenshotMetrics = (req, res) => {
       ...aggregateTagsQuery,
     ];
   }
-  const promises = [
-    Screenshot.aggregate(aggregateViewQuery).exec(),
-    Screenshot.aggregate(aggregateTagsQuery).exec(),
-  ];
-  return Promise.all(promises).then((results) => {
+  // Both pipelines group screenshots across every build, so they are restricted to the
+  // caller's teams first; the thumbnails they return would otherwise come from any team.
+  return readableScreenshotsMatch(req.user).then((readable) => Promise.all([
+    Screenshot.aggregate([{ $match: readable }, ...aggregateViewQuery]).exec(),
+    Screenshot.aggregate([{ $match: readable }, ...aggregateTagsQuery]).exec(),
+  ])).then((results) => {
     const viewScreenshots = results[0];
     const tagsScreenshots = results[1];
     const result = {
@@ -404,12 +437,12 @@ exports.findLatestForViewGroupedByPlatform = (req, res) => {
   const { view, numberOfDays } = req.query;
   const searchDate = new Date();
   searchDate.setDate(searchDate.getDate() - numberOfDays);
-  return Screenshot.aggregate([
-    { $match: { view, createdAt: { $gt: searchDate } } },
+  return readableScreenshotsMatch(req.user).then((readable) => Screenshot.aggregate([
+    { $match: { ...readable, view, createdAt: { $gt: searchDate } } },
     { $sort: { _id: 1 } },
     { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
     { $project: { _id: '$lastId' } },
-  ])
+  ]))
     .then((screenshotsIdsArray) => {
       const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
       return Screenshot.find({ _id: { $in: latestScreenshotIds } }).lean();
@@ -426,12 +459,12 @@ exports.findLatestForTagGroupedByView = (req, res) => {
   const { tag, numberOfDays } = req.query;
   const searchDate = new Date();
   searchDate.setDate(searchDate.getDate() - numberOfDays);
-  return Screenshot.aggregate([
-    { $match: { tags: { $in: [tag] }, createdAt: { $gt: searchDate } } },
+  return readableScreenshotsMatch(req.user).then((readable) => Screenshot.aggregate([
+    { $match: { ...readable, tags: { $in: [tag] }, createdAt: { $gt: searchDate } } },
     { $sort: { view: 1, _id: 1 } },
     { $group: { _id: { view: '$view', platformId: '$platformId' }, lastId: { $last: '$_id' } } },
     { $project: { _id: '$lastId' } },
-  ])
+  ]))
     .then((screenshotsIdsArray) => {
       const latestScreenshotIds = screenshotsIdsArray.map(({ _id }) => _id);
       return Screenshot.find({ _id: { $in: latestScreenshotIds } }).lean();
@@ -718,29 +751,14 @@ exports.compareImageAgainstBaseline = (req, res) => {
       if (!screenshotFound) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
-      await assertScreenshotAccess(req.user, screenshotFound);
+      const build = await assertScreenshotAccess(req.user, screenshotFound);
       if (!screenshotFound.view) {
         throw new InvalidRequestError(`Screenshot with id ${screenshotId} does not have a view set, so can not be compared.`);
       }
       screenshot = screenshotFound;
-      const {
-        view,
-        platform,
-        height,
-        width,
-      } = screenshot;
-      // generate baseline query using screenshot details.
-      const baseLineQuery = {
-        view,
-        'platform.platformName': platform.platformName,
-      };
-      if (platform.deviceName) baseLineQuery['platform.deviceName'] = platform.deviceName;
-      if (platform.browserName) {
-        baseLineQuery['platform.browserName'] = platform.browserName;
-        baseLineQuery.screenHeight = height;
-        baseLineQuery.screenWidth = width;
-      }
-      return Baseline.findOne(baseLineQuery).populate('screenshot').lean();
+      // Only the screenshot's own team's baseline: another team may use the same view name.
+      return Baseline.findOne(baselineUtils.baselineQueryForScreenshot(screenshot, build.team))
+        .populate('screenshot').lean();
     })
     .then(async (baseline) => {
       // compare image with baseline and return result.
@@ -787,28 +805,15 @@ exports.compareImageAgainstBaselineAndReturnImage = (req, res) => {
       if (!screenshot) {
         throw new NotFoundError(`No screenshot found with id ${screenshotId}`);
       }
-      await assertScreenshotAccess(req.user, screenshot);
+      const build = await assertScreenshotAccess(req.user, screenshot);
       if (!screenshot.view) {
         throw new InvalidRequestError(`Screenshot with id ${screenshotId} does not have a view set, so can not be compared.`);
       }
       screenshotToCompare = screenshot;
-      const {
-        view,
-        height,
-        width,
-        platform,
-      } = screenshotToCompare;
-      const baseLineQuery = {
-        view,
-        'platform.platformName': platform.platformName,
-      };
-      if (platform.deviceName) baseLineQuery['platform.deviceName'] = platform.deviceName;
-      if (platform.browserName) {
-        baseLineQuery['platform.browserName'] = platform.browserName;
-        baseLineQuery.screenHeight = height;
-        baseLineQuery.screenWidth = width;
-      }
-      return Baseline.findOne(baseLineQuery).populate('screenshot').lean();
+      // Only the screenshot's own team's baseline: another team may use the same view name.
+      const baselineQuery = baselineUtils
+        .baselineQueryForScreenshot(screenshotToCompare, build.team);
+      return Baseline.findOne(baselineQuery).populate('screenshot').lean();
     })
     .then((baselineFound) => {
       if (!baselineFound) {
