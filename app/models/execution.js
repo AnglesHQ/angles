@@ -37,9 +37,10 @@ const Step = mongoose.Schema({
     ref: 'Screenshot',
     required: false,
   },
-  // Images a QA attached while recording a manual step result. Automated runs use
-  // `screenshot` above; this is the manual equivalent and shares the same subdocument so
-  // there is no parallel step structure to keep in sync.
+  // Images a QA attached while recording a manual step result, or files an automated test
+  // uploaded for this step (e.g. the page's HTML when the step failed). Automated
+  // screenshots still use `screenshot` above; this shares the same subdocument so there is
+  // no parallel step structure to keep in sync.
   attachments: [{
     type: Schema.Types.ObjectId,
     ref: 'Attachment',
@@ -108,6 +109,13 @@ const TestExecutionSchema = mongoose.Schema({
   }],
   platforms: [{
     type: Platform,
+    required: false,
+  }],
+  // Files the automated test uploaded for the whole execution - a video, a trace, a HAR
+  // file or a console log. Step-level files live on the step (see Step.attachments).
+  attachments: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Attachment',
     required: false,
   }],
   tags: [{

@@ -30,5 +30,7 @@ db.screenshots.createIndex({ build: 1 });
 db.screenshots.createIndex({ view: 1 });
 db.attachments.createIndex({ testCase: 1 });
 db.attachments.createIndex({ sharedStep: 1 });
+db.attachments.createIndex({ build: 1 });
+db.attachments.createIndex({ execution: 1 });
 db.manualtestruns.createIndex({ team: 1, createdAt: -1 });
 db.builds.createIndex({ team: 1, executionType: 1, start: -1 });

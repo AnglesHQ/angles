@@ -29,6 +29,12 @@ module.exports = (app, path) => {
     check('platforms.*.browserVersion').optional().isString(),
     check('platforms.*.deviceName').optional().isString(),
     check('platforms.*.userAgent').optional().isString(),
+    // Ids returned by POST /build/:buildId/attachment. Ids that were not uploaded against
+    // this execution's build are dropped when the execution is saved.
+    check('attachments').optional().isArray(),
+    check('attachments.*').isMongoId(),
+    check('actions.*.steps.*.attachments').optional().isArray(),
+    check('actions.*.steps.*.attachments.*').isMongoId(),
   ], executionController.create);
 
   app.get(`${path}/execution`, [

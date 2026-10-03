@@ -133,4 +133,131 @@ attachmentUtils.removeAttachmentsForOwner = async (scope, ownerId) => {
   return result.deletedCount || 0;
 };
 
+// ── Build-scoped attachments (files uploaded by automated tests) ─────────────
+
+// Kinds that are always downloaded rather than shown inline when opened directly. An HTML
+// snapshot opened inline on the API's origin would run its scripts with the viewer's
+// session cookie; archives have nothing to show inline.
+const DOWNLOAD_ONLY_KINDS = ['html', 'trace', 'archive'];
+
+// Keeps a stored display name safe inside a Content-Disposition header.
+const dispositionFilename = (name) => (name || 'attachment').replace(/[^\w.\- ]+/g, '_');
+
+/*
+Headers for serving an attachment's file.
+
+Every file is served with `nosniff`, so a browser never second-guesses the stored type,
+and with a `sandbox` CSP, so even a file a browser does render (an HTML snapshot opened
+from a link, an SVG inside a zip viewer) runs in an opaque origin with scripts disabled.
+The UI fetches files with XHR and renders HTML in a sandboxed iframe of its own, so none
+of this changes what it shows.
+ */
+attachmentUtils.fileHeaders = (attachment, download) => {
+  const headers = {
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': 'sandbox',
+  };
+  if (attachment.scope !== 'build') {
+    return headers;
+  }
+  headers['Content-Type'] = attachment.mimeType || 'application/octet-stream';
+  const disposition = download || DOWNLOAD_ONLY_KINDS.includes(attachment.kind) ? 'attachment' : 'inline';
+  headers['Content-Disposition'] = `${disposition}; filename="${dispositionFilename(attachment.originalName)}"`;
+  return headers;
+};
+
+// The fields a reader of an execution needs to list and open its attachments. `path` and
+// `filename` are deliberately left out: they are server paths, not something to hand out.
+attachmentUtils.PUBLIC_FIELDS = '_id kind originalName mimeType size execution build createdAt';
+
+const idsOf = (list) => (list || []).map((id) => id.toString());
+
+// Every attachment id an execution references, at execution level and on its steps.
+const referencedIds = (execution) => {
+  const ids = idsOf(execution.attachments);
+  (execution.actions || []).forEach((action) => {
+    (action.steps || []).forEach((step) => ids.push(...idsOf(step.attachments)));
+  });
+  return ids;
+};
+attachmentUtils.referencedIds = referencedIds;
+
+/*
+Drops any attachment id that was not uploaded against the execution's own build.
+
+An execution can only claim files from its own build. Without this a caller could list
+another team's attachment id on their execution and read its name and size back through
+the execution's attachment list (the file itself is still guarded by a team check).
+Unknown ids are dropped rather than rejected, matching how a missing screenshot id on a
+step is tolerated: the test results are worth more than a stale reference.
+
+Updates the (unsaved) execution documents in place.
+ */
+attachmentUtils.restrictToBuild = async (executions, buildId) => {
+  const allIds = [...new Set(executions.flatMap(referencedIds))];
+  if (allIds.length === 0) {
+    return;
+  }
+  const valid = await Attachment.find({ _id: { $in: allIds }, build: buildId, scope: 'build' })
+    .distinct('_id')
+    .exec();
+  const validIds = new Set(valid.map((id) => id.toString()));
+  if (validIds.size < allIds.length) {
+    log(`Dropping ${allIds.length - validIds.size} attachment reference(s) that do not belong to build ${buildId}`);
+  }
+  const keep = (list) => (list || []).filter((id) => validIds.has(id.toString()));
+  executions.forEach((execution) => {
+    execution.set('attachments', keep(execution.attachments));
+    (execution.actions || []).forEach((action) => {
+      (action.steps || []).forEach((step) => {
+        if (step.attachments && step.attachments.length) {
+          step.set('attachments', keep(step.attachments));
+        }
+      });
+    });
+  });
+};
+
+/*
+Records which execution each referenced attachment now belongs to, once the executions
+are saved. This is what lets the attachment list for an execution be a single indexed
+query, and what removes an execution's files when the execution is deleted.
+ */
+attachmentUtils.linkToExecutions = async (executions) => {
+  await Promise.all(executions.map((execution) => {
+    const ids = referencedIds(execution);
+    if (ids.length === 0) {
+      return undefined;
+    }
+    return Attachment.updateMany(
+      { _id: { $in: ids }, build: execution.build, scope: 'build' },
+      { $set: { execution: execution._id } },
+    ).exec();
+  }));
+};
+
+/*
+Removes the build-scoped attachments of the given builds: documents and directories.
+Called wherever builds are deleted, alongside removeScreenshotDirectories.
+ */
+attachmentUtils.removeAttachmentsForBuilds = async (buildIds) => {
+  if (!buildIds || buildIds.length === 0) {
+    return 0;
+  }
+  const result = await Attachment.deleteMany({ build: { $in: buildIds }, scope: 'build' }).exec();
+  await Promise.all(buildIds.map((buildId) => attachmentUtils.removeAttachmentDirectory(buildId)));
+  return result.deletedCount || 0;
+};
+
+/*
+Removes the attachments an execution claimed, files and documents. Files no execution has
+claimed stay with the build and go when the build does.
+ */
+attachmentUtils.removeAttachmentsForExecution = async (executionId) => {
+  const attachments = await Attachment.find({ execution: executionId, scope: 'build' }).lean().exec();
+  await Promise.all(attachments.map((attachment) => attachmentUtils.removeFiles(attachment)));
+  await Attachment.deleteMany({ execution: executionId, scope: 'build' }).exec();
+  return attachments.length;
+};
+
 module.exports = attachmentUtils;

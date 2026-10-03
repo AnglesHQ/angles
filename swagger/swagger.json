@@ -5770,7 +5770,7 @@
         "tags": [
           "Attachment"
         ],
-        "summary": "List the attachments belonging to a test case or shared step",
+        "summary": "List attachments: of a test case or shared step, or the files an automated execution or build uploaded",
         "parameters": [
           {
             "name": "testCaseId",
@@ -5786,6 +5786,24 @@
             "in": "query",
             "required": false,
             "description": "List the attachments of this shared step.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "executionId",
+            "in": "query",
+            "required": false,
+            "description": "List the files an automated execution claimed (execution- and step-level).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "buildId",
+            "in": "query",
+            "required": false,
+            "description": "List every file uploaded against a build, claimed or not.",
             "schema": {
               "type": "string"
             }
@@ -5813,7 +5831,7 @@
             }
           },
           "404": {
-            "description": "No test case or shared step found with the given id",
+            "description": "No test case, shared step, execution or build found with the given id",
             "content": {
               "application/json": {
                 "schema": {
@@ -5971,12 +5989,12 @@
         "tags": [
           "Attachment"
         ],
-        "summary": "Download the original image",
+        "summary": "Download the attachment's file",
         "responses": {
           "200": {
-            "description": "The image file",
+            "description": "The file",
             "content": {
-              "image/*": {
+              "*/*": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -6014,7 +6032,19 @@
               }
             }
           }
-        }
+        },
+        "description": "Served with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`. Files uploaded by automated tests are served with their stored type; HTML snapshots, traces and archives always as a download (`Content-Disposition: attachment`). Supports range requests, so a video can be seeked.",
+        "parameters": [
+          {
+            "name": "download",
+            "in": "query",
+            "required": false,
+            "description": "`true` to always serve the file as a download.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
       }
     },
     "/attachment/{attachmentId}/thumbnail": {
@@ -7120,6 +7150,98 @@
           }
         }
       }
+    },
+    "/build/{buildId}/attachment": {
+      "parameters": [
+        {
+          "name": "buildId",
+          "in": "path",
+          "required": true,
+          "description": "ID of the build the test is running in.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Attachment"
+        ],
+        "summary": "Upload a file from an automated test (log, HAR, video, trace, HTML snapshot or image)",
+        "description": "Multipart upload against the build, made while the test is running (the execution does not exist yet). List the returned id in the execution's `attachments`, or in a step's `attachments`, when saving the execution; it is linked to that execution then. Ids from another build are dropped.\n\nThe kind and served content type are decided from the file extension, never from the client's mime type: `.log`/`.txt` (log), `.json`, `.har`, `.webm`/`.mp4` (video), `.zip` (trace when the name contains \"trace\", otherwise archive), `.html`/`.htm`, and `.png`/`.jpg`/`.jpeg`/`.gif`/`.webp` (image). The size limit is `ANGLES_ATTACHMENT_MAX_SIZE_MB` (default 100).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attachment"
+                ],
+                "properties": {
+                  "attachment": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The file. Its name's extension decides its kind."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attachment stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestAttachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file supplied, an unsupported file type, or a file over the size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No access to the build's team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No build found with the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpressValidatorError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -7433,6 +7555,13 @@
           "end": {
             "type": "string",
             "format": "date-time"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Ids returned by POST /build/{buildId}/attachment. Used by PUT /build/{buildId}/executions; on executions posted together with a new build (POST /build) they are dropped, because nothing can have been uploaded against a build that does not exist yet.",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -7556,7 +7685,7 @@
           },
           "attachments": {
             "type": "array",
-            "description": "Images a QA attached while recording a manual step result. Automated runs use `screenshot` instead.",
+            "description": "Images a QA attached while recording a manual step result, or ids returned by POST /build/{buildId}/attachment for files that belong to this step of an automated test (e.g. the page HTML when it failed).",
             "items": {
               "type": "string"
             }
@@ -7711,6 +7840,13 @@
           "executedBy": {
             "type": "string",
             "description": "The user who recorded a manual result."
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Ids returned by POST /build/{buildId}/attachment for files that belong to the whole test, such as a video, trace, HAR file or console log. Ids not uploaded against the execution's build are dropped.",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -8886,7 +9022,8 @@
             "enum": [
               "testcase",
               "sharedstep",
-              "execution"
+              "execution",
+              "build"
             ]
           },
           "testCase": {
@@ -9402,6 +9539,52 @@
             "type": "string",
             "nullable": true,
             "description": "Target folder id, or null to move the cases to the team root."
+          }
+        }
+      },
+      "TestAttachment": {
+        "description": "A file an automated test uploaded. Server paths are never returned.",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "uniqueItems": true
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "log",
+              "json",
+              "har",
+              "video",
+              "trace",
+              "archive",
+              "html"
+            ],
+            "description": "Decided from the file extension."
+          },
+          "originalName": {
+            "type": "string",
+            "description": "The uploaded filename, for display only."
+          },
+          "mimeType": {
+            "type": "string",
+            "description": "The type the file is served with, decided from its extension."
+          },
+          "size": {
+            "type": "number",
+            "description": "Bytes."
+          },
+          "build": {
+            "type": "string"
+          },
+          "execution": {
+            "type": "string",
+            "description": "The execution that listed this attachment when it was saved. Absent until then."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }

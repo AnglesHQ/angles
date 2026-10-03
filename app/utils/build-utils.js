@@ -153,7 +153,7 @@ buildMetricsUtils.determineNewState = (existingState, newState) => {
 
 buildMetricsUtils.buildExecution = (executionDetails, build) => {
   const {
-    title, suite, start, end, platforms, tags, meta, actions, feature,
+    title, suite, start, end, platforms, tags, meta, actions, feature, attachments,
   } = executionDetails;
 
   const testExecution = new TestExecution({
@@ -167,6 +167,7 @@ buildMetricsUtils.buildExecution = (executionDetails, build) => {
     tags,
     meta,
     actions,
+    attachments,
     status: buildMetricsUtils.executionStates[0],
   });
   if (actions) {

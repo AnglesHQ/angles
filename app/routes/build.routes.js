@@ -44,6 +44,12 @@ module.exports = (app, path) => {
     check('executions.*.platforms.*.browserVersion').optional().isString(),
     check('executions.*.platforms.*.deviceName').optional().isString(),
     check('executions.*.platforms.*.userAgent').optional().isString(),
+    // Attachments are uploaded against an existing build, so executions posted together
+    // with a new build cannot reference any yet; ids here are validated and then dropped.
+    check('executions.*.attachments').optional().isArray(),
+    check('executions.*.attachments.*').isMongoId(),
+    check('executions.*.actions.*.steps.*.attachments').optional().isArray(),
+    check('executions.*.actions.*.steps.*.attachments.*').isMongoId(),
   ], buildController.create);
 
   app.get(`${path}/build`, [
@@ -172,6 +178,10 @@ module.exports = (app, path) => {
     check('executions.*.platforms.*.browserVersion').optional().isString(),
     check('executions.*.platforms.*.deviceName').optional().isString(),
     check('executions.*.platforms.*.userAgent').optional().isString(),
+    check('executions.*.attachments').optional().isArray(),
+    check('executions.*.attachments.*').isMongoId(),
+    check('executions.*.actions.*.steps.*.attachments').optional().isArray(),
+    check('executions.*.actions.*.steps.*.attachments.*').isMongoId(),
   ], buildController.addExecutions);
 
   app.put(`${path}/build/:buildId/artifacts`, [
