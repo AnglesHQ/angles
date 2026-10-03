@@ -38,6 +38,9 @@ exports.create = (req, res) => {
       if (!buildFound) {
         throw new NotFoundError(`No build found with id ${buildId}`);
       }
+      if (!authMiddleware.hasTeamAccess(req.user, buildFound.team)) {
+        throw new ForbiddenError('You do not have access to this build');
+      }
       testExecution = buildMetricsUtils.createExecution(req, buildFound);
       return testExecution.save();
     })

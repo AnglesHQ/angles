@@ -16,7 +16,9 @@ module.exports = (app, path) => {
     param('environmentId').isMongoId(),
   ], environmentController.findOne);
 
-  app.put(`${path}/environment/:environmentId`, [
+  // Environments are shared by every team, so renaming one is an admin action, the same as
+  // creating or deleting it.
+  app.put(`${path}/environment/:environmentId`, authMiddleware.authorizeAdmin, [
     param('environmentId').isMongoId(),
     check('name')
       .exists({ checkFalsy: true })

@@ -7,7 +7,8 @@ const { Team } = require('../models/team.js');
 // const Environment = require('../models/environment.js');
 // const Screenshot = require('../models/screenshot.js');
 const Execution = require('../models/execution.js');
-const { handleError, NotFoundError } = require('../exceptions/errors.js');
+const { handleError, NotFoundError, ForbiddenError } = require('../exceptions/errors.js');
+const authMiddleware = require('../utils/auth-middleware.js');
 // const Baseline = require('../models/baseline.js');
 // const Phase = require('../models/phase.js');
 
@@ -67,6 +68,9 @@ exports.retrieveMetricsPerPhase = (req, res) => {
     .then((teamFound) => {
       if (!teamFound) {
         throw new NotFoundError(`No team found with id ${teamId}`);
+      }
+      if (!authMiddleware.hasTeamAccess(req.user, teamFound._id)) {
+        throw new ForbiddenError('You do not have access to this team');
       }
       const buildQuery = { team: teamFound._id };
       // Applied to the build query rather than the execution aggregation: the executions
