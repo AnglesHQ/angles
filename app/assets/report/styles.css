@@ -49,6 +49,9 @@
         --master-color-3-relative: #ed8936;
         --accent-rgb: 246, 173, 85;
 
+        /* Cream on orange-400 is 1.8:1, so the suite header uses the panel ink (8.7:1). */
+        --master-font-color-accent-heading: var(--master-color-2);
+
         --pass-color: #6cc07e;
         --fail-color: #ff7b85;
         --error-color: #f9c65b;
@@ -72,7 +75,7 @@
     --main-panel-font-color: var(--master-font-color-1);
     --main-panel-secondary-font-color: var(--master-font-color-3);
     --suite-header-background: var(--master-color-3);
-    --suite-header-font-color: var(--master-font-color-2);
+    --suite-header-font-color: var(--master-font-color-accent-heading, var(--master-font-color-2));
 
     --border-color: var(--master-color-2-relative);
     --border-subtle: rgba(var(--theme-ink-rgb), 0.12);
