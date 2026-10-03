@@ -3,6 +3,7 @@ const passport = require('passport');
 const debug = require('debug');
 const authConfig = require('../../config/auth.config.js');
 const featureConfig = require('../../config/feature.config.js');
+const loginThrottle = require('../utils/login-throttle.js');
 const {
   isProviderReady,
   getReadyProvider,
@@ -38,7 +39,7 @@ module.exports = (app, path) => {
       .exists({ checkFalsy: true })
       .isLength({ min: 1, max: 100 })
       .withMessage('Password is required.'),
-  ], (req, res, next) => {
+  ], loginThrottle.guard, (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.array() });
@@ -49,8 +50,10 @@ module.exports = (app, path) => {
     return passport.authenticate('local', (err, user, info) => {
       if (err) return next(err);
       if (!user) {
+        loginThrottle.recordFailure(req.ip, req.body.username);
         return res.status(401).json({ error: info.message || 'Login failed' });
       }
+      loginThrottle.recordSuccess(req.ip, req.body.username);
       return req.logIn(user, (loginErr) => {
         if (loginErr) return next(loginErr);
         return res.json({
@@ -95,7 +98,7 @@ module.exports = (app, path) => {
       .exists({ checkFalsy: true })
       .isLength({ min: 1, max: 200 })
       .withMessage('Password is required.'),
-  ], ssoGuard, (req, res, next) => {
+  ], loginThrottle.guard, ssoGuard, (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.array() });
@@ -112,8 +115,10 @@ module.exports = (app, path) => {
         return res.status(503).json({ error: 'The directory could not be reached.' });
       }
       if (!user) {
+        loginThrottle.recordFailure(req.ip, req.body.username);
         return res.status(401).json({ error: (info && info.message) || 'Login failed' });
       }
+      loginThrottle.recordSuccess(req.ip, req.body.username);
       return req.logIn(user, (loginErr) => {
         if (loginErr) return next(loginErr);
         return res.json({
