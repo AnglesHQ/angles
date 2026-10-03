@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const debug = require('debug');
 
@@ -20,6 +21,7 @@ const {
   handleError,
 } = require('../exceptions/errors.js');
 const authMiddleware = require('../utils/auth-middleware.js');
+const { reportPolicy } = require('../utils/security-headers.js');
 
 const log = debug('build:controller');
 
@@ -280,8 +282,16 @@ exports.getReport = (req, res) => {
       const query = { build: mongoose.Types.ObjectId(build._id) };
       return Screenshot.find(query).lean();
     })
-    // eslint-disable-next-line global-require
-    .then((screenshots) => res.render('index', { build, screenshots, moment: require('moment') }))
+    .then((screenshots) => {
+      // A fresh nonce per report: the report's one inline script carries it, so nothing
+      // else injected into the page could run when it is opened from the API.
+      const nonce = crypto.randomBytes(16).toString('base64');
+      res.set('Content-Security-Policy', reportPolicy(nonce));
+      return res.render('index', {
+        // eslint-disable-next-line global-require
+        build, screenshots, nonce, moment: require('moment'),
+      });
+    })
     .catch((err) => handleError(err, res));
 };
 

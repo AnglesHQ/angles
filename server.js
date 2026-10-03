@@ -18,6 +18,7 @@ const { configureProviders } = require('./app/utils/passport-setup.js');
 const authSettingsService = require('./app/utils/auth-settings-service.js');
 const featureSettingsService = require('./app/utils/feature-settings-service.js');
 const adminSeedService = require('./app/utils/admin-seed-service.js');
+const { securityHeaders } = require('./app/utils/security-headers.js');
 // mongo db config
 const dbConfig = require('./config/database.config.js');
 
@@ -28,6 +29,8 @@ const mongoURL = process.env.MONGO_URL || dbConfig.url;
 // create express app
 const PORT = process.env.PORT || 3000;
 const app = express();
+// Don't advertise the framework.
+app.disable('x-powered-by');
 
 const corsOptionsDelegate = (req, callback) => {
   const origin = req.header('Origin');
@@ -60,6 +63,7 @@ const corsOptionsDelegate = (req, callback) => {
 };
 
 app.use(cors(corsOptionsDelegate));
+app.use(securityHeaders);
 app.use(compression());
 
 // Request instrumentation for the Prometheus endpoint. Registered before the routes so it
