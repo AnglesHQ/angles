@@ -1,167 +1,281 @@
-html
-    head
-        title= "Angles Report"
-        link(
-            rel='stylesheet',
-            type='text/css',
-            href='https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css',
-            integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO",
-            crossorigin="anonymous"
+//- Angles build report.
+//- Rendered by buildController.getReport and saved by users as a standalone HTML file, so
+//- the styles and script are inlined and nothing is loaded from the network. Expand and
+//- collapse use native <details>/<summary>, which keeps working with scripts disabled.
+-
+  const STATUSES = ['PASS', 'FAIL', 'ERROR', 'SKIPPED'];
+  const STATUS_LABELS = { PASS: 'Passed', FAIL: 'Failed', ERROR: 'Error', SKIPPED: 'Skipped' };
+  const toCounts = (result) => {
+    const raw = result instanceof Map ? Object.fromEntries(result) : (result || {});
+    const counts = { total: 0 };
+    STATUSES.forEach((status) => {
+      counts[status] = Number(raw[status]) || 0;
+      counts.total += counts[status];
+    });
+    return counts;
+  };
+  const formatDate = (date) => (date ? moment(date).format('DD MMM YYYY, HH:mm:ss') : '—');
+  const formatTime = (date) => (date ? moment(date).format('HH:mm:ss') : '');
+  const formatDuration = (start, end) => {
+    if (!start || !end) return '—';
+    const ms = moment(end).diff(moment(start));
+    if (ms < 0) return '—';
+    if (ms < 1000) return `${ms}ms`;
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  };
+  const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
+  const lower = (status) => String(status || '').toLowerCase();
+  const describePlatform = (platform) => [
+    [platform.platformName, platform.platformVersion].filter(Boolean).join(' '),
+    [platform.browserName, platform.browserVersion].filter(Boolean).join(' '),
+    platform.deviceName,
+  ].filter(Boolean).join(' · ');
+
+  const buildCounts = toCounts(build.result);
+  const components = (build.team && build.team.components) || [];
+  const component = components.find((c) => String(c._id) === String(build.component));
+  const screenshotsById = {};
+  (screenshots || []).forEach((screenshot) => {
+    let src = screenshot.thumbnail || '';
+    if (src && !src.startsWith('data:image')) src = `data:image/png;base64,${src}`;
+    screenshotsById[String(screenshot._id)] = { src, view: screenshot.view };
+  });
+  const allExecutions = [];
+  (build.suites || []).forEach((suite) => (suite.executions || []).forEach((e) => allExecutions.push(e)));
+  const executionCounts = { ALL: allExecutions.length };
+  STATUSES.forEach((status) => {
+    executionCounts[status] = allExecutions.filter((e) => e.status === status).length;
+  });
+
+mixin resultsBar(counts)
+  .results-bar(role="img" aria-label=STATUSES.map((s) => `${STATUS_LABELS[s]}: ${counts[s]}`).join(', '))
+    each status in STATUSES
+      if counts[status] > 0
+        .results-bar-segment(
+          class=`status-bg-${lower(status)}`
+          style=`flex-grow: ${counts[status]}`
+          title=`${STATUS_LABELS[status]}: ${counts[status]}`
         )
-        style
-            include styles.css
 
-        script(type = "text/javascript").
-            window.onload = function () {
-                function setComponentName() {
-                    let components = !{JSON.stringify(build.team.components)};
-                    let buildComponent = !{JSON.stringify(build.component)};
-                    let foundComponent = components.find(component => component._id === buildComponent);
-                    document.getElementById("component-name").innerHTML = foundComponent.name;
-                }
-                setComponentName();
+doctype html
+html(lang="en")
+  head
+    meta(charset="utf-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title= `Angles Report – ${build.name}`
+    style
+      include styles.css
 
-                function loadScreenshots() {
-                    let screenshots = !{JSON.stringify(screenshots)};
-                    screenshots.forEach((screenshot) => {
-                      let img = document.getElementById(`screenshot_${screenshot._id}`);
-                      if (img != undefined) {
-                        let thumbnail = screenshot.thumbnail;
-                        if (!thumbnail.startsWith('data:image')) {
-                          thumbnail = `data:image/png;base64,${thumbnail}`
-                        }
-                        img.src = thumbnail;
-                      }
-                    });
-                }
-                loadScreenshots();
-            }
-            function toggleElement(identifier) {
-                let x = document.getElementById(identifier);
-                // x.classList.toggle("active")
-                if (x.style.display === 'none') {
-                    x.style.display = 'contents';
-                } else {
-                    x.style.display = 'none';
-                }
-            }
+  body
+    main.report
+      //- ── Build summary ─────────────────────────────────────────────────────
+      section.card.report-header(aria-labelledby="report-title")
+        .report-header-identity
+          span.report-header-icon.status-symbol(
+            class=`status-bg-${lower(build.status)} status-${lower(build.status)}`
+            aria-hidden="true"
+          )
+          .report-header-text
+            .report-eyebrow Build report
+            h1.report-title#report-title= build.name
+            .report-header-meta
+              span.status-pill(class=`status-bg-${lower(build.status)}`)= build.status
+              if build.team
+                span= build.team.name
+              if component
+                span.meta-separator(aria-hidden="true") /
+                span= component.name
+              if build.environment
+                span.meta-separator(aria-hidden="true") ·
+                span= build.environment.name
+              if build.phase
+                span.meta-separator(aria-hidden="true") ·
+                span= build.phase.name
 
-    body
-    div(class="container-div")
+        dl.report-facts
+          .fact
+            dt Start
+            dd= formatDate(build.start)
+          .fact
+            dt Finish
+            dd= formatDate(build.end)
+          .fact
+            dt Duration
+            dd= formatDuration(build.start, build.end)
+          .fact
+            dt Suites
+            dd= (build.suites || []).length
+          .fact
+            dt Tests
+            dd= allExecutions.length
 
-        // table containing build details
-        table(class="table")
-            thead(class="thead-dark")
-                tr
-                    th(scope="col" colspan="100%" class="caps")
-                        span= `Build Summary - ${build.name}`
-                        span(class=`status-label status-${build.status}`)= build.status
+        .report-results
+          .result-counts
+            .result-count
+              span.result-count-value= buildCounts.total
+              span.result-count-label.muted Total
+            each status in STATUSES
+              .result-count
+                span.result-count-value(class=`status-${lower(status)}`)= buildCounts[status]
+                span.result-count-label(class=`status-${lower(status)}`)= STATUS_LABELS[status]
+          +resultsBar(buildCounts)
+
+      //- ── Artifacts ─────────────────────────────────────────────────────────
+      if build.artifacts && build.artifacts.length
+        section.card.card-section(aria-labelledby="artifacts-title")
+          h2.card-title#artifacts-title= `Artifacts (${build.artifacts.length})`
+          table.data-table
+            thead
+              tr
+                th(scope="col") Group ID
+                th(scope="col") Artifact ID
+                th(scope="col") Version
             tbody
+              each artifact in build.artifacts
                 tr
-                    th(scope="row" ) Team
-                    td(class="caps")= build.team.name
-                    th(scope="row") Pass
-                    td=Object.fromEntries(build.result).PASS
-                tr
-                    th(scope="row") Component
-                    td(id="component-name")
-                    th(scope="row") Fail
-                    td=Object.fromEntries(build.result).FAIL
-                tr
-                    th(scope="row") Environment
-                    td= build.environment.name
-                    th(scope="row") Error
-                    td=Object.fromEntries(build.result).ERROR
-                tr
-                    th(scope="row") Start
-                    td=moment(build.start).format('DD-MMM-YYYY HH:MM:SS')
-                    th(scope="row") Skipped
-                    td=Object.fromEntries(build.result).SKIPPED
-                tr
-                    th(scope="row") Finish
-                    td=moment(build.end).format('DD-MMM-YYYY HH:MM:SS')
-                    th(scope="row") Duration (hh:mm:ss)
-                    td=moment.utc(moment(build.end).diff(moment(build.start))).format("HH:mm:ss")
-                if (build.phase)
-                    tr
-                        th(scope="row") Phase
-                        td= build.phase.name
-                        th(scope="row")
-                        td
+                  td= artifact.groupId
+                  td= artifact.artifactId
+                  td= artifact.version
 
-        // add artifacts
-        if build.artifacts !== undefined
-            table(class="table")
-                thead(class="thead-dark")
-                    tr
-                        th(scope="col" colspan="100%")= `Build Artifacts (${build.artifacts.length})`
-                tbody
-                    tr
-                        th(scope="row") GroupId
-                        th(scope="row") ArtifactId
-                        th(scope="row") Version
-                    each artifact, index in build.artifacts
-                        tr
-                            td= artifact.groupId
-                            td= artifact.artifactId
-                            td= artifact.version
+      //- ── Toolbar ───────────────────────────────────────────────────────────
+      if allExecutions.length
+        .toolbar(role="toolbar" aria-label="Filter and expand tests")
+          .filter-group(role="group" aria-label="Filter by result")
+            button.filter-chip(type="button" data-status="ALL" aria-pressed="true")
+              | All
+              span.filter-chip-count= executionCounts.ALL
+            each status in STATUSES
+              if executionCounts[status] > 0
+                button.filter-chip(type="button" data-status=status aria-pressed="false")
+                  span.status-symbol(class=`status-${lower(status)}` aria-hidden="true")
+                  | #{STATUS_LABELS[status]}
+                  span.filter-chip-count= executionCounts[status]
+          input.toolbar-search#report-search(
+            type="search"
+            placeholder="Filter tests by name, suite, feature or tag"
+            aria-label="Filter tests by name, suite, feature or tag"
+          )
+          .toolbar-actions
+            if executionCounts.FAIL + executionCounts.ERROR > 0
+              button.btn-ghost#expand-failures(type="button") Show failures
+            button.btn-ghost#expand-all(type="button") Expand all
+            button.btn-ghost#collapse-all(type="button") Collapse all
 
-        // tables containing suite details
-        each suite, index in build.suites
-            table(class="table suite-table")
-                thead(class="thead-dark")
-                    tr
-                        th(scope="col" class="caps")
-                            span= `Suite: ${suite.name}`
-                            span(class=`status-label status-${suite.status}`)= suite.status
-                        th(scope="col" class="caps")= `Duration: ${moment.utc(moment(suite.end).diff(moment(suite.start))).format("HH:mm:ss")}`
-                        th(scope="col")= `Total: ${suite.executions.length}`
-                        th(scope="col")= `Pass: ${Object.fromEntries(suite.result).PASS}`
-                        th(scope="col")= `Fail: ${Object.fromEntries(suite.result).FAIL}`
-                        th(scope="col")= `Error: ${Object.fromEntries(suite.result).ERROR}`
-                        th(scope="col")= `Skipped: ${Object.fromEntries(suite.result).SKIPPED}`
-                tbody
-                    each execution, index in suite.executions
-                        tr(class="test-row")
-                            td(class=`${execution.status} caps` colspan="100%" onclick=`toggleElement("${execution._id}"); this.classList.toggle("opened");`)= `Test: ${execution.title}`
-                        tr(class="actions-row" id=`${execution._id}` style={ display: "none" })
-                            td(colspan="100%")
-                                table(class="actions-table")
-                                    tbody
-                                        each action, index in execution.actions
-                                            tr(class="action-description")
-                                                td(class=`${action.status}` colspan="100%" onclick=`toggleElement("${ execution._id}_action_${index}"); this.classList.toggle("opened");`)= action.name
-                                            tr(class="action-steps" id=`${execution._id}_action_${index}` style={ display: "none" })
-                                                td(colspan="100%")
-                                                    // add table now
-                                                    table(id="steps-table" class="table")
-                                                        thead
-                                                            tr
-                                                                th(scope="col")= "#"
-                                                                th(scope="col")= "Time"
-                                                                th(scope="col")= "Status"
-                                                                th(scope="col")= "Step"
-                                                                th(scope="col")= "Expected"
-                                                                th(scope="col")= "Actual"
-                                                                th(scope="col")= "Info"
-                                                                th(scope="col")= "Screenshot"
-                                                        tbody
-                                                            each step, index in action.steps
-                                                                tr
-                                                                    td= index + 1
-                                                                    td= moment(step.timestamp).format("HH:mm:ss")
-                                                                    td(class=`step-${step.status}`)= step.status
-                                                                    if (step.status === 'INFO' || step.status === 'ERROR')
-                                                                        td(colspan="4")= step.info
-                                                                    else
-                                                                        td= step.name
-                                                                        td= step.expected
-                                                                        td= step.actual
-                                                                        td= step.info
-                                                                    if (step.screenshot)
-                                                                        td
-                                                                            img(id=`screenshot_${step.screenshot}`)
-                                                                    else
-                                                                        td
+      //- ── Suites ────────────────────────────────────────────────────────────
+      each suite in (build.suites || [])
+        - const suiteCounts = toCounts(suite.result)
+        details.card.suite(open)
+          summary.suite-header
+            .suite-header-info
+              span.chevron(aria-hidden="true")
+              div
+                .suite-title= suite.name
+                .suite-meta
+                  span.status-pill(class=`status-bg-${lower(suite.status)}`)= suite.status
+                  span= plural((suite.executions || []).length, 'test')
+                  span.meta-separator(aria-hidden="true") ·
+                  span= formatDuration(suite.start, suite.end)
+            .suite-results
+              +resultsBar(suiteCounts)
 
-        a(class="angles-link" href="https://angleshq.github.io/" target="_blank")= "* This report was generated using the Angles dashboard."
+          .suite-body
+            each execution in (suite.executions || [])
+              -
+                const executionStatus = lower(execution.status);
+                const searchText = [execution.title, suite.name, execution.feature]
+                  .concat(execution.tags || []).filter(Boolean).join(' ').toLowerCase();
+              details.execution(
+                class=`execution-${executionStatus}`
+                data-status=execution.status
+                data-search=searchText
+              )
+                summary.execution-header
+                  span.chevron(aria-hidden="true")
+                  .execution-main
+                    .execution-title-line
+                      span.execution-title= execution.title
+                      span.status-chip.status-symbol(class=`status-${executionStatus}`)= execution.status
+                    .execution-details
+                      span= `Duration: ${formatDuration(execution.start, execution.end)}`
+                      if execution.feature
+                        span= `Feature: ${execution.feature}`
+                      each platform in (execution.platforms || [])
+                        span= describePlatform(platform)
+                      if execution.tags && execution.tags.length
+                        span
+                          each tag in execution.tags
+                            span.tag= tag
+
+                .actions
+                  if !execution.actions || !execution.actions.length
+                    p.muted No actions were recorded for this test.
+                  each action, actionIndex in (execution.actions || [])
+                    - const actionStatus = lower(action.status)
+                    - const failingAction = action.status === 'FAIL' || action.status === 'ERROR'
+                    details.action(class=`action-${actionStatus}` open=failingAction)
+                      summary.action-header
+                        span.chevron(aria-hidden="true")
+                        span.action-index= actionIndex + 1
+                        span.status-symbol(class=`status-${actionStatus}` aria-label=action.status)
+                        span.action-name= action.name
+                        span.action-step-count= plural((action.steps || []).length, 'step')
+
+                      ol.steps
+                        each step, stepIndex in (action.steps || [])
+                          -
+                            const stepStatus = lower(step.status);
+                            const isMessage = step.status === 'INFO' || step.status === 'ERROR' || step.status === 'DEBUG';
+                            const shot = step.screenshot ? screenshotsById[String(step.screenshot)] : undefined;
+                          li.step(class=`step-${stepStatus}`)
+                            span.step-index= stepIndex + 1
+                            span.step-status.status-symbol(
+                              class=`status-${stepStatus}`
+                              title=step.status
+                              aria-label=step.status
+                            )
+                            .step-main
+                              .step-head
+                                span.step-time= formatTime(step.timestamp)
+                                if isMessage
+                                  span.step-name= step.info || step.name
+                                else
+                                  span.step-name= step.name
+                              if step.expected || step.actual
+                                dl.step-diff
+                                  dt Expected
+                                  dd= step.expected || '—'
+                                  dt Actual
+                                  dd= step.actual || '—'
+                              if !isMessage && step.info
+                                .step-info= step.info
+                            if shot && shot.src
+                              button.step-shot(type="button" title="View screenshot")
+                                img(
+                                  src=shot.src
+                                  alt=`Screenshot: ${shot.view || step.name || 'step ' + (stepIndex + 1)}`
+                                  loading="lazy"
+                                )
+
+      if allExecutions.length
+        p.empty-state#report-empty(hidden) No tests match the current filter.
+      else
+        p.empty-state No tests were recorded for this build.
+
+      footer.report-footer
+        | Generated #{moment().format('DD MMM YYYY, HH:mm')} by the
+        |
+        a(href="https://angleshq.github.io/" target="_blank" rel="noopener noreferrer") Angles dashboard
+        | .
+
+    .viewer#screenshot-viewer(hidden tabindex="-1" role="dialog" aria-modal="true" aria-label="Screenshot")
+      img(alt="")
+      span.viewer-caption
+
+    script
+      include report.js
