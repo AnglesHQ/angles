@@ -39,7 +39,7 @@
     "express-session": "^1.19.0",
     "express-validator": "^6.14.0",
     "jimp": "^0.22.12",
-    "moment": "^2.29.4",
+    "moment": "^2.31.0",
     "mongoose": "^6.4.7",
     "mpath": ">=0.9.0",
     "mquery": ">=4.0.2",
