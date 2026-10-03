@@ -369,8 +369,11 @@ describe('Build API Tests', () => {
         .expect(200)
         .end((err, res) => {
           if (err) return done(err);
-          res.text.should.containEql('<html>');
+          res.text.should.startWith('<!DOCTYPE html>');
           res.text.should.containEql('build-unit-testing-build');
+          // The report is saved and opened offline, so it must not load anything remotely.
+          res.text.should.not.match(/<link[^>]+stylesheet/);
+          res.text.should.not.match(/<script[^>]+src=/);
           return done();
         });
     });
