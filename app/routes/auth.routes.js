@@ -4,6 +4,7 @@ const debug = require('debug');
 const authConfig = require('../../config/auth.config.js');
 const featureConfig = require('../../config/feature.config.js');
 const loginThrottle = require('../utils/login-throttle.js');
+const { trustedUiOrigin } = require('../utils/ui-origin.js');
 const {
   isProviderReady,
   getReadyProvider,
@@ -141,6 +142,16 @@ module.exports = (app, path) => {
           error: 'This provider uses a credential login; post to /login instead.',
         });
       }
+      // Where to send the browser once the identity provider is done: the UI passes its
+      // own origin, because it is usually on a different port or host from the API. Only
+      // an origin on the API's own host is kept (see ui-origin.js), and only for this
+      // login; without one the redirect stays relative to the API, as before.
+      const returnTo = trustedUiOrigin(req.query.returnTo, req);
+      if (returnTo) {
+        req.session.ssoReturnTo = returnTo;
+      } else if (req.session) {
+        delete req.session.ssoReturnTo;
+      }
       return passport.authenticate(strategyName(req.params.providerId))(req, res, next);
     },
   );
@@ -154,21 +165,28 @@ module.exports = (app, path) => {
   // error handler, which would surface a bare 500 with a stack trace to someone who just
   // failed to log in. Both are the same thing from the user's perspective, so both land
   // on the login page, and the reason is logged rather than returned.
+  //
+  // The UI origin recorded when the login started is read up front: logging in replaces
+  // the session (to prevent session fixation), which discards it. A SAML assertion is
+  // usually posted back cross-site, which a SameSite=Lax session cookie does not
+  // accompany, so a SAML login normally falls back to the API's own origin.
   const ssoCallback = (req, res, next) => {
     const { providerId } = req.params;
+    const uiOrigin = (req.session && req.session.ssoReturnTo) || '';
+    if (req.session) delete req.session.ssoReturnTo;
     return passport.authenticate(strategyName(providerId), (err, user, info) => {
       if (err) {
         log('SSO callback for provider %s failed: %s', providerId, err.message);
-        return res.redirect('/login?error=true');
+        return res.redirect(`${uiOrigin}/login?error=true`);
       }
       if (!user) {
         log('SSO callback for provider %s denied: %s', providerId, (info && info.message) || 'no user');
-        return res.redirect('/login?error=true');
+        return res.redirect(`${uiOrigin}/login?error=true`);
       }
       return req.logIn(user, (loginErr) => {
         if (loginErr) return next(loginErr);
         // Successful authentication, redirect home.
-        return res.redirect('/');
+        return res.redirect(`${uiOrigin}/`);
       });
     })(req, res, next);
   };

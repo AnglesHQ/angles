@@ -9,11 +9,19 @@ changing a provider needs no restart and no redeploy.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `ANGLES_BASE_URL` | For SSO | Public origin of this instance, e.g. `https://angles.example.com`. Every provider's callback URL is derived from it and must match what is registered with the identity provider. Defaults to `http://localhost:3000`. |
+| `ANGLES_BASE_URL` | For SSO | Public URL of the API, e.g. `https://angles.example.com`. Every provider's callback URL is derived from it and must match what is registered with the identity provider. Defaults to `ANGLES_API_BASE_URL` (the API URL the UI and the Swagger docs already use), and to `http://localhost:3000` when neither is set. |
 | `SESSION_SECRET` | In production | Signs session cookies. Startup fails without it when `NODE_ENV=production`. Anyone who knows it can forge a session for any account, including an admin, so generate a random value per deployment. |
 | `ANGLES_ADMIN_PASSWORD` | First run | Seeds the initial local admin account. |
 | `SECURE_COOKIES` | Over HTTPS | Set to `true` to mark the session cookie `Secure`. |
 | `TRUST_PROXY` | Behind a proxy | Set to `true` so `SECURE_COOKIES` works behind a TLS-terminating reverse proxy. |
+
+After the identity provider, users return to the UI they started from: the UI sends
+its own origin with the login, and the API redirects back to it. The API only accepts an
+origin on its own host (the same rule it applies to cross-origin requests, with
+`localhost` and `127.0.0.1` treated as one host), so it cannot be used to redirect
+elsewhere. A SAML assertion is usually posted back cross-site without the session
+cookie, so a SAML login lands on the API's own origin instead; serve the UI and the API
+from one origin (through a reverse proxy) if you use SAML.
 
 Provider secrets - OIDC client secrets, SAML private keys, LDAP bind credentials - are
 stored in the database and are **write-only** through the API. They are never returned;
