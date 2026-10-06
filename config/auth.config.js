@@ -28,6 +28,23 @@ const resolveSessionSecret = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
+// The public origin the API is reached on, without a trailing slash: where identity
+// providers send users back to. ANGLES_BASE_URL sets it explicitly. Without it, the API's
+// own public URL (ANGLES_API_BASE_URL, which deployments already set for the UI and the
+// Swagger docs) is used, so a deployment that sets that one does not silently register
+// http://localhost:3000 with its identity provider. Like Swagger, a value without a
+// scheme takes the first of SWAGGER_SCHEMES.
+const resolveBaseUrl = () => {
+  const explicit = (process.env.ANGLES_BASE_URL || '').trim();
+  const apiUrl = (process.env.ANGLES_API_BASE_URL || '').trim();
+  let baseUrl = explicit || apiUrl || 'http://localhost:3000';
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    const scheme = (process.env.SWAGGER_SCHEMES || 'http').split(',')[0].trim() || 'http';
+    baseUrl = `${scheme}://${baseUrl}`;
+  }
+  return baseUrl.replace(/\/+$/, '');
+};
+
 // These are only the in-memory defaults used before the persisted settings load at
 // startup. All authentication configuration (which providers exist, whether they are
 // enabled, issuers, client ids, secrets, group mappings) is managed exclusively through
@@ -38,12 +55,14 @@ const resolveSessionSecret = () => {
 // The two exceptions below are genuine deployment/infrastructure values, not user config:
 // - sessionSecret: the session signing key (see resolveSessionSecret above).
 // - baseUrl: the public origin, used to derive each provider's callback URL. It depends
-//   on where the app is hosted and must match what is registered with the IdP.
+//   on where the app is hosted and must match what is registered with the IdP (see
+//   resolveBaseUrl above).
 module.exports = {
+  resolveBaseUrl,
   localAuthEnabled: true,
   sessionSecret: resolveSessionSecret(),
   // Public origin of this Angles instance, without a trailing slash.
-  baseUrl: (process.env.ANGLES_BASE_URL || 'http://localhost:3000').replace(/\/+$/, ''),
+  baseUrl: resolveBaseUrl(),
   // Populated from the database at startup by auth-settings-service.
   providers: [],
 };

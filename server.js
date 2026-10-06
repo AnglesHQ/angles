@@ -19,6 +19,7 @@ const authSettingsService = require('./app/utils/auth-settings-service.js');
 const featureSettingsService = require('./app/utils/feature-settings-service.js');
 const adminSeedService = require('./app/utils/admin-seed-service.js');
 const { securityHeaders } = require('./app/utils/security-headers.js');
+const { isSameHost } = require('./app/utils/ui-origin.js');
 // mongo db config
 const dbConfig = require('./config/database.config.js');
 
@@ -41,11 +42,7 @@ const corsOptionsDelegate = (req, callback) => {
   if (origin) {
     try {
       const originUrl = new URL(origin);
-      const isLocal = (host) => host === 'localhost' || host === '127.0.0.1';
-      const isSameHost = originUrl.hostname === req.hostname
-        || (isLocal(originUrl.hostname) && isLocal(req.hostname));
-
-      if (isSameHost) {
+      if (isSameHost(originUrl.hostname, req.hostname)) {
         corsOptions.origin = true;
       } else {
         corsOptions.origin = false;

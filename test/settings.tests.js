@@ -367,13 +367,17 @@ describe('Auth Settings API Tests', () => {
   // redirect to the IdP, and follow its redirect back to the callback. The ID token is
   // genuinely signed by the test IdP, so signature, issuer, audience and nonce
   // validation all run for real.
-  const completeLogin = async (providerId, claims) => {
+  //
+  // `returnTo` is the UI origin the login is started with, as the UI passes it.
+  const completeLogin = async (providerId, claims, returnTo) => {
     idp.nextClaims = claims;
     // A fresh agent per login, so the PKCE verifier and state stored in the session are
     // the ones this flow created.
     const agent = request.agent(app);
 
-    const start = await agent.get(`${baseUrl}auth/sso/${providerId}`).expect(302);
+    const start = await agent.get(`${baseUrl}auth/sso/${providerId}`)
+      .query(returnTo === undefined ? {} : { returnTo })
+      .expect(302);
 
     // Follow the redirect to the IdP itself - a different server, so it needs its own
     // request rather than the app agent.
@@ -590,6 +594,79 @@ describe('Auth Settings API Tests', () => {
             return done(assertionErr);
           }
         });
+    });
+  });
+
+  // The UI and the API are usually on different ports (or hosts behind one proxy), so
+  // after the identity provider the API sends the browser back to the UI's origin. The
+  // supertest requests reach the API as 127.0.0.1, so localhost counts as the same host.
+  describe('OIDC login flow: returning to the UI', () => {
+    beforeEach((done) => {
+      adminAgent
+        .put(`${baseUrl}settings/auth`)
+        // defaultRole is explicit: a PUT that omits it keeps the stored value, and an
+        // earlier test sets one, which would let the "denied" login in.
+        .send({ providers: [oidcProvider({ defaultRole: '' })] })
+        .expect(200)
+        .end(done);
+    });
+
+    it('returns to the UI origin the login was started from', async () => {
+      const { agent, res } = await completeLogin('okta', {
+        sub: 'return-1', email: 'return.ui@example.com', groups: ['angles-users'],
+      }, 'http://localhost:3001');
+      res.status.should.equal(302);
+      res.headers.location.should.equal('http://localhost:3001/');
+      await agent.get(`${baseUrl}auth/me`).expect(200);
+    });
+
+    it('returns a denied login to the UI login page', async () => {
+      const { res } = await completeLogin('okta', {
+        sub: 'return-2', email: 'return.denied@example.com', groups: ['some-other-group'],
+      }, 'http://localhost:3001');
+      res.headers.location.should.equal('http://localhost:3001/login?error=true');
+    });
+
+    it('keeps only the origin of the URL it is given', async () => {
+      const { res } = await completeLogin('okta', {
+        sub: 'return-3', email: 'return.path@example.com', groups: ['angles-users'],
+      }, 'http://127.0.0.1:3001/some/page?x=1');
+      res.headers.location.should.equal('http://127.0.0.1:3001/');
+    });
+
+    it('ignores an origin on another host, so it cannot be used as an open redirect', async () => {
+      const { agent, res } = await completeLogin('okta', {
+        sub: 'return-4', email: 'return.foreign@example.com', groups: ['angles-users'],
+      }, 'https://evil.example.org');
+      res.headers.location.should.equal('/');
+      await agent.get(`${baseUrl}auth/me`).expect(200);
+    });
+
+    it('ignores values that are not http(s) origins', async () => {
+      // eslint-disable-next-line no-script-url
+      const values = ['javascript:alert(1)', '//evil.example.org', 'not a url', 'http://user:pw@localhost:3001'];
+      // eslint-disable-next-line no-restricted-syntax
+      for (const [index, value] of values.entries()) {
+        // eslint-disable-next-line no-await-in-loop
+        const { res } = await completeLogin('okta', {
+          sub: `return-5-${index}`, email: `return.bad${index}@example.com`, groups: ['angles-users'],
+        }, value);
+        res.headers.location.should.equal('/');
+      }
+    });
+
+    it('forgets the UI origin once the login is over', async () => {
+      const agent = request.agent(app);
+      await agent.get(`${baseUrl}auth/sso/okta`).query({ returnTo: 'http://localhost:3001' }).expect(302);
+      // A second login from the same browser without one goes back to the API origin.
+      idp.nextClaims = { sub: 'return-6', email: 'return.forget@example.com', groups: ['angles-users'] };
+      const start = await agent.get(`${baseUrl}auth/sso/okta`).expect(302);
+      const authorize = await request(idp.issuer)
+        .get(start.headers.location.replace(idp.issuer, ''))
+        .redirects(0)
+        .expect(302);
+      const res = await agent.get(authorize.headers.location.replace(/^https?:\/\/[^/]+/, '')).redirects(0);
+      res.headers.location.should.equal('/');
     });
   });
 

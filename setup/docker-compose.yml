@@ -26,7 +26,10 @@ services:
     ports:
       - 3000:3000
     environment:
-      - ANGLES_API_BASE_URL=http://localhost:3000
+      # Public URL of the API: used by the Swagger docs and, unless ANGLES_BASE_URL is
+      # set, for each SSO provider's redirect/callback URL. Set it (here and on the
+      # frontend) to the URL users actually reach the API on.
+      - ANGLES_API_BASE_URL=${ANGLES_API_BASE_URL:-http://localhost:3000}
       - ANGLES_API_BASE_PATH=/rest/api/v1.0
       - SWAGGER_SCHEMES=http
       - PORT=3000
@@ -40,10 +43,10 @@ services:
       # videos, traces and HTML snapshots. Stored on the angles_attachments volume.
       - ANGLES_ATTACHMENT_MAX_SIZE_MB=${ANGLES_ATTACHMENT_MAX_SIZE_MB:-100}
       - MONGO_URL=mongodb://angleshq:%40nglesPassword@mongodb:27017/angles
-      # Public origin of this instance. Each SSO provider's redirect/callback URL is
-      # derived from it, and must match what is registered with the identity provider,
-      # so set this to the URL users actually reach Angles on.
-      - ANGLES_BASE_URL=${ANGLES_BASE_URL:-http://localhost:3000}
+      # Overrides the public URL each SSO provider's redirect/callback URL is derived
+      # from, which must match what is registered with the identity provider. Leave it
+      # empty to use ANGLES_API_BASE_URL.
+      - ANGLES_BASE_URL=${ANGLES_BASE_URL:-}
       # Signs session cookies. Required when NODE_ENV=production; anyone who knows it can
       # forge a session for any account, so generate a random value per deployment.
       - SESSION_SECRET=${SESSION_SECRET:-}
@@ -64,7 +67,7 @@ services:
     ports:
       - 3001:3001
     environment:
-      - ANGLES_API_BASE_URL=http://localhost:3000
+      - ANGLES_API_BASE_URL=${ANGLES_API_BASE_URL:-http://localhost:3000}
       - ANGLES_API_BASE_PATH=/rest/api/v1.0
       - PORT=3001
     depends_on:
