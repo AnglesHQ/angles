@@ -2,8 +2,15 @@ const { Issuer, Strategy: OpenIDConnectStrategy } = require('openid-client');
 const debug = require('debug');
 const { findOrProvisionUser } = require('../provider-user-service.js');
 const { callbackUrlFor } = require('../auth-settings-service.js');
+const { toGroupArray } = require('../role-mapper.js');
 
 const log = debug('auth:oidc');
+// Raw group names reveal org structure, so they sit behind their own namespace: enabling
+// `auth:oidc` alone gives diagnostics without them.
+const groupsLog = debug('auth:oidc:groups');
+
+const MAX_LOGGED_ITEMS = 50;
+const MAX_LOGGED_LENGTH = 100;
 
 /**
  * Reads a claim that may be namespaced. Auth0 and several other providers emit custom
@@ -19,6 +26,44 @@ const readClaim = (source, path) => {
     (acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined),
     source,
   );
+};
+
+/**
+ * Makes an IdP-supplied string safe to write to a log line. Claim names and group values
+ * are controlled by the identity provider, so control characters (which would let a value
+ * forge extra log lines) are stripped and the length is capped.
+ */
+const sanitiseForLog = (value) => String(value)
+  // eslint-disable-next-line no-control-regex
+  .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, '')
+  .slice(0, MAX_LOGGED_LENGTH);
+
+/** Sanitised, capped list of an object's top-level keys. Values are deliberately not read. */
+const claimNames = (source) => (source && typeof source === 'object'
+  ? Object.keys(source).slice(0, MAX_LOGGED_ITEMS).map(sanitiseForLog).sort()
+  : []);
+
+/**
+ * Describes where the groups claim was found and what shape it had, without including any
+ * of its values. This is what tells "the IdP never sent the claim" apart from "it sent an
+ * empty one" or "it sent a scalar".
+ * @returns {{source: string, type: string, count: number}}
+ */
+const describeGroupsClaim = (claims, profile, groupsClaim) => {
+  const fromToken = readClaim(claims, groupsClaim);
+  const fromUserinfo = readClaim(profile, groupsClaim);
+  let source = 'none';
+  let value;
+  if (fromToken) {
+    source = 'id_token';
+    value = fromToken;
+  } else if (fromUserinfo) {
+    source = 'userinfo';
+    value = fromUserinfo;
+  }
+  let type = typeof value;
+  if (Array.isArray(value)) type = 'array';
+  return { source, type, count: toGroupArray(value).length };
 };
 
 /**
@@ -54,6 +99,35 @@ const buildVerify = (provider) => async (tokenSet, userInfo, done) => {
     const groups = readClaim(claims, config.groupsClaim)
       || readClaim(profile, config.groupsClaim)
       || [];
+
+    // Diagnostics for group mapping problems. Logs claim *names* and the shape of the groups
+    // claim, never claim values, tokens or the userinfo payload - those carry PII and
+    // credentials.
+    const found = describeGroupsClaim(claims, profile, config.groupsClaim);
+    log(
+      'Login claims for %s via provider %s: idTokenClaims=[%s] userinfoClaims=[%s] '
+      + 'scopes=[%s] groupsClaim=%s groupsSource=%s groupsType=%s groupsCount=%d',
+      sanitiseForLog(identifier),
+      provider.id,
+      claimNames(claims).join(','),
+      claimNames(profile).join(','),
+      sanitiseForLog(tokenSet.scope || ''),
+      sanitiseForLog(config.groupsClaim || '(not configured)'),
+      found.source,
+      found.type,
+      found.count,
+    );
+    if (groupsLog.enabled) {
+      const names = toGroupArray(groups);
+      groupsLog(
+        'Groups received for %s via provider %s (%d, showing up to %d): [%s]',
+        sanitiseForLog(identifier),
+        provider.id,
+        names.length,
+        MAX_LOGGED_ITEMS,
+        names.slice(0, MAX_LOGGED_ITEMS).map(sanitiseForLog).join(', '),
+      );
+    }
 
     // Entra ID omits the groups claim entirely when the user is in more than ~200 groups,
     // substituting a claim-sources pointer to the Graph API. Detect that explicitly so it
@@ -123,5 +197,8 @@ exports.build = async (provider) => {
   }, buildVerify(provider));
 };
 
+exports.buildVerify = buildVerify;
+exports.describeGroupsClaim = describeGroupsClaim;
+exports.sanitiseForLog = sanitiseForLog;
 exports.readClaim = readClaim;
 exports.normaliseScopes = normaliseScopes;

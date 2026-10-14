@@ -1,6 +1,6 @@
 const debug = require('debug');
 const User = require('../models/user.js');
-const { resolveRole } = require('./role-mapper.js');
+const { explainRole } = require('./role-mapper.js');
 
 const log = debug('auth:provisioning');
 
@@ -27,7 +27,22 @@ exports.findOrProvisionUser = async ({ username, groups, provider }) => {
   }
 
   const normalised = String(username).toLowerCase().trim();
-  const role = resolveRole(groups, provider.roleMappings, provider.defaultRole);
+  const resolution = explainRole(groups, provider.roleMappings, provider.defaultRole);
+  const { role } = resolution;
+
+  // Only counts and admin-configured mapping values are logged here, never the raw group
+  // values the provider sent - those are logged (opt-in) by the strategy.
+  log(
+    'Role resolution for %s via provider %s: role=%s matchedMappings=[%s] defaultRoleUsed=%s '
+    + 'groups=%d unmatchedGroups=%d',
+    normalised,
+    provider.id,
+    role || 'none',
+    resolution.matchedValues.join(','),
+    resolution.usedDefault,
+    resolution.groupCount,
+    resolution.unmatchedCount,
+  );
 
   if (!role) {
     log('User %s denied access: no matching role mapping for provider %s', normalised, provider.id);
