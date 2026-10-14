@@ -29,7 +29,7 @@ const toGroupArray = (groups) => {
 };
 
 /**
- * Resolves a role from the provider's role mappings.
+ * Resolves a role from the provider's role mappings, and reports how it got there.
  *
  * Matching is case-insensitive because directories are inconsistent about casing
  * (Active Directory group names and SAML attribute values in particular), and an admin
@@ -38,23 +38,42 @@ const toGroupArray = (groups) => {
  * @param {string[]|string} groups - group values from the provider
  * @param {Array<{value: string, role: string}>} roleMappings - configured mappings
  * @param {string} [defaultRole] - role granted when nothing matches; empty/absent denies
- * @returns {string|null} the mapped role, or null when access should be denied
+ * @returns {{role: (string|null), matchedValues: string[], usedDefault: boolean,
+ *   groupCount: number, unmatchedCount: number}} `role` is null when access should be denied.
+ *   `matchedValues` are the configured mapping values that matched (admin-authored, so
+ *   safe to log), never the raw group values received from the provider.
  */
-exports.resolveRole = (groups, roleMappings = [], defaultRole = '') => {
+const explainRole = (groups, roleMappings = [], defaultRole = '') => {
   const groupList = toGroupArray(groups).map((group) => group.toLowerCase());
 
-  const matched = (roleMappings || [])
+  const matches = (roleMappings || [])
     .filter((mapping) => mapping && mapping.value && mapping.role)
-    .filter((mapping) => groupList.includes(String(mapping.value).toLowerCase()))
-    .map((mapping) => mapping.role);
+    .filter((mapping) => groupList.includes(String(mapping.value).toLowerCase()));
 
-  if (matched.length > 0) {
+  const matchedValues = [...new Set(matches.map((mapping) => String(mapping.value)))];
+  const matchedGroupCount = new Set(
+    matches.map((mapping) => String(mapping.value).toLowerCase()),
+  ).size;
+  const base = {
+    matchedValues,
+    groupCount: groupList.length,
+    unmatchedCount: Math.max(groupList.length - matchedGroupCount, 0),
+  };
+
+  if (matches.length > 0) {
     // Grant the strongest role the subject qualifies for.
-    return ROLE_PRECEDENCE.find((role) => matched.includes(role)) || null;
+    const roles = matches.map((mapping) => mapping.role);
+    const role = ROLE_PRECEDENCE.find((candidate) => roles.includes(candidate)) || null;
+    return { ...base, role, usedDefault: false };
   }
 
-  return defaultRole || null;
+  return { ...base, role: defaultRole || null, usedDefault: Boolean(defaultRole) };
 };
 
+exports.resolveRole = (groups, roleMappings = [], defaultRole = '') => (
+  explainRole(groups, roleMappings, defaultRole).role
+);
+
+exports.explainRole = explainRole;
 exports.toGroupArray = toGroupArray;
 exports.ROLE_PRECEDENCE = ROLE_PRECEDENCE;
