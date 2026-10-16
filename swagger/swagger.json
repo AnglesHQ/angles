@@ -412,7 +412,7 @@
           "Team"
         ],
         "summary": "Add a user to a team",
-        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. A team lead can only add users with the 'user' role; adding team leads or admins is admin-only.",
+        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. A team lead can add any existing user except the core admin account (the seeded ANGLES_ADMIN_USERNAME account); an admin can add anyone. The username is matched case-insensitively and can be an email address.",
         "requestBody": {
           "required": true,
           "content": {
@@ -424,7 +424,7 @@
                 "properties": {
                   "username": {
                     "type": "string",
-                    "description": "Username of the existing user to add (case-insensitive)."
+                    "description": "Username of the existing user to add (case-insensitive). Letters, numbers and . _ @ + - characters, 2 to 254 characters, so email-style usernames work."
                   }
                 }
               }
@@ -443,7 +443,7 @@
             }
           },
           "403": {
-            "description": "Caller may not manage this team, or may not add a user with that role",
+            "description": "Caller may not manage this team, or a team lead tried to add the core admin account",
             "content": {
               "application/json": {
                 "schema": {
@@ -501,17 +501,17 @@
           "Team"
         ],
         "summary": "Search for users that can be added to a team",
-        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. Powers the type-ahead on the add-member box. Matches part of the username (case-insensitive), returns at most 10 users ordered by username, and leaves out users who are already in the team. For a team lead only users with the 'user' role are returned, since those are the only ones a lead can add; an admin also sees team leads and admins.",
+        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. Powers the type-ahead on the add-member box. Matches part of the username (case-insensitive, literal - characters such as . and + are not wildcards), returns at most 10 users ordered by username, and leaves out users who are already in the team and the core admin account. Every other user is offered, whatever their role or whether they sign in locally, with LDAP or with SSO.",
         "parameters": [
           {
             "name": "q",
             "in": "query",
             "required": true,
-            "description": "Part of the username: 3 to 50 letters, numbers, hyphens or underscores.",
+            "description": "Part of the username: 3 to 254 letters, numbers and . _ @ + - characters (email-style usernames are supported).",
             "schema": {
               "type": "string",
               "minLength": 3,
-              "maxLength": 50
+              "maxLength": 254
             }
           }
         ],
@@ -601,7 +601,7 @@
           "Team"
         ],
         "summary": "Remove a user from a team",
-        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. A team lead can only remove users with the 'user' role, and cannot remove themselves; removing team leads or admins is admin-only. The user's membership of other teams is unaffected.",
+        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. A team lead can remove any member except themselves and the core admin account; an admin can remove anyone. The user's membership of other teams is unaffected.",
         "responses": {
           "200": {
             "description": "The user was removed from the team",
@@ -614,7 +614,7 @@
             }
           },
           "403": {
-            "description": "Caller may not manage this team, or may not remove that user",
+            "description": "Caller may not manage this team, or a team lead tried to remove themselves or the core admin account",
             "content": {
               "application/json": {
                 "schema": {
@@ -10038,6 +10038,10 @@
           "authProvider": {
             "type": "string",
             "description": "'local' or the id of the SSO provider that authenticates the user."
+          },
+          "isCoreAdmin": {
+            "type": "boolean",
+            "description": "Present in the member list: true for the core admin account, which a team lead cannot remove from a team."
           }
         }
       }
