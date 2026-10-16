@@ -22,6 +22,7 @@ exports.isAuthenticated = async (req, res, next) => {
         if (token && new Date(token.expiresAt) > new Date()) {
           req.user = user;
           req.isTokenAuth = true;
+          req.apiTokenName = token.name;
           return next();
         }
       }

@@ -109,6 +109,21 @@ const BuildSchema = Schema({
     type: Suite,
     required: true,
   }],
+  // Who started this build. Captured from the authenticated caller when the build is
+  // created, so an automated run can be traced back to the person - or the API token - that
+  // reported it. The username is copied rather than only referenced: a build outlives the
+  // account that created it, and the history should still say who ran it. Absent on builds
+  // created before this was recorded.
+  triggeredBy: {
+    type: new Schema({
+      user: { type: Schema.Types.ObjectId, ref: 'User', required: false },
+      username: { type: String, required: false },
+      // Name of the API token used (not the token itself), when the build was reported with
+      // an x-api-key rather than a login session.
+      tokenName: { type: String, required: false },
+    }, { _id: false }),
+    required: false,
+  },
   // Whether this build's results came from an automated run or a manual test run.
   // Defaults to 'automated' so every existing document reads back correctly with no
   // migration; scripts/backfill-execution-type.js sets it explicitly so the index below

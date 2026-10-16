@@ -65,6 +65,46 @@
     failing.forEach((execution) => setOpen(all('.action-fail, .action-error', execution), true));
   });
 
+  // ── Theme toggle ──────────────────────────────────────────────────────────
+  // index.pug applies a remembered choice before first paint; this wires up the button.
+  // With no choice made the report follows the OS, so the effective theme is read from the
+  // attribute first and the media query second. A choice is remembered where storage is
+  // available, and the report still works (for the session) where it is not.
+  const THEME_KEY = 'angles-report-theme';
+  const root = document.documentElement;
+  const toggle = document.getElementById('theme-toggle');
+  const prefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  const currentTheme = () => root.getAttribute('data-theme')
+    || (prefersDark && prefersDark.matches ? 'dark' : 'light');
+
+  const renderToggle = () => {
+    if (!toggle) return;
+    const dark = currentTheme() === 'dark';
+    toggle.setAttribute('aria-pressed', String(dark));
+    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    toggle.querySelector('.theme-toggle-icon').textContent = dark ? '\u2600' : '\u263E';
+    toggle.querySelector('.theme-toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  };
+
+  if (toggle) {
+    toggle.hidden = false;
+    renderToggle();
+    toggle.addEventListener('click', () => {
+      const next = currentTheme() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem(THEME_KEY, next);
+      } catch (e) {
+        // Storage unavailable: the choice holds until the report is closed.
+      }
+      renderToggle();
+    });
+    // Until the viewer chooses, keep the label in step with the OS if it changes.
+    if (prefersDark && prefersDark.addEventListener) {
+      prefersDark.addEventListener('change', renderToggle);
+    }
+  }
+
   // ── Screenshot viewer ─────────────────────────────────────────────────────
   const viewer = document.getElementById('screenshot-viewer');
   let lastTrigger = null;
@@ -99,11 +139,23 @@
 
   // ── Print: expand everything, then restore what the reader had open ───────
   let openBeforePrint = null;
+  // Paper is white, so a dark report is printed in the light theme and put back after.
+  let themeBeforePrint = null;
+  let printing = false;
   window.addEventListener('beforeprint', () => {
     openBeforePrint = all('details').filter((details) => details.open);
     setOpen(all('details'), true);
+    printing = true;
+    themeBeforePrint = root.getAttribute('data-theme');
+    root.setAttribute('data-theme', 'light');
   });
   window.addEventListener('afterprint', () => {
+    if (printing) {
+      printing = false;
+      if (themeBeforePrint === null) root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', themeBeforePrint);
+      renderToggle();
+    }
     if (!openBeforePrint) return;
     setOpen(all('details'), false);
     setOpen(openBeforePrint, true);

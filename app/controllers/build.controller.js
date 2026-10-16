@@ -91,6 +91,13 @@ exports.create = (req, res) => {
         start,
         result: new Map(buildMetricsUtils.defaultResultMap),
       });
+      if (req.user) {
+        build.triggeredBy = {
+          user: req.user._id,
+          username: req.user.username,
+          tokenName: req.isTokenAuth ? req.apiTokenName : undefined,
+        };
+      }
       if (phase && phaseFound) {
         build.phase = phaseFound._id;
       }

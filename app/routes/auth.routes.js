@@ -3,6 +3,7 @@ const passport = require('passport');
 const debug = require('debug');
 const authConfig = require('../../config/auth.config.js');
 const featureConfig = require('../../config/feature.config.js');
+const User = require('../models/user.js');
 const loginThrottle = require('../utils/login-throttle.js');
 const { trustedUiOrigin } = require('../utils/ui-origin.js');
 const {
@@ -14,6 +15,28 @@ const {
 } = require('../utils/passport-setup.js');
 
 const log = debug('auth:routes');
+
+/**
+ * Establishes the session for an authenticated user and stamps their last-login time.
+ *
+ * Every sign-in route (local, LDAP, SSO callback) goes through here so the timestamp is
+ * recorded in one place. A failure to record it is logged and swallowed: the credentials
+ * were valid, and an audit field is no reason to refuse the login.
+ */
+const completeLogin = (req, user, callback) => req.logIn(user, async (loginErr) => {
+  if (loginErr) return callback(loginErr);
+  try {
+    // `timestamps: false` so a login does not look like an edit of the account.
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { lastLoginAt: new Date() } },
+      { timestamps: false },
+    );
+  } catch (err) {
+    log('Could not record last login for user %s: %s', user._id, err.message);
+  }
+  return callback(null);
+});
 
 module.exports = (app, path) => {
   // Config. Drives the login page: which sign-in methods to offer, and where each goes.
@@ -55,7 +78,7 @@ module.exports = (app, path) => {
         return res.status(401).json({ error: info.message || 'Login failed' });
       }
       loginThrottle.recordSuccess(req.ip, req.body.username);
-      return req.logIn(user, (loginErr) => {
+      return completeLogin(req, user, (loginErr) => {
         if (loginErr) return next(loginErr);
         return res.json({
           message: 'Logged in successfully',
@@ -120,7 +143,7 @@ module.exports = (app, path) => {
         return res.status(401).json({ error: (info && info.message) || 'Login failed' });
       }
       loginThrottle.recordSuccess(req.ip, req.body.username);
-      return req.logIn(user, (loginErr) => {
+      return completeLogin(req, user, (loginErr) => {
         if (loginErr) return next(loginErr);
         return res.json({
           message: 'Logged in successfully',
@@ -183,7 +206,7 @@ module.exports = (app, path) => {
         log('SSO callback for provider %s denied: %s', providerId, (info && info.message) || 'no user');
         return res.redirect(`${uiOrigin}/login?error=true`);
       }
-      return req.logIn(user, (loginErr) => {
+      return completeLogin(req, user, (loginErr) => {
         if (loginErr) return next(loginErr);
         // Successful authentication, redirect home.
         return res.redirect(`${uiOrigin}/`);

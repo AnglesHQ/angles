@@ -37,6 +37,13 @@ const UserSchema = mongoose.Schema({
     trim: true,
   },
   apiTokens: [TokenSchema],
+  // When the user last signed in interactively (local, LDAP or SSO). Left unset for an
+  // account that has never logged in. API-token requests do not count: they are not a
+  // login, and recording them would put a write on the hottest authentication path.
+  lastLoginAt: {
+    type: Date,
+    required: false,
+  },
 }, {
   timestamps: true,
 }, { collection: 'users' });
@@ -49,5 +56,9 @@ UserSchema.index({ username: 1 }, { unique: true });
 // auth-middleware.isAuthenticated). Without this multikey index that lookup is a full
 // collection scan on the hottest authentication path.
 UserSchema.index({ 'apiTokens.tokenHash': 1 });
+
+// Team membership is read from the user side (a team's member list is the users whose
+// `teams` contain it), so that lookup needs its own multikey index.
+UserSchema.index({ teams: 1 });
 
 module.exports = mongoose.model('User', UserSchema);

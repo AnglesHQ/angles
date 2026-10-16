@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const debug = require('debug');
 const { Team, Component } = require('../models/team.js');
+const User = require('../models/user.js');
 const {
   ConflictError, NotFoundError, ForbiddenError, handleError,
 } = require('../exceptions/errors.js');
@@ -145,4 +146,110 @@ exports.delete = (req, res) => {
       }
       return res.status(200).send({ message: 'Team deleted successfully!' });
     }).catch((err) => handleError(err, res));
+};
+
+/**
+ * What a member list needs and nothing more: no password hash, tokens or other teams.
+ */
+const MEMBER_FIELDS = '_id username role authProvider';
+
+/**
+ * Team leads manage plain users only. An admin's access is global, and a team lead's
+ * `team_lead` role is what grants lead powers over every team they belong to - so letting
+ * a lead add or remove another lead would let them hand out (or take away) lead access.
+ * Those memberships stay with admins.
+ */
+const canManageMembership = (caller, targetUser) => caller.role === 'admin' || targetUser.role === 'user';
+
+exports.getMembers = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId } = req.params;
+
+  try {
+    if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+      throw new ForbiddenError('Forbidden. You do not have permission to view the members of this team.');
+    }
+    const team = await Team.findById(teamId).select('_id').lean();
+    if (!team) {
+      throw new NotFoundError(`Team not found with id ${teamId}`);
+    }
+    const members = await User.find({ teams: teamId }, MEMBER_FIELDS).sort('username').lean();
+    return res.status(200).send(members);
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+exports.addMember = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId } = req.params;
+  const username = req.body.username.toLowerCase();
+
+  try {
+    if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+      throw new ForbiddenError('Forbidden. You do not have permission to add members to this team.');
+    }
+    const team = await Team.findById(teamId).select('_id name').lean();
+    if (!team) {
+      throw new NotFoundError(`Team not found with id ${teamId}`);
+    }
+    const user = await User.findOne({ username }, `${MEMBER_FIELDS} teams`);
+    if (!user) {
+      throw new NotFoundError(`User "${username}" not found.`);
+    }
+    if (!canManageMembership(req.user, user)) {
+      throw new ForbiddenError('Forbidden. Only an admin can add team leads or admins to a team.');
+    }
+    if (user.teams.some((id) => id.toString() === teamId)) {
+      throw new ConflictError(`User "${username}" is already a member of this team.`);
+    }
+    // $addToSet rather than save(): two leads adding the same person at once must not
+    // produce a duplicate entry, and the rest of the user document is left untouched.
+    await User.updateOne({ _id: user._id }, { $addToSet: { teams: teamId } });
+    log(`Added user "${user.username}" to team "${team.name}" (${teamId}).`);
+    return res.status(201).send({
+      _id: user._id, username: user.username, role: user.role, authProvider: user.authProvider,
+    });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+exports.removeMember = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId, userId } = req.params;
+
+  try {
+    if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+      throw new ForbiddenError('Forbidden. You do not have permission to remove members from this team.');
+    }
+    const team = await Team.findById(teamId).select('_id name').lean();
+    if (!team) {
+      throw new NotFoundError(`Team not found with id ${teamId}`);
+    }
+    const user = await User.findOne({ _id: userId, teams: teamId }, `${MEMBER_FIELDS} teams`);
+    if (!user) {
+      throw new NotFoundError(`User with id ${userId} is not a member of this team.`);
+    }
+    if (req.user.role !== 'admin' && req.user._id.toString() === userId) {
+      throw new ForbiddenError('Forbidden. You cannot remove yourself from a team you lead; ask an admin.');
+    }
+    if (!canManageMembership(req.user, user)) {
+      throw new ForbiddenError('Forbidden. Only an admin can remove team leads or admins from a team.');
+    }
+    await User.updateOne({ _id: user._id }, { $pull: { teams: teamId } });
+    log(`Removed user "${user.username}" from team "${team.name}" (${teamId}).`);
+    return res.status(200).send({ message: 'Member removed successfully!' });
+  } catch (err) {
+    return handleError(err, res);
+  }
 };
