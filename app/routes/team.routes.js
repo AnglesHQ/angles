@@ -45,6 +45,27 @@ module.exports = (app, path) => {
       .withMessage('Component name must only contain letters, numbers and hyphens (and be between 2 and 50 characters).'),
   ], teamController.addComponents);
 
+  // Team membership. Managed from a session only (not an API token), like the user routes:
+  // who may see a team is not something a CI key should be able to change. The controller
+  // restricts the callers to admins and the team's own leads.
+  app.get(`${path}/team/:teamId/members`, authMiddleware.preventTokenAuth, [
+    param('teamId').isMongoId(),
+  ], teamController.getMembers);
+
+  app.post(`${path}/team/:teamId/members`, authMiddleware.preventTokenAuth, [
+    param('teamId').isMongoId(),
+    check('username')
+      .exists({ checkFalsy: true })
+      .isString()
+      .matches(/^[A-Za-z0-9-_]{2,50}$/)
+      .withMessage('Username must only contain letters, numbers, hyphens or underscores (2–50 characters).'),
+  ], teamController.addMember);
+
+  app.delete(`${path}/team/:teamId/members/:userId`, authMiddleware.preventTokenAuth, [
+    param('teamId').isMongoId(),
+    param('userId').isMongoId(),
+  ], teamController.removeMember);
+
   app.delete(`${path}/team/:teamId`, authMiddleware.authorizeAdmin, [
     param('teamId').isMongoId(),
   ], teamController.delete);

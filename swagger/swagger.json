@@ -344,6 +344,216 @@
         }
       }
     },
+    "/team/{teamId}/members": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "List the members of a team",
+        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team.",
+        "responses": {
+          "200": {
+            "description": "The users that belong to the team, ordered by username.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamMember"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an admin or a team lead of this team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Team not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Add a user to a team",
+        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. A team lead can only add users with the 'user' role; adding team leads or admins is admin-only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "username"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "Username of the existing user to add (case-insensitive)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The user was added to the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMember"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller may not manage this team, or may not add a user with that role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Team or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The user is already a member of the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/team/{teamId}/members/{userId}": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "userId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Remove a user from a team",
+        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. A team lead can only remove users with the 'user' role, and cannot remove themselves; removing team leads or admins is admin-only. The user's membership of other teams is unaffected.",
+        "responses": {
+          "200": {
+            "description": "The user was removed from the team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller may not manage this team, or may not remove that user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Team not found, or the user is not a member of it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/environment": {
       "post": {
         "tags": [
@@ -7692,6 +7902,24 @@
                 ],
                 "default": "automated",
                 "description": "Whether the results came from an automated run or a manual test run. Defaults to \"automated\", so documents written before manual runs existed read back unchanged."
+              },
+              "triggeredBy": {
+                "type": "object",
+                "description": "Who started the build, taken from the authenticated caller when it was created. Absent on builds created before this was recorded.",
+                "properties": {
+                  "user": {
+                    "type": "string",
+                    "description": "Id of the user."
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "Username at the time; kept even if the account is later deleted."
+                  },
+                  "tokenName": {
+                    "type": "string",
+                    "description": "Name of the API token used, when the build was reported with an x-api-key rather than a login session. Never the token itself."
+                  }
+                }
               }
             }
           }
@@ -8203,6 +8431,11 @@
               "updatedAt": {
                 "type": "string",
                 "format": "date-time"
+              },
+              "lastLoginAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the user last signed in (local, LDAP or SSO). Absent if they never have. API-token requests do not count."
               }
             }
           }
@@ -9691,6 +9924,28 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "TeamMember": {
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "user",
+              "team_lead"
+            ]
+          },
+          "authProvider": {
+            "type": "string",
+            "description": "'local' or the id of the SSO provider that authenticates the user."
           }
         }
       }

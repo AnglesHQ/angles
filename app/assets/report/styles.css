@@ -31,9 +31,43 @@
     --skipped-color: #0ea5e9;
 }
 
-/* ── Primitives: Ember dark (follows the viewer's OS preference) ───────────── */
+/*
+ * ── Primitives: Ember dark ────────────────────────────────────────────────────
+ *
+ * The theme is chosen by the `data-theme` attribute on <html>, which the viewer sets with
+ * the toggle in the report header (and which is remembered between visits). Until they
+ * choose, the attribute is absent and the viewer's OS preference decides - the media query
+ * below is guarded on that absence, so an explicit choice always wins over the OS. The two
+ * blocks hold the same values; CSS has no way to share one declaration list between a
+ * selector and a media query, so keep them identical.
+ */
+:root[data-theme='dark'] {
+    --theme-ink-rgb: 255, 255, 255;
+    --theme-is-dark: 1;
+
+    --master-color-1: hsl(30, 8%, 17%);
+    --master-color-2: hsl(24, 9%, 12%);
+    --master-color-2-relative: hsl(30, 6%, 34%);
+
+    --master-font-color-1: hsl(40, 30%, 93%);
+    --master-font-color-2: hsl(40, 33%, 97%);
+    --master-font-color-3: hsl(38, 12%, 76%);
+
+    --master-color-3: #f6ad55;
+    --master-color-3-relative: #ed8936;
+    --accent-rgb: 246, 173, 85;
+
+    /* Cream on orange-400 is 1.8:1, so the suite header uses the panel ink (8.7:1). */
+    --master-font-color-accent-heading: var(--master-color-2);
+
+    --pass-color: #6cc07e;
+    --fail-color: #ff7b85;
+    --error-color: #f9c65b;
+    --skipped-color: #38bdf8;
+}
+
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme]) {
         --theme-ink-rgb: 255, 255, 255;
         --theme-is-dark: 1;
 
@@ -49,7 +83,6 @@
         --master-color-3-relative: #ed8936;
         --accent-rgb: 246, 173, 85;
 
-        /* Cream on orange-400 is 1.8:1, so the suite header uses the panel ink (8.7:1). */
         --master-font-color-accent-heading: var(--master-color-2);
 
         --pass-color: #6cc07e;
@@ -111,6 +144,10 @@
 
     --transition-fast: 120ms cubic-bezier(0.2, 0, 0, 1);
 }
+
+/* Native form controls and scrollbars follow the chosen theme, not just the OS. */
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
 
 /* ── Base ──────────────────────────────────────────────────────────────────── */
 *,
@@ -274,6 +311,21 @@ input:focus-visible {
 .report-header-text {
     flex: 1 1 auto;
     min-width: 0;
+}
+
+/* Theme toggle in the header. Hidden until the script runs, since it does nothing without it. */
+.theme-toggle {
+    flex: 0 0 auto;
+    align-self: flex-start;
+}
+
+.theme-toggle[hidden] {
+    display: none;
+}
+
+.theme-toggle-icon {
+    font-size: var(--font-size-md);
+    line-height: 1;
 }
 
 .report-eyebrow {
@@ -938,6 +990,7 @@ details[open] > summary > .chevron {
     }
 
     .toolbar,
+    .theme-toggle,
     .viewer {
         display: none;
     }

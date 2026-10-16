@@ -69,6 +69,15 @@ html(lang="en")
     meta(charset="utf-8")
     meta(name="viewport" content="width=device-width, initial-scale=1")
     title= `Angles Report – ${build.name}`
+    //- Applies a remembered theme choice before first paint, so a dark report does not flash
+    //- light. With no choice stored the attribute stays unset and the OS preference applies.
+    script(nonce=nonce).
+      try {
+        var savedTheme = localStorage.getItem('angles-report-theme');
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+      } catch (e) { /* storage unavailable (e.g. blocked for file:// pages): use the OS theme */ }
     style
       include styles.css
 
@@ -97,6 +106,9 @@ html(lang="en")
               if build.phase
                 span.meta-separator(aria-hidden="true") ·
                 span= build.phase.name
+          button.btn-ghost.theme-toggle#theme-toggle(type="button" hidden aria-pressed="false")
+            span.theme-toggle-icon(aria-hidden="true")
+            span.theme-toggle-label
 
         dl.report-facts
           .fact
@@ -108,6 +120,13 @@ html(lang="en")
           .fact
             dt Duration
             dd= formatDuration(build.start, build.end)
+          if build.triggeredBy && build.triggeredBy.username
+            .fact
+              dt Triggered by
+              dd
+                = build.triggeredBy.username
+                if build.triggeredBy.tokenName
+                  span.muted= ` (API token: ${build.triggeredBy.tokenName})`
           .fact
             dt Suites
             dd= (build.suites || []).length
