@@ -253,3 +253,41 @@ exports.removeMember = async (req, res) => {
     return handleError(err, res);
   }
 };
+
+const CANDIDATE_LIMIT = 10;
+
+exports.searchMemberCandidates = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId } = req.params;
+  // The validator limits q to [A-Za-z0-9-_], none of which is a regex metacharacter, so it
+  // can go into the pattern as is. Usernames are stored lowercase.
+  const term = req.query.q.trim().toLowerCase();
+
+  try {
+    if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+      throw new ForbiddenError('Forbidden. You do not have permission to add members to this team.');
+    }
+    const team = await Team.findById(teamId).select('_id').lean();
+    if (!team) {
+      throw new NotFoundError(`Team not found with id ${teamId}`);
+    }
+    const filter = {
+      username: new RegExp(term),
+      teams: { $ne: teamId },
+    };
+    // Same rule as addMember: only an admin can add team leads or admins.
+    if (req.user.role !== 'admin') {
+      filter.role = 'user';
+    }
+    const candidates = await User.find(filter, '_id username role')
+      .sort('username')
+      .limit(CANDIDATE_LIMIT)
+      .lean();
+    return res.status(200).send(candidates);
+  } catch (err) {
+    return handleError(err, res);
+  }
+};

@@ -133,6 +133,78 @@ describe('Team members, last login and build trigger Tests', () => {
     });
   });
 
+  describe('GET /team/:teamId/members/candidates', () => {
+    const search = (agent, teamId, q) => agent
+      .get(`${baseUrl}team/${teamId}/members/candidates`)
+      .query({ q });
+
+    it('finds users to add by part of their username, case-insensitively', async () => {
+      const res = await search(leadAgent, team._id, 'CAND').expect(200);
+      res.body.map((u) => u.username).should.eql([candidate.username]);
+      Object.keys(res.body[0]).sort().should.eql(['_id', 'role', 'username']);
+    });
+
+    it('matches in the middle of a username, not only the start', async () => {
+      const res = await search(leadAgent, team._id, 'tm-out').expect(200);
+      res.body.map((u) => u.username).should.eql([outsider.username]);
+    });
+
+    it('offers a team lead only plain users who are not already in the team', async () => {
+      const res = await search(leadAgent, team._id, `${PREFIX}`).expect(200);
+      const names = res.body.map((u) => u.username);
+      names.should.containDeep([candidate.username, outsider.username]);
+      // already a member / a team lead of this team / a team lead elsewhere
+      names.should.not.containEql(member.username);
+      names.should.not.containEql(lead.username);
+      names.should.not.containEql(teamLead2.username);
+      names.should.not.containEql(otherLead.username);
+      res.body.forEach((u) => u.role.should.equal('user'));
+    });
+
+    it('also offers team leads to an admin, who may add them', async () => {
+      const res = await search(adminAgent, team._id, `${PREFIX}`).expect(200);
+      const names = res.body.map((u) => u.username);
+      names.should.containDeep([candidate.username, outsider.username, otherLead.username]);
+      names.should.not.containEql(member.username);
+    });
+
+    it('returns an empty list when nothing matches', async () => {
+      const res = await search(leadAgent, team._id, 'zzzzzz-no-such-user').expect(200);
+      res.body.should.eql([]);
+    });
+
+    it('caps the number of suggestions', async () => {
+      const bulk = await Promise.all(Array.from({ length: 12 }, (_, i) => createUser(`bulk-${String(i).padStart(2, '0')}`, 'user')));
+      try {
+        const res = await search(leadAgent, team._id, 'tm-bulk').expect(200);
+        res.body.should.have.length(10);
+      } finally {
+        await User.deleteMany({ _id: { $in: bulk.map((u) => u._id) } });
+      }
+    });
+
+    it('respond with 422 for fewer than three characters, or characters outside a username', async () => {
+      await search(leadAgent, team._id, 'ca').expect(422);
+      await search(leadAgent, team._id, '').expect(422);
+      await search(leadAgent, team._id, 'a.*').expect(422);
+      await leadAgent.get(`${baseUrl}team/${team._id}/members/candidates`).expect(422);
+    });
+
+    it('respond with 403 for a plain member and for a lead of another team', async () => {
+      await search(memberAgent, team._id, 'cand').expect(403);
+      await search(leadAgent, otherTeam._id, 'cand').expect(403);
+    });
+
+    it('respond with 403 when called with an API token, and 404 for an unknown team', async () => {
+      await request(app)
+        .get(`${baseUrl}team/${team._id}/members/candidates`)
+        .query({ q: 'cand' })
+        .set('x-api-key', leadToken)
+        .expect(403);
+      await search(adminAgent, '507f1f77bcf86cd799439011', 'cand').expect(404);
+    });
+  });
+
   describe('POST /team/:teamId/members', () => {
     it('lets a team lead add a user by username (case-insensitively)', async () => {
       const res = await leadAgent

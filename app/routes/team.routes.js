@@ -1,4 +1,4 @@
-const { check, param } = require('express-validator');
+const { check, param, query } = require('express-validator');
 const teamController = require('../controllers/team.controller.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 
@@ -51,6 +51,22 @@ module.exports = (app, path) => {
   app.get(`${path}/team/:teamId/members`, authMiddleware.preventTokenAuth, [
     param('teamId').isMongoId(),
   ], teamController.getMembers);
+
+  // Predictive search for the "add member" box. Deliberately narrow, because it lets a team
+  // lead look up accounts they otherwise cannot list: it needs at least three characters of
+  // the username, returns a handful of matches, and (for a team lead) only users they could
+  // add anyway - never admins, team leads, or people already in the team.
+  app.get(`${path}/team/:teamId/members/candidates`, authMiddleware.preventTokenAuth, [
+    param('teamId').isMongoId(),
+    query('q')
+      .exists({ checkFalsy: true })
+      .isString()
+      .trim()
+      .isLength({ min: 3, max: 50 })
+      .withMessage('q must be between 3 and 50 characters.')
+      .matches(/^[A-Za-z0-9-_]+$/)
+      .withMessage('q must only contain letters, numbers, hyphens or underscores.'),
+  ], teamController.searchMemberCandidates);
 
   app.post(`${path}/team/:teamId/members`, authMiddleware.preventTokenAuth, [
     param('teamId').isMongoId(),
