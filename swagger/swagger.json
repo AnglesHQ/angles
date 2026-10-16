@@ -485,6 +485,98 @@
         }
       }
     },
+    "/team/{teamId}/members/candidates": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Search for users that can be added to a team",
+        "description": "Session authentication only - API tokens (x-api-key) are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. Powers the type-ahead on the add-member box. Matches part of the username (case-insensitive), returns at most 10 users ordered by username, and leaves out users who are already in the team. For a team lead only users with the 'user' role are returned, since those are the only ones a lead can add; an admin also sees team leads and admins.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Part of the username: 3 to 50 letters, numbers, hyphens or underscores.",
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The matching users (possibly none).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "properties": {
+                      "_id": {
+                        "type": "string"
+                      },
+                      "username": {
+                        "type": "string"
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "admin",
+                          "user",
+                          "team_lead"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an admin or a team lead of this team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Team not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error (q missing, too short or with unsupported characters)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/team/{teamId}/members/{userId}": {
       "parameters": [
         {
