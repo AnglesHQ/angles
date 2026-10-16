@@ -20,9 +20,17 @@ const BCRYPT_ROUNDS = 10;
  * 'no-password' (env var unset), 'weak-password' (fails the strength policy, with the unmet
  * requirements in violations), or 'exists' (admin already present).
  */
+/**
+ * Username of the core admin: the account seeded at first run (ANGLES_ADMIN_USERNAME,
+ * default 'admin'). It is the deployment's break-glass account, so it is kept out of the
+ * team-membership features that team leads can use.
+ * @returns {string}
+ */
+const getCoreAdminUsername = () => (process.env.ANGLES_ADMIN_USERNAME || 'admin').toLowerCase();
+
 const ensureAdminUser = async () => {
   const password = process.env.ANGLES_ADMIN_PASSWORD;
-  const username = (process.env.ANGLES_ADMIN_USERNAME || 'admin').toLowerCase();
+  const username = getCoreAdminUsername();
 
   if (!password) {
     log('ANGLES_ADMIN_PASSWORD not set; skipping admin seed.');
@@ -56,4 +64,5 @@ const ensureAdminUser = async () => {
 
 module.exports = {
   ensureAdminUser,
+  getCoreAdminUsername,
 };

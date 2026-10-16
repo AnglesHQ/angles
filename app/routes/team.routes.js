@@ -2,6 +2,11 @@ const { check, param, query } = require('express-validator');
 const teamController = require('../controllers/team.controller.js');
 const authMiddleware = require('../utils/auth-middleware.js');
 
+// What a username can contain when it is looked up for team membership. Local accounts are
+// letters, digits, hyphens and underscores, but accounts created by a single sign-on login
+// take the identifier the provider reports, which is often an email address.
+const USERNAME_CHARACTERS = /^[A-Za-z0-9._@+-]+$/;
+
 module.exports = (app, path) => {
   app.post(`${path}/team`, authMiddleware.authorizeAdmin, [
     check('name')
@@ -54,18 +59,18 @@ module.exports = (app, path) => {
 
   // Predictive search for the "add member" box. Deliberately narrow, because it lets a team
   // lead look up accounts they otherwise cannot list: it needs at least three characters of
-  // the username, returns a handful of matches, and (for a team lead) only users they could
-  // add anyway - never admins, team leads, or people already in the team.
+  // the username and returns a handful of matches, never the core admin account or people
+  // already in the team.
   app.get(`${path}/team/:teamId/members/candidates`, authMiddleware.preventTokenAuth, [
     param('teamId').isMongoId(),
     query('q')
       .exists({ checkFalsy: true })
       .isString()
       .trim()
-      .isLength({ min: 3, max: 50 })
-      .withMessage('q must be between 3 and 50 characters.')
-      .matches(/^[A-Za-z0-9-_]+$/)
-      .withMessage('q must only contain letters, numbers, hyphens or underscores.'),
+      .isLength({ min: 3, max: 254 })
+      .withMessage('q must be between 3 and 254 characters.')
+      .matches(USERNAME_CHARACTERS)
+      .withMessage('q must only contain letters, numbers and . _ @ + - characters.'),
   ], teamController.searchMemberCandidates);
 
   app.post(`${path}/team/:teamId/members`, authMiddleware.preventTokenAuth, [
@@ -73,8 +78,9 @@ module.exports = (app, path) => {
     check('username')
       .exists({ checkFalsy: true })
       .isString()
-      .matches(/^[A-Za-z0-9-_]{2,50}$/)
-      .withMessage('Username must only contain letters, numbers, hyphens or underscores (2–50 characters).'),
+      .isLength({ min: 2, max: 254 })
+      .matches(USERNAME_CHARACTERS)
+      .withMessage('Username must be 2 to 254 characters: letters, numbers and . _ @ + - only.'),
   ], teamController.addMember);
 
   app.delete(`${path}/team/:teamId/members/:userId`, authMiddleware.preventTokenAuth, [

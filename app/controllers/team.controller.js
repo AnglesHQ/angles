@@ -6,6 +6,8 @@ const {
   ConflictError, NotFoundError, ForbiddenError, handleError,
 } = require('../exceptions/errors.js');
 const authMiddleware = require('../utils/auth-middleware.js');
+const validationUtils = require('../utils/validation-utils.js');
+const { getCoreAdminUsername } = require('../utils/admin-seed-service.js');
 
 const log = debug('team:controller');
 
@@ -153,14 +155,6 @@ exports.delete = (req, res) => {
  */
 const MEMBER_FIELDS = '_id username role authProvider';
 
-/**
- * Team leads manage plain users only. An admin's access is global, and a team lead's
- * `team_lead` role is what grants lead powers over every team they belong to - so letting
- * a lead add or remove another lead would let them hand out (or take away) lead access.
- * Those memberships stay with admins.
- */
-const canManageMembership = (caller, targetUser) => caller.role === 'admin' || targetUser.role === 'user';
-
 exports.getMembers = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -177,7 +171,11 @@ exports.getMembers = async (req, res) => {
       throw new NotFoundError(`Team not found with id ${teamId}`);
     }
     const members = await User.find({ teams: teamId }, MEMBER_FIELDS).sort('username').lean();
-    return res.status(200).send(members);
+    // Flag the core admin so a client can show it as not removable by a team lead.
+    const coreAdmin = getCoreAdminUsername();
+    return res.status(200).send(members.map((member) => ({
+      ...member, isCoreAdmin: member.username === coreAdmin,
+    })));
   } catch (err) {
     return handleError(err, res);
   }
@@ -203,8 +201,8 @@ exports.addMember = async (req, res) => {
     if (!user) {
       throw new NotFoundError(`User "${username}" not found.`);
     }
-    if (!canManageMembership(req.user, user)) {
-      throw new ForbiddenError('Forbidden. Only an admin can add team leads or admins to a team.');
+    if (req.user.role !== 'admin' && user.username === getCoreAdminUsername()) {
+      throw new ForbiddenError('Forbidden. The core admin account cannot be added to a team by a team lead.');
     }
     if (user.teams.some((id) => id.toString() === teamId)) {
       throw new ConflictError(`User "${username}" is already a member of this team.`);
@@ -243,8 +241,8 @@ exports.removeMember = async (req, res) => {
     if (req.user.role !== 'admin' && req.user._id.toString() === userId) {
       throw new ForbiddenError('Forbidden. You cannot remove yourself from a team you lead; ask an admin.');
     }
-    if (!canManageMembership(req.user, user)) {
-      throw new ForbiddenError('Forbidden. Only an admin can remove team leads or admins from a team.');
+    if (req.user.role !== 'admin' && user.username === getCoreAdminUsername()) {
+      throw new ForbiddenError('Forbidden. The core admin account cannot be removed from a team by a team lead.');
     }
     await User.updateOne({ _id: user._id }, { $pull: { teams: teamId } });
     log(`Removed user "${user.username}" from team "${team.name}" (${teamId}).`);
@@ -262,9 +260,9 @@ exports.searchMemberCandidates = async (req, res) => {
     return res.status(422).json({ errors: errors.array() });
   }
   const { teamId } = req.params;
-  // The validator limits q to [A-Za-z0-9-_], none of which is a regex metacharacter, so it
-  // can go into the pattern as is. Usernames are stored lowercase.
-  const term = req.query.q.trim().toLowerCase();
+  // Usernames are stored lowercase. The term can contain regex metacharacters (. + in an
+  // email address), so it is escaped and matched literally.
+  const term = validationUtils.escapeRegex(req.query.q.trim().toLowerCase());
 
   try {
     if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
@@ -274,14 +272,12 @@ exports.searchMemberCandidates = async (req, res) => {
     if (!team) {
       throw new NotFoundError(`Team not found with id ${teamId}`);
     }
+    // Everyone except people already in the team and the core admin, whatever their role or
+    // how they sign in (local, LDAP, SSO).
     const filter = {
-      username: new RegExp(term),
+      username: { $regex: term, $ne: getCoreAdminUsername() },
       teams: { $ne: teamId },
     };
-    // Same rule as addMember: only an admin can add team leads or admins.
-    if (req.user.role !== 'admin') {
-      filter.role = 'user';
-    }
     const candidates = await User.find(filter, '_id username role')
       .sort('username')
       .limit(CANDIDATE_LIMIT)

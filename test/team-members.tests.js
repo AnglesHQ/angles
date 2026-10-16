@@ -29,6 +29,10 @@ describe('Team members, last login and build trigger Tests', () => {
   let candidate;
   let teamLead2;
   let outsider;
+  let coreAdmin;
+  let localAdmin;
+  let ssoUser;
+  let previousCoreAdminName;
   let leadToken;
 
   const login = (username) => new Promise((resolve, reject) => {
@@ -71,6 +75,16 @@ describe('Team members, last login and build trigger Tests', () => {
     candidate = await createUser('candidate', 'user');
     teamLead2 = await createUser('lead-two', 'team_lead', [team._id]);
     outsider = await createUser('outsider', 'user');
+    // The core admin is the seeded account (ANGLES_ADMIN_USERNAME); point it at a test account
+    // so the suite does not depend on an 'admin' user existing.
+    previousCoreAdminName = process.env.ANGLES_ADMIN_USERNAME;
+    process.env.ANGLES_ADMIN_USERNAME = `${PREFIX}-core`;
+    coreAdmin = await createUser('core', 'admin');
+    localAdmin = await createUser('local-admin', 'admin');
+    // An SSO account: no password, and a username that is an email address.
+    ssoUser = await new User({
+      username: `${PREFIX}-sso.user+qa@example.com`, role: 'user', authProvider: 'oidc-test',
+    }).save();
 
     adminAgent = await testUtils.getAdminAgent();
     leadAgent = await login(lead.username);
@@ -84,6 +98,8 @@ describe('Team members, last login and build trigger Tests', () => {
   });
 
   after(async () => {
+    if (previousCoreAdminName === undefined) delete process.env.ANGLES_ADMIN_USERNAME;
+    else process.env.ANGLES_ADMIN_USERNAME = previousCoreAdminName;
     await User.deleteMany({ username: new RegExp(`^${PREFIX}`) });
     await Team.deleteMany({ name: new RegExp(`^${PREFIX}`) });
     await Environment.deleteMany({ name: new RegExp(`^${PREFIX}`) });
@@ -149,23 +165,37 @@ describe('Team members, last login and build trigger Tests', () => {
       res.body.map((u) => u.username).should.eql([outsider.username]);
     });
 
-    it('offers a team lead only plain users who are not already in the team', async () => {
+    it('offers a team lead every other user, whatever their role or how they sign in', async () => {
       const res = await search(leadAgent, team._id, `${PREFIX}`).expect(200);
       const names = res.body.map((u) => u.username);
-      names.should.containDeep([candidate.username, outsider.username]);
-      // already a member / a team lead of this team / a team lead elsewhere
+      // plain users, a team lead of another team, an admin, a local and an SSO account
+      names.should.containDeep([
+        candidate.username, outsider.username, otherLead.username,
+        localAdmin.username, ssoUser.username,
+      ]);
+      // already in the team
       names.should.not.containEql(member.username);
       names.should.not.containEql(lead.username);
       names.should.not.containEql(teamLead2.username);
-      names.should.not.containEql(otherLead.username);
-      res.body.forEach((u) => u.role.should.equal('user'));
     });
 
-    it('also offers team leads to an admin, who may add them', async () => {
-      const res = await search(adminAgent, team._id, `${PREFIX}`).expect(200);
-      const names = res.body.map((u) => u.username);
-      names.should.containDeep([candidate.username, outsider.username, otherLead.username]);
-      names.should.not.containEql(member.username);
+    it('never offers the core admin account, to a team lead or an admin', async () => {
+      await Promise.all([leadAgent, adminAgent].map(async (agent) => {
+        const res = await search(agent, team._id, `${PREFIX}`).expect(200);
+        res.body.map((u) => u.username).should.not.containEql(coreAdmin.username);
+        const exact = await search(agent, team._id, coreAdmin.username).expect(200);
+        exact.body.should.eql([]);
+      }));
+    });
+
+    it('finds email-style usernames, treating . and + literally', async () => {
+      await Promise.all(['@example.com', 'sso.user+qa', 'user+qa@exa'].map(async (q) => {
+        const res = await search(leadAgent, team._id, q).expect(200);
+        res.body.map((u) => u.username).should.eql([ssoUser.username]);
+      }));
+      // '.' must not act as a wildcard: 'sso-user' would match 'sso.user' if it did
+      (await search(leadAgent, team._id, 'sso-user').expect(200)).body.should.eql([]);
+      (await search(leadAgent, team._id, 'user+').expect(200)).body.should.have.length(1);
     });
 
     it('returns an empty list when nothing matches', async () => {
@@ -186,7 +216,8 @@ describe('Team members, last login and build trigger Tests', () => {
     it('respond with 422 for fewer than three characters, or characters outside a username', async () => {
       await search(leadAgent, team._id, 'ca').expect(422);
       await search(leadAgent, team._id, '').expect(422);
-      await search(leadAgent, team._id, 'a.*').expect(422);
+      await search(leadAgent, team._id, 'a b!').expect(422);
+      await search(leadAgent, team._id, 'a*(').expect(422);
       await leadAgent.get(`${baseUrl}team/${team._id}/members/candidates`).expect(422);
     });
 
@@ -257,19 +288,39 @@ describe('Team members, last login and build trigger Tests', () => {
         .expect(403);
     });
 
-    it('respond with 403 when a team lead tries to add another team lead, but an admin can', async () => {
+    it('lets a team lead add team leads and admins too', async () => {
+      await Promise.all([otherLead, localAdmin].map(async (target) => {
+        await leadAgent
+          .post(`${baseUrl}team/${team._id}/members`)
+          .send({ username: target.username })
+          .expect(201);
+        (await User.findById(target._id).lean()).teams.map(String)
+          .should.containEql(String(team._id));
+      }));
+    });
+
+    it('lets a team lead add a user whose username is an email address', async () => {
+      const res = await leadAgent
+        .post(`${baseUrl}team/${team._id}/members`)
+        .send({ username: ssoUser.username.toUpperCase() })
+        .expect(201);
+      res.body.username.should.equal(ssoUser.username);
+      (await members(leadAgent, team._id)).map((u) => u.username)
+        .should.containEql(ssoUser.username);
+    });
+
+    it('respond with 403 when a team lead tries to add the core admin, but an admin can', async () => {
       await leadAgent
         .post(`${baseUrl}team/${team._id}/members`)
-        .send({ username: otherLead.username })
+        .send({ username: coreAdmin.username })
         .expect(403);
-      (await User.findById(otherLead._id).lean()).teams.map(String)
-        .should.not.containEql(String(team._id));
+      (await User.findById(coreAdmin._id).lean()).teams.should.have.length(0);
 
       await adminAgent
         .post(`${baseUrl}team/${team._id}/members`)
-        .send({ username: otherLead.username })
+        .send({ username: coreAdmin.username })
         .expect(201);
-      (await User.findById(otherLead._id).lean()).teams.map(String)
+      (await User.findById(coreAdmin._id).lean()).teams.map(String)
         .should.containEql(String(team._id));
     });
 
@@ -300,10 +351,23 @@ describe('Team members, last login and build trigger Tests', () => {
       (await User.findById(lead._id).lean()).teams.map(String).should.containEql(String(team._id));
     });
 
-    it('respond with 403 when a team lead removes another team lead, but an admin can', async () => {
-      await leadAgent.delete(`${baseUrl}team/${team._id}/members/${teamLead2._id}`).expect(403);
-      await adminAgent.delete(`${baseUrl}team/${team._id}/members/${teamLead2._id}`).expect(200);
+    it('lets a team lead remove a team lead or an admin they added', async () => {
+      await leadAgent.delete(`${baseUrl}team/${team._id}/members/${teamLead2._id}`).expect(200);
       (await User.findById(teamLead2._id).lean()).teams.should.have.length(0);
+      await leadAgent.delete(`${baseUrl}team/${team._id}/members/${localAdmin._id}`).expect(200);
+    });
+
+    it('shows the core admin as such in the member list, and only an admin can remove it', async () => {
+      // the previous describe left the core admin in the team, added by the admin
+      const list = await members(leadAgent, team._id);
+      list.find((u) => u.username === coreAdmin.username).isCoreAdmin.should.equal(true);
+      list.filter((u) => u.username !== coreAdmin.username)
+        .forEach((u) => u.isCoreAdmin.should.equal(false));
+
+      await leadAgent.delete(`${baseUrl}team/${team._id}/members/${coreAdmin._id}`).expect(403);
+      (await User.findById(coreAdmin._id).lean()).teams.map(String)
+        .should.containEql(String(team._id));
+      await adminAgent.delete(`${baseUrl}team/${team._id}/members/${coreAdmin._id}`).expect(200);
     });
 
     it('respond with 403 when a team lead removes a member from a team they do not lead', async () => {
