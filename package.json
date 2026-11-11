@@ -28,7 +28,7 @@
     "@techstark/opencv-js": "^5.0.0-release.1",
     "ansi-regex": ">=6.0.1",
     "bcryptjs": "^3.0.3",
-    "body-parser": "^1.20.0",
+    "body-parser": "^1.20.9",
     "compression": "^1.7.4",
     "connect-mongo": "^6.0.0",
     "cors": "^2.8.5",
