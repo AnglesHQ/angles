@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const debug = require('debug');
 const { Team, Component } = require('../models/team.js');
 const User = require('../models/user.js');
+const TeamToken = require('../models/team-token.js');
 const {
   ConflictError, NotFoundError, ForbiddenError, handleError,
 } = require('../exceptions/errors.js');
@@ -146,8 +148,11 @@ exports.delete = (req, res) => {
       if (!team) {
         throw new NotFoundError(`Team not found with id ${teamId}`);
       }
-      return res.status(200).send({ message: 'Team deleted successfully!' });
-    }).catch((err) => handleError(err, res));
+      // A deleted team's tokens must not outlive it.
+      return TeamToken.deleteMany({ team: team._id }).exec();
+    })
+    .then(() => res.status(200).send({ message: 'Team deleted successfully!' }))
+    .catch((err) => handleError(err, res));
 };
 
 /**
@@ -283,6 +288,102 @@ exports.searchMemberCandidates = async (req, res) => {
       .limit(CANDIDATE_LIMIT)
       .lean();
     return res.status(200).send(candidates);
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+/*
+ * Team tokens: API tokens that belong to the team, for its automation pipelines (see
+ * models/team-token.js). Managed by the team's leads and admins, from a session only.
+ */
+
+// What a token list shows: never the hash.
+const toTeamTokenView = (token) => ({
+  _id: token._id,
+  name: token.name,
+  expiresAt: token.expiresAt,
+  createdAt: token.createdAt,
+  createdBy: token.createdBy ? { username: token.createdBy.username } : undefined,
+  lastUsedAt: token.lastUsedAt,
+});
+
+const findManageableTeam = async (req, teamId, action) => {
+  if (!authMiddleware.hasTeamLeadAccess(req.user, teamId)) {
+    throw new ForbiddenError(`Forbidden. You do not have permission to ${action} this team's tokens.`);
+  }
+  const team = await Team.findById(teamId).select('_id name').lean();
+  if (!team) {
+    throw new NotFoundError(`Team not found with id ${teamId}`);
+  }
+  return team;
+};
+
+exports.getTokens = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId } = req.params;
+  try {
+    await findManageableTeam(req, teamId, 'view');
+    const tokens = await TeamToken.find({ team: teamId }).sort('name').lean();
+    return res.status(200).send(tokens.map(toTeamTokenView));
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+exports.createToken = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId } = req.params;
+  const name = req.body.name.trim();
+  const expiresInDays = parseInt(req.body.expiresInDays, 10);
+  try {
+    const team = await findManageableTeam(req, teamId, 'create');
+    if (await TeamToken.exists({ team: teamId, name })) {
+      throw new ConflictError(`This team already has a token named "${name}".`);
+    }
+    // The prefix tells the authentication middleware to look for a team token.
+    const token = `${authMiddleware.TEAM_TOKEN_PREFIX}${crypto.randomBytes(32).toString('hex')}`;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+    const saved = await new TeamToken({
+      team: teamId,
+      name,
+      tokenHash: crypto.createHash('sha256').update(token).digest('hex'),
+      expiresAt,
+      createdBy: { user: req.user._id, username: req.user.username },
+    }).save();
+    log(`User "${req.user.username}" created team token "${name}" for team "${team.name}" (${teamId}).`);
+    // The token itself is returned this once and never again.
+    return res.status(201).send({ ...toTeamTokenView(saved), token });
+  } catch (err) {
+    // Two leads creating the same name at once: the unique index catches the second.
+    if (err && err.code === 11000) {
+      return handleError(new ConflictError(`This team already has a token named "${name}".`), res);
+    }
+    return handleError(err, res);
+  }
+};
+
+exports.revokeToken = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  const { teamId, tokenId } = req.params;
+  try {
+    const team = await findManageableTeam(req, teamId, 'revoke');
+    const token = await TeamToken.findOneAndDelete({ _id: tokenId, team: teamId }).lean();
+    if (!token) {
+      throw new NotFoundError(`Token with id ${tokenId} not found for this team.`);
+    }
+    log(`User "${req.user.username}" revoked team token "${token.name}" of team "${team.name}" (${teamId}).`);
+    return res.status(200).send({ message: 'Token revoked successfully' });
   } catch (err) {
     return handleError(err, res);
   }

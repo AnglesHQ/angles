@@ -88,6 +88,33 @@ module.exports = (app, path) => {
     param('userId').isMongoId(),
   ], teamController.removeMember);
 
+  // Team tokens: API tokens that belong to the team, for its pipelines. Managed from a
+  // session only, by admins and the team's own leads (the controller checks): a token must
+  // never be able to mint or revoke tokens.
+  app.get(`${path}/team/:teamId/tokens`, authMiddleware.preventTokenAuth, [
+    param('teamId').isMongoId(),
+  ], teamController.getTokens);
+
+  app.post(`${path}/team/:teamId/tokens`, authMiddleware.preventTokenAuth, [
+    param('teamId').isMongoId(),
+    check('name')
+      .exists({ checkFalsy: true })
+      .withMessage('Token name is mandatory')
+      .isString()
+      .trim()
+      .isLength({ min: 1, max: 100 })
+      .withMessage('Token name must be between 1 and 100 characters.'),
+    check('expiresInDays')
+      .exists({ checkFalsy: true })
+      .isInt({ min: 1, max: 365 })
+      .withMessage('expiresInDays must be an integer between 1 and 365.'),
+  ], teamController.createToken);
+
+  app.delete(`${path}/team/:teamId/tokens/:tokenId`, authMiddleware.preventTokenAuth, [
+    param('teamId').isMongoId(),
+    param('tokenId').isMongoId(),
+  ], teamController.revokeToken);
+
   app.delete(`${path}/team/:teamId`, authMiddleware.authorizeAdmin, [
     param('teamId').isMongoId(),
   ], teamController.delete);
