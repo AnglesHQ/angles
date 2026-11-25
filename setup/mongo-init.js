@@ -12,6 +12,7 @@ db.createCollection('environments');
 db.createCollection('baselines');
 db.createCollection('screenshots');
 db.createCollection('attachments');
+db.createCollection('teamtokens');
 db.createCollection('manualtestruns');
 db.createCollection('users');
 
@@ -32,5 +33,7 @@ db.attachments.createIndex({ testCase: 1 });
 db.attachments.createIndex({ sharedStep: 1 });
 db.attachments.createIndex({ build: 1 });
 db.attachments.createIndex({ execution: 1 });
+db.teamtokens.createIndex({ tokenHash: 1 }, { unique: true });
+db.teamtokens.createIndex({ team: 1, name: 1 }, { unique: true });
 db.manualtestruns.createIndex({ team: 1, createdAt: -1 });
 db.builds.createIndex({ team: 1, executionType: 1, start: -1 });

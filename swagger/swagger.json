@@ -646,6 +646,208 @@
         }
       }
     },
+    "/team/{teamId}/tokens": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "List a team's tokens",
+        "description": "Session authentication only - API tokens (x-api-key), personal or team, are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. Team tokens are API tokens that belong to the team rather than to a person, for its automation pipelines. The list never includes a token or its hash.",
+        "responses": {
+          "200": {
+            "description": "The team's tokens, ordered by name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamToken"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller may not manage this team's tokens, or used an API token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Team not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Create a team token",
+        "description": "Session authentication only - API tokens (x-api-key), personal or team, are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. The token is returned in the response this once and never again; only its hash is stored. Send it as x-api-key. A team token acts as a member of this one team, whoever comes and goes: it can report test results (POST /build, PUT /build/{buildId}/executions, /artifacts and /keep, POST /build/{buildId}/attachment, POST /execution, POST /screenshot) and read this team's data. Every other change is refused with a 403, as are other teams' data and the user routes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The token was created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewTeamTokenResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller may not manage this team's tokens, or used an API token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Team not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The team already has a token with this name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/team/{teamId}/tokens/{tokenId}": {
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "tokenId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Team"
+        ],
+        "summary": "Revoke a team token",
+        "description": "Session authentication only - API tokens (x-api-key), personal or team, are rejected on this endpoint with a 403. Callable by an admin or a team lead of this team. The token stops working at once.",
+        "responses": {
+          "200": {
+            "description": "The token was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller may not manage this team's tokens, or used an API token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Team not found, or the token does not belong to it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/environment": {
       "post": {
         "tags": [
@@ -7659,7 +7861,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "x-api-key",
-        "description": "API token issued via 'POST /users/{userId}/tokens'. Paste the raw token value (only shown once, at creation time) to authorise the 'Try it out' requests."
+        "description": "API token: a personal token issued via 'POST /users/{userId}/tokens', or a team token (starting angles_team_) issued via 'POST /team/{teamId}/tokens'. Paste the raw token value (only shown once, at creation time) to authorise the 'Try it out' requests."
       },
       "MetricsBearerAuth": {
         "type": "http",
@@ -8010,6 +8212,10 @@
                   "tokenName": {
                     "type": "string",
                     "description": "Name of the API token used, when the build was reported with an x-api-key rather than a login session. Never the token itself."
+                  },
+                  "teamToken": {
+                    "type": "boolean",
+                    "description": "True when that token is a team token. There is then no user, and username is the token's name."
                   }
                 }
               }
@@ -8583,6 +8789,69 @@
             "format": "date-time"
           }
         }
+      },
+      "TeamTokenRequest": {
+        "required": [
+          "name",
+          "expiresInDays"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "1 to 100 characters, unique within the team, e.g. the pipeline that uses it."
+          },
+          "expiresInDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365
+          }
+        }
+      },
+      "TeamToken": {
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string"
+              }
+            }
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When a request last authenticated with it, to the hour. Absent if it has never been used."
+          }
+        }
+      },
+      "NewTeamTokenResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TeamToken"
+          },
+          {
+            "properties": {
+              "token": {
+                "type": "string",
+                "description": "Plain-text token, starting with angles_team_ - only returned once at creation time"
+              }
+            }
+          }
+        ]
       },
       "AuthLogin": {
         "required": [

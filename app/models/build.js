@@ -121,6 +121,9 @@ const BuildSchema = Schema({
       // Name of the API token used (not the token itself), when the build was reported with
       // an x-api-key rather than a login session.
       tokenName: { type: String, required: false },
+      // True when that token is a team token: there is then no user, and `username` is the
+      // token's name.
+      teamToken: { type: Boolean, required: false },
     }, { _id: false }),
     required: false,
   },

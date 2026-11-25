@@ -96,6 +96,7 @@ exports.create = (req, res) => {
           user: req.user._id,
           username: req.user.username,
           tokenName: req.isTokenAuth ? req.apiTokenName : undefined,
+          teamToken: req.teamToken ? true : undefined,
         };
       }
       if (phase && phaseFound) {
